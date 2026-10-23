@@ -237,6 +237,25 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(hosts, dict):
                 raise ValueError("hosts 必须为域名映射对象")
             hosts[settings()["domain"]] = lan_ip()
+            # Ordinary saves keep healthy existing subscriptions offline. Explicit
+            # subscription refreshes still fetch every provider, even for the same YAML.
+            refresh_providers = set()
+            previous_providers = current.get("proxy-providers") or {}
+            for name, provider in parsed.get("proxy-providers", {}).items():
+                if provider.get("type") != "http":
+                    continue
+                cache = provider.get("path")
+                if (data.get("refresh_providers") is True or previous_providers.get(name) != provider
+                        or not cache or not (MIHOMO_DIR / cache).is_file()):
+                    refresh_providers.add(name)
+            if parsed == current and not refresh_providers:
+                # Do not restart proxy connections for a repeated save. Check the
+                # live controller before reporting that the current config is in use.
+                controller_request("/version")
+                self.reply(200, {"ok": True, "filename": filename,
+                                 "message": "配置未改变，继续使用当前配置。",
+                                 "refreshed_providers": [], "unchanged": True})
+                return
             MIHOMO_DIR.mkdir(parents=True, exist_ok=True)
             with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=MIHOMO_DIR, prefix="import-", suffix=".yaml", delete=False) as f:
                 f.write(yaml.safe_dump(parsed, allow_unicode=True, sort_keys=False))
@@ -280,7 +299,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 # A reload can reuse a provider's cache even when its URL changed.
                 # Save those files too: explicit refresh below may overwrite them.
-                for provider in parsed.get("proxy-providers", {}).values():
+                for name, provider in parsed.get("proxy-providers", {}).items():
                     if provider.get("type") != "http" or not provider.get("path"):
                         continue
                     destination = (MIHOMO_DIR / provider["path"]).resolve()
@@ -293,7 +312,8 @@ class Handler(BaseHTTPRequestHandler):
                         shutil.copy2(destination, previous)
                         previous.chmod(0o600)
                     changed_resources[destination] = previous
-                    proxy_cache_paths.add(destination)
+                    if name in refresh_providers:
+                        proxy_cache_paths.add(destination)
                 for resource in validation_root.rglob("*"):
                     if not resource.is_file() or resource.suffix.lower() in (".db", ".sqlite"):
                         continue
@@ -320,7 +340,7 @@ class Handler(BaseHTTPRequestHandler):
                 controller_request("/configs?force=true", method="PUT", body={"path": str(MIHOMO_CONFIG)}, timeout=30)
                 refreshed_providers = []
                 for name, provider in parsed.get("proxy-providers", {}).items():
-                    if provider.get("type") != "http":
+                    if name not in refresh_providers:
                         continue
                     route = "/providers/proxies/" + quote(str(name), safe="")
                     try:
@@ -341,7 +361,8 @@ class Handler(BaseHTTPRequestHandler):
                         shutil.copy2(previous, destination)
                 controller_request("/configs?force=true", method="PUT", body={"path": str(MIHOMO_CONFIG)}, timeout=30)
                 raise ValueError(f"配置应用或节点订阅刷新失败，已恢复导入前配置：{exc}") from exc
-            self.reply(200, {"ok": True, "filename": filename, "message": "配置已应用，节点订阅已刷新",
+            message = "配置已应用，变更的节点订阅已刷新。" if refreshed_providers else "配置已应用，沿用现有节点订阅。"
+            self.reply(200, {"ok": True, "filename": filename, "message": message,
                              "refreshed_providers": refreshed_providers})
         except Exception as exc:
             self.reply(400, {"error": str(exc) or "导入失败"})
