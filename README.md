@@ -1,75 +1,108 @@
-# AI Workstation 与家庭网关
+# AI Workstation & Gateway
 
-同一仓库维护两个独立的 Linux amd64 容器：
+[![Container images](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml/badge.svg)](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-| 服务 | 默认局域网地址 | 镜像 | 源码 |
+面向家庭网络与远程开发的双容器环境：一个带桌面式 Web 后台的网关，一个可通过 SSH / VNC 使用的 Linux 开发工作站。
+
+![AI Workstation 与网关桌面展示](docs/images/gateway-home-ai.png)
+
+*基于真实主页截图生成的 AI 示意图；实际界面以运行版本为准。[图片来源与生成说明](docs/images/README.md)*
+
+## 两个服务
+
+| 服务 | 默认地址 | 能力 | 公开镜像 |
 | --- | --- | --- | --- |
-| 家庭网关 | `192.168.1.250` | `ghcr.io/crazyniu/ai-workstation-gateway` | [gateway](gateway/) |
-| 开发工作站 | `192.168.1.251` | `ghcr.io/crazyniu/ai-workstation` | [workstation](workstation/) |
+| Gateway | `192.168.1.250` | Mihomo / Clash、AdGuard Home、Tailscale、Web 控制面板 | `ghcr.io/crazyniu/ai-workstation-gateway` |
+| Workstation | `192.168.1.251` | XFCE、Chrome、VS Code、Godot、Codex、Claude、GitHub CLI、MCP 工具 | `ghcr.io/crazyniu/ai-workstation` |
 
-网关内置 Mihomo、Clash 面板、AdGuard Home、Tailscale 与桌面式 Web 后台。工作站提供 XFCE、Chrome、VS Code、Godot、Codex、Claude、GitHub CLI 与本地 MCP 工具。镜像不包含个人代理节点、订阅、登录身份或业务数据。
+- 桌面链接支持自动获取站点 favicon，也可手动选图标；提供壁纸、主题、排序与账户设置。
+- 网关统一管理代理配置、DNS、子网访问、组件升级与备份恢复。
+- 工作站的桌面和 CLI 默认经网关代理访问外网，局域网地址绕过显式代理。
+- 配置、HOME 和账号身份全部保存在各自容器内部。公开镜像包含程序和默认模板，个人订阅、身份和业务数据由用户自行配置。
 
-## 一键部署
+## 首次部署
 
-在接入局域网的 Linux / NAS Docker 主机上执行。需要 Docker Compose v2 和 macvlan 支持；Docker Desktop 的默认虚拟网络不适用这套局域网地址方案。
+需要接入局域网的 **Linux amd64 主机**、Docker Engine、**Docker Compose 2.33.1 或更新版本**、macvlan 支持和 `/dev/net/tun`。提前为两个容器保留未占用的 LAN 地址。Docker Desktop 默认虚拟网络不适用于这套地址方案。
 
 ```sh
 git clone https://github.com/crazyniu/ai-workstation.git
 cd ai-workstation
 cp .env.example .env
-# 编辑 .env 中的网卡、上游路由、未占用的地址和初始密码
+chmod 600 .env
+# 编辑 .env：网卡、路由器、容器地址、初始密码，以及需要访问的 NAS 宿主地址
 ./deploy.sh
 ```
 
-两台容器同时创建，工作站默认通过网关访问外部网络。网关与宿主机通过独立的 control bridge 通信；NAS 地址可填写 `HOST_ADDRESS`。macvlan 默认不能直接访问宿主机，网关通过 control bridge 到 `HOST_ADDRESS` 的路由为工作站转发 NAS 访问；请设置实际 NAS 地址。工作站桌面和 CLI 默认显式使用网关 7890 代理，局域网地址绕过显式代理。
+[`.env.example`](.env.example) 列出全部参数。`LAN_INTERFACE` 必须是实际 LAN 网卡；需要访问 NAS 宿主时填写 `HOST_ADDRESS`。网关使用 control bridge 到达宿主，再为工作站转发该地址的访问。
 
-| 入口 | 默认账号 / 密码 |
+`deploy.sh` 只用于首次创建：项目已有运行中或已停止的容器时会拒绝执行，避免重新创建容器覆盖内部数据。日常重启使用 `docker compose restart`。
+
+| 入口 | 初始账号 / 密码 |
 | --- | --- |
-| 网关 Web `http://192.168.1.250/` | 密码 `admin` |
-| 网关 SSH `192.168.1.250:22` | `admin` / `admin` |
-| 工作站 SSH `192.168.1.251:22` | `dev` / `admin` |
-| 工作站 VNC `192.168.1.251:5901` | 密码 `admin` |
+| 网关 Web：`http://192.168.1.250/` | 密码来自 `WEB_PASSWORD`，示例值为 `admin` |
+| 网关 SSH：`192.168.1.250:22` | `GATEWAY_USER` / `GATEWAY_PASSWORD`，示例均为 `admin` |
+| 工作站 SSH：`192.168.1.251:22` | `dev` / `WORKSTATION_PASSWORD`，示例密码为 `admin` |
+| 工作站 VNC：`192.168.1.251:5901` | `VNC_PASSWORD`，示例值为 `admin` |
 
-Web 密码在容器首次启动时读取 `WEB_PASSWORD`，之后在“设置 → 账户”修改；重启保留保存的密码。网关 SSH 账号密码由 `GATEWAY_USER`、`GATEWAY_PASSWORD` 管理，修改 `.env` 后重建该容器生效。工作站密码由 Compose 中的 `WORKSTATION_PASSWORD`、`VNC_PASSWORD` 设置。VNC 密码接受 1–8 个 ASCII 字符。工作站 root 默认锁定，可通过 `WORKSTATION_ROOT_PASSWORD` 设置。账号、数据、SSH 主机密钥均按各服务说明持久化。
+部署前设置自己的密码。VNC 密码接受 1–8 个 ASCII 字符；工作站 root 默认锁定。网关 Web 密码首次初始化后由“设置 → 账户”管理。后续环境变量变更与数据处理见各服务文档。
 
-让客户端实际使用网关 DNS `192.168.1.250` 后，可以通过 **http://home.arpa** 打开主页。域名解析不会替客户端修改默认网关；需要代理整个设备时，将设备网关也设置为 `.250`。DNS 与 IP 入口始终保留。
+## 开始使用
 
-## 使用
-
-- 首页默认入口为 Clash、AdGuard Home、Tailscale 和设置。右键桌面可添加链接；右键图标可编辑和排序。
-- 在代理设置上传 Clash / Mihomo YAML 文件，校验后保存应用。节点选择、测速和连接记录使用 Clash 面板。
-- 广告过滤使用 AdGuard Home 页面；首次启动已带本地过滤规则。
-- Tailscale 首次启动未登录，在设置中登录后自动识别并发布网关所在的内网子网，同时接收其他设备的子网路由。页面自动更新连接状态；若账号未设置自动批准，页面会提示管理员批准路由。
-- 设置包含桌面管理、壁纸、亮色 / 暗色 / 自动主题、账户、逐项服务升级及备份恢复。
-- 两个容器均已安装 `gh`。通过 `ssh` 登录后运行 `gh auth login`，使用自己的 GitHub 账号；工作站也可执行 `docker compose exec --user 1100:1100 -e HOME=/home/dev workstation gh auth login`。凭据写入各自容器内部 HOME。Codex / Claude 登录同样由各用户完成。
+1. 打开网关主页，在代理配置中导入自己的 Clash / Mihomo YAML 并应用，通过 Clash 面板选择节点。
+2. 让客户端使用网关 DNS 后，通过 `http://home.arpa` 访问主页。需要代理整个设备时，同时将该设备的默认网关设为网关容器地址。
+3. 在 Tailscale 设置中登录自己的账号，并按页面提示批准子网路由。
+4. 通过 VNC 打开工作站桌面，或通过 SSH 登录 `dev`。在应用内完成 Codex、Claude、GitHub 等个人账号登录。
 
 ```sh
 docker compose ps
 docker compose logs --tail 100 gateway
-docker compose exec workstation gh --version
-# 镜像升级会重新创建容器，先按各服务说明导出并恢复内部数据
+docker compose exec --user 1100:1100 -e HOME=/home/dev workstation gh auth login
 ```
 
-升级网关内的 Mihomo / AdGuard / Tailscale / Clash 面板可在 Web 内完成，程序与配置保存在容器内部 `/data`，失败会恢复旧版本。网关后台、Nginx、Python 和基础系统随镜像替换升级。
+更多配置见 [网关使用说明](gateway/README.md) 和 [工作站使用说明](workstation/README.md)。
 
-## 数据与镜像升级
+## 数据与升级
 
-两个服务均不声明业务 bind mount 或 Docker volume；配置、HOME、账号状态保存在容器写入层，随 Docker 存储留在 SSD。`docker restart` 保留数据，删除或重建容器会丢失内部数据。替换镜像前先停服务并导出私有数据备份，再创建新容器、恢复数据并启动验证。网关 `/data` 与工作站 HOME、SSH keys 及运行时代理配置的导出方法见各服务说明。完整业务容器可另用 `docker commit` 和 `docker save` 保存私有恢复镜像，个人数据镜像不得发布到 GHCR。
+两个服务不声明业务 bind mount、命名卷或匿名卷。数据写入容器层，底层位置由宿主的 Docker `data-root` 决定；建议放在 SSD，Compose 本身不会迁移宿主存储。
 
-## 构建与验证
+**重启保留数据；删除或重新创建容器会丢失内部数据。** 替换镜像前，先停止业务、导出需要保留的私有状态，并验证恢复流程。完整私有镜像用于原环境恢复；升级到新镜像需要选择性迁移配置和用户数据。操作步骤见 [网关数据处理](gateway/README.md) 和 [工作站备份与恢复](workstation/README.md)。个人状态、恢复镜像和凭据应留在私有存储中。
+
+网关 Web 内的组件升级会保留 `/data` 中的配置，失败时回退组件。后台代码、Nginx、Python 与基础系统通过替换镜像更新。
+
+## 开发与验证
 
 ```sh
+python3 -m venv .venv
+. .venv/bin/activate
 python3 -m pip install PyYAML
+python3 -m unittest discover -s gateway/tests -v
+python3 -m unittest discover -s tests -p 'test_deploy.py' -v
+for test in workstation/tests/test-*.py; do python3 "$test"; done
+
 python3 gateway/scripts/fetch-components.py amd64
 docker build --build-arg TARGETARCH=amd64 -t gateway-local:test gateway
-python3 -m unittest discover -s gateway/tests -v
 bash gateway/tests/clean-smoke.sh gateway-local:test
+docker image save gateway-local:test | python3 gateway/tests/audit-image.py
+
 docker build -t workstation-local:test workstation
 bash workstation/tests/smoke.sh workstation-local:test
+bash workstation/tests/internal-storage.sh workstation-local:test
+docker image save workstation-local:test | python3 workstation/tests/audit-image.py
 ```
 
-GitHub Actions 分别构建两个镜像，通过隔离启动、关键行为和镜像层检查后推送 GHCR。首次发布前 `latest` 可能尚不存在，以实际 Actions 结果为准。
+容器验证需要 Linux Docker 环境。GitHub Actions 会构建两个干净镜像，运行启动、内部存储和镜像层检查；主分支验证通过后发布 `latest` 与 `sha-<完整提交号>` 标签。使用固定 SHA 标签可选择已验证的版本。实时进度见 [Actions](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml)。
 
-公开 Compose 创建的是空白环境，已有账号和 HOME 需要单独迁入目标容器。当前部署只保留 `.250` Clash 网关和 `.251` Claude 开发工作站；Hermes、WorkBuddy 及旧测试容器已移出交付范围。切换期间保留原容器用于失败回退，最终数据、网络和重启验收通过后清理原容器及迁移暂存。私有迁移资料、原始配置、离线镜像和验收记录不提交到 Git。
+| 路径 | 内容 |
+| --- | --- |
+| [`gateway/`](gateway/) | Web 后台、网关运行时、组件锁定文件和测试 |
+| [`workstation/`](workstation/) | 桌面环境、工具安装、启动配置和测试 |
+| [`compose.yaml`](compose.yaml) | 双容器网络与运行参数 |
+| [`tests/`](tests/) | 部署入口保护测试 |
+| [`docs/`](docs/) | 项目展示素材与来源说明 |
 
-许可、第三方组件来源和详细说明见 [网关说明](gateway/README.md)、[工作站说明](workstation/README.md)。
+欢迎提交问题和 Pull Request。开发约定见 [CONTRIBUTING.md](CONTRIBUTING.md)，漏洞报告见 [SECURITY.md](SECURITY.md)。
+
+## 许可
+
+仓库自有代码采用 [MIT License](LICENSE)。第三方组件、字体、编辑器依赖及随镜像安装的软件按各自许可分发；MIT 不替代这些许可。来源与素材说明见 [NOTICE](NOTICE) 和 [网关第三方清单](gateway/NOTICE)。

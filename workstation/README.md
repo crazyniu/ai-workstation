@@ -1,6 +1,6 @@
 # AI 工作站镜像
 
-此目录是统一仓库中的工作站构建上下文，网关、正式 Compose 和 GHCR 发布由仓库根目录统一管理。支持 `linux/amd64`。本次实际构建与测试范围见 [验证记录](VALIDATION.md)。
+此目录是统一仓库中的工作站构建上下文，网关、正式 Compose 和 GHCR 发布由仓库根目录统一管理。支持 `linux/amd64`。可复现的验证步骤及发布记录见 [验证记录](VALIDATION.md)。
 
 包含 Ubuntu、繁体中文及台北时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot 和 GitHub 五项 MCP 配置。基础镜像固定到官方 amd64 manifest digest，应用版本及公开下载校验值见 `versions.env`；Ubuntu 系统软件随 APT 仓库更新。
 
@@ -37,7 +37,7 @@ docker build --pull=false \
 
 启动需要 `DEV_PASSWORD` 和 `VNC_PASSWORD`，也支持对应的 `_FILE` 变量读取容器内文件。`ROOT_PASSWORD` / `ROOT_PASSWORD_FILE` 可选；未提供时 root 密码登录锁定。VNC 使用兼容 Mac 屏幕共享的传统认证，密码为 1–8 个 ASCII 字节。运行时密码不写入镜像。独立 Compose 默认使用运行时环境变量设置密码；`_FILE` 也可读取容器内已准备的文件，无需外置业务挂载。
 
-普通应用使用 `dev`，UID/GID 为 `1100`，HOME 为 `/home/dev`。HOME、项目、编辑器配置、CLI 登录和 `/etc/ssh/keys` 均保存在容器内部，默认部署没有业务绑定挂载或数据卷。容器正常重启保留这些内容；更换或重建容器前，先制作私有备份并在目标容器内恢复。首次初始化只拷贝缺失的桌面文件，MCP 配置合并保留已有设置。已有 `/home/developer` 的业务容器按协调迁移方案把所需数据复制入新容器，不直接覆盖为该干净镜像。
+普通应用使用 `dev`，UID/GID 为 `1100`，HOME 为 `/home/dev`。HOME、项目、编辑器配置、CLI 登录和 `/etc/ssh/keys` 均保存在容器内部，默认部署没有业务绑定挂载或数据卷。容器正常重启保留这些内容；更换或重建容器前，先制作私有备份并在目标容器内恢复。首次初始化只拷贝缺失的桌面文件，MCP 配置合并保留已有设置。迁移其他镜像时，应先核对原用户的 UID/GID、HOME 和启动方式，再选择应用状态迁移或完整私有快照恢复。
 
 
 GitHub CLI 在普通用户会话中运行 `gh auth login`，登录文件保存在容器内部的 HOME，正常重启保留；镜像不携带个人令牌。Codex 和 Claude 分别运行 `codex`、`claude` 完成用户自己的登录。GitHub MCP 已配置远程地址，仍需个人授权；其余四项 MCP 可在无模型账号时执行握手测试。
@@ -53,3 +53,102 @@ Mac 可以通过 SSH 转发访问示例中仅绑定本机的 VNC：`ssh -L 5901:
 两个 AI CLI 桌面入口会按当前普通账户选择 HOME 和 Projects，失败后保留终端错误，退出码及代理是否存在记录到 `~/.local/state/workstation/launcher-errors.jsonl`。该日志不记录 CLI 输出、参数、环境变量值或对话。已有 HOME 的旧桌面文件保留；升级时按需更新这两个启动入口。
 
 镜像完全由公开安装源和静态模板构建，不从现有业务容器提交快照，不包含浏览器资料、模型认证、GitHub 登录、SSH 私钥或现有项目数据。`tests/audit-image.py` 检查每一镜像层中的常见私有资料，`tests/smoke.sh` 在独立临时容器中验证桌面、CLI、MCP、Chrome 沙箱、持久化重启及 HOME 软链接隔离。
+
+
+## 数据、备份与恢复
+
+在仓库根目录操作，确保正在使用原部署的 `.env`、Compose 项目名和 Docker context。`deploy.sh` 只用于首次创建，已有容器会被它拒绝；日常启停用 `docker compose start` / `stop` / `restart`。两个方案均先停止工作站，备份存放在仓库外的私有目录，完成后可以重新启动原容器。
+
+### 完整私有快照与原版本恢复
+
+完整回退以私有镜像快照最直接：它保留容器写入层中的 HOME、项目、SSH 主机密钥、`/etc/workstation/proxy.env`、账号库和额外安装的软件，文件 UID/GID 与权限随镜像保留。外部挂载和运行中内存不在镜像快照内；本项目默认 Compose 没有业务挂载。Docker 网络、端口、安全参数和运行时环境属于容器定义，应同时保存。此方案恢复原软件版本，不等同于升级到新的公开镜像。
+
+```sh
+set -eu
+umask 077
+container=$(docker compose ps --all --quiet workstation)
+test -n "$container"
+workstation_stamp=$(date +%Y%m%d-%H%M%S)
+workstation_backup="${HOME}/ai-workstation-private/${workstation_stamp}"
+private_image="local/ai-workstation-private:${workstation_stamp}"
+mkdir -p "$workstation_backup/workstation/security"
+docker compose stop workstation
+docker inspect "$container" > "$workstation_backup/container-inspect.json"
+cp .env "$workstation_backup/runtime.env"
+cp compose.yaml "$workstation_backup/compose.yaml"
+cp workstation/security/seccomp-chrome.json "$workstation_backup/workstation/security/"
+docker commit "$container" "$private_image"
+docker image save -o "$workstation_backup/image.tar" "$private_image"
+printf '%s\n' "$private_image" > "$workstation_backup/image-tag.txt"
+(cd "$workstation_backup" && sha256sum image.tar > image.tar.sha256)
+# 仅备份时，继续使用原容器：
+docker compose start workstation
+```
+
+这些文件包含个人数据和运行时凭据，不上传到 Git、GHCR 或公开附件。还原前校验归档，将备份中的 Compose、安全配置及环境设置与目标主机对齐；使用相同项目名替换工作站，保证旧实例已停止。设置 `workstation_backup` 为实际备份目录，并在根 `.env` 中将 `WORKSTATION_IMAGE` 改为 `image-tag.txt` 记录的本地镜像标签：
+
+```sh
+set -eu
+(cd "$workstation_backup" && sha256sum -c image.tar.sha256)
+docker image load -i "$workstation_backup/image.tar"
+# 确认 .env 中已选择加载的私有镜像及原运行时账号设置。
+docker compose config --quiet
+docker compose up --no-start --no-deps --force-recreate workstation
+docker compose start workstation
+docker compose ps workstation
+```
+
+### 应用状态迁入新的公开镜像
+
+此方案适用于本项目的 `dev` 用户（UID/GID `1100`，HOME `/home/dev`）。它迁移应用数据与 SSH 服务器身份；它不复制 `/etc/passwd`、系统密码、额外系统软件或所有容器配置。登录密码仍由 `.env` 的运行时变量初始化。若原容器采用其他 HOME 或账号结构，先完成路径和账号映射，或使用完整私有快照恢复原环境。
+
+在停止的原容器上导出 tar 流，避免在 macOS 或不支持 Unix 权限的文件系统中展开 HOME：
+
+```sh
+set -eu
+umask 077
+container=$(docker compose ps --all --quiet workstation)
+test -n "$container"
+workstation_backup="${HOME}/ai-workstation-private/state-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$workstation_backup"
+docker compose stop workstation
+docker cp -a "$container":/home/dev - > "$workstation_backup/home-dev.tar"
+docker cp -a "$container":/etc/ssh/keys - > "$workstation_backup/ssh-keys.tar"
+docker inspect "$container" > "$workstation_backup/container-inspect.json"
+cp .env "$workstation_backup/runtime.env"
+```
+
+若使用了容器内部的 `/etc/workstation/proxy.env`，再单独导出它；未配置该文件时跳过：
+
+```sh
+set -eu
+docker cp -a "$container":/etc/workstation/proxy.env - > "$workstation_backup/proxy-env.tar"
+```
+
+确认归档完整后，在 `.env` 中选择新的公开镜像及运行时密码。创建新容器但暂不启动，将 tar 流直接放回相同父目录：
+
+```bash
+set -euo pipefail
+tar -tf "$workstation_backup/home-dev.tar" > /dev/null
+tar -tf "$workstation_backup/ssh-keys.tar" > /dev/null
+if [ -f "$workstation_backup/proxy-env.tar" ]; then
+  tar -tf "$workstation_backup/proxy-env.tar" > /dev/null
+fi
+docker compose pull workstation
+docker compose up --no-start --no-deps --force-recreate workstation
+new_container=$(docker compose ps --all --quiet workstation)
+test -n "$new_container"
+docker cp - "$new_container":/home < "$workstation_backup/home-dev.tar"
+docker cp - "$new_container":/etc/ssh < "$workstation_backup/ssh-keys.tar"
+if [ -f "$workstation_backup/proxy-env.tar" ]; then
+  docker cp - "$new_container":/etc/workstation < "$workstation_backup/proxy-env.tar"
+fi
+# tar 流保留数值 UID/GID 与权限；恢复使用归档原值，不启用 cp -a 的目标用户映射。
+# 启动前核对 HOME 根目录、SSH keys 及代理文件的属主和权限与原归档一致：
+docker cp -a "$new_container":/home/dev - | tar --numeric-owner -tvf -
+docker cp -a "$new_container":/etc/ssh/keys - | tar --numeric-owner -tvf -
+docker compose start workstation
+docker compose ps workstation
+```
+
+确认项目文件、CLI 配置、SSH/VNC 登录和重启持久性后，再按自己的保留策略清理私有备份。账号授权能否跨软件版本继续使用由各应用决定；文件恢复成功不代表模型认证或外部服务调用已经通过。

@@ -1,10 +1,12 @@
 # 网关容器
 
-将网关桌面、Mihomo（Clash）、MetaCubeXD 面板、AdGuard Home 和 Tailscale 打包在一个 Ubuntu 24.04 容器中。首页采用青蓝海岸壁纸与应用图标，配置、DNS、远程访问、升级和备份放在浅色“设置”窗口中。窗口管理基于 [WinBox 0.2.82](https://github.com/nextapps-de/winbox/tree/0.2.82)，静态资源随镜像提供。镜像首次启动不包含代理节点、订阅地址或 Tailscale 登录身份。
+将网关桌面、Mihomo（Clash）、MetaCubeXD 面板、AdGuard Home 和 Tailscale 打包在一个 Ubuntu 24.04 容器中。首页采用可更换壁纸与应用图标，配置、DNS、远程访问、升级和备份集中在设置窗口，支持亮色、暗色和跟随系统。窗口管理基于 [WinBox 0.2.82](https://github.com/nextapps-de/winbox/tree/0.2.82)，静态资源随镜像提供。镜像首次启动不包含代理节点、订阅地址或 Tailscale 登录身份。
 
 ## 部署前准备
 
-首发目标为 **Linux amd64 Docker Engine**，采用 macvlan 接入局域网；arm64 尚未构建及验收。macOS/Windows 上的 Docker Desktop 不作为旁路网关运行环境。[Docker Compose 需要 2.33.1 或更新版本](https://docs.docker.com/reference/compose-file/networks/#enable_ipv4)以支持 `enable_ipv4`，宿主 Docker Engine 也必须支持禁用网络自动 IPv4 分配；NAS 验证环境为 Engine 29 / Compose 5.1.3。宿主机需要 `/dev/net/tun`、macvlan、iptables 和可用的物理 LAN 接口，容器需要 `NET_ADMIN`。部署不使用 `privileged`、宿主网络或 Docker socket。
+首发目标为 **Linux amd64 Docker Engine**，采用 macvlan 接入局域网；arm64 尚未构建及验收。macOS/Windows 上的 Docker Desktop 不作为旁路网关运行环境。[Docker Compose 需要 2.33.1 或更新版本](https://docs.docker.com/reference/compose-file/networks/#enable_ipv4)以支持 `enable_ipv4`，宿主 Docker Engine 也必须支持禁用网络自动 IPv4 分配。宿主机需要 `/dev/net/tun`、macvlan、iptables 和可用的物理 LAN 接口，容器需要 `NET_ADMIN`。部署不使用 `privileged`、宿主网络或 Docker socket。
+
+下列命令用于在本目录首次创建独立网关。双容器部署从仓库根目录使用 `./deploy.sh`；该脚本发现已有容器（包括停止的容器）会退出。已有环境使用 `docker compose start` / `restart`，更换镜像前先按下文备份恢复。
 
 选择局域网内未占用、在 DHCP 分配范围以外的固定地址。配置网段应与物理 LAN 一致；使用独立测试地址验证后再切换原网关地址。以下示例 `192.168.10.2` 是文档地址，请替换为实际网络。
 
@@ -49,7 +51,7 @@ macvlan 使容器拥有独立 LAN 地址，因此不映射宿主的 80/53 端口
 
 ## 首次设置与日常使用
 
-1. 用局域网浏览器打开 `http://192.168.10.2`，默认管理员密码为 `admin`。登录后可在“设置 → 账户与密码”修改，支持 1–256 个字符。`GATEWAY_ADMIN_PASSWORD` 只用于全新容器首次初始化；重启保留已保存的网页密码。删除或重建容器前应备份，并在新容器启动前恢复数据。改密后当前浏览器会话续期，其余旧会话失效。
+1. 用局域网浏览器打开 `http://192.168.10.2`，默认管理员密码为 `admin`。登录后可在“设置 → 账户”修改，支持 1–256 个字符。`GATEWAY_ADMIN_PASSWORD` 只用于全新容器首次初始化；重启保留已保存的网页密码。删除或重建容器前应备份，并在新容器启动前恢复数据。改密后当前浏览器会话续期，其余旧会话失效。
 
    容器 SSH 默认账号和密码均为 `admin`，可通过 Compose 的 `GATEWAY_CONTAINER_USER` 和 `GATEWAY_CONTAINER_PASSWORD` 修改，重建后应用；SSH 账号设置与网页密码独立。GitHub CLI 已安装，使用自己的账号运行 `gh auth login`，凭据保存在容器内部 HOME 中，干净镜像不包含个人登录。
 2. 进入“设置 → 代理配置”，点击“上传配置文件”，选择已有的 Clash/Mihomo `.yaml` 或 `.yml` 文件（最大 2 MB）。文件载入后可在编辑器查看和修改，点击“保存并应用”才会生效；校验失败会保留原配置。成功应用后再调整客户端网关。初始配置采用直连，不提供个人代理节点。
@@ -58,7 +60,7 @@ macvlan 使容器拥有独立 LAN 地址，因此不映射宿主的 80/53 端口
    - 页面按状态只显示“登录并连接”“打开授权页面”“连接”或“断开连接”中的一项；“账号操作”中可退出账号。断开连接保留身份，后台不会自动重连。
    - 内网路由生效仍取决于账号侧批准与访问策略。配置了 [Tailscale autoApprovers](https://tailscale.com/docs/features/subnet-routers) 的账号可自动批准；其他账号会显示待批准状态和管理控制台入口。`PrimaryRoutes` 确认本机成为该子网的主路由后显示“子网路由已生效”；该状态不代替远端设备实际连通性验收。远端 Linux 客户端需启用接收子网路由。
    - 自动识别优先使用 `GATEWAY_LAN_ADDRESS` 的实际前缀；未设置时仅检查运行时选定的 LAN 接口，避开 Docker/VPN 接口及 Tailscale 地址。自动配置会替换旧手动发布的非默认网段，保留账号身份及其他服务配置。
-5. 添加自己的应用链接：填写名称、图标和 HTTP/HTTPS 地址，支持其他 LAN IP 和端口；可以编辑、删除和调整顺序。
+5. 添加自己的应用链接：填写名称和 HTTP/HTTPS 地址，默认自动获取网站图标，也可手动选择内置图标；支持其他 LAN IP 和端口；可以编辑、删除和调整顺序。
 
 镜像包含 [AdGuard DNS filter 官方规则](https://github.com/AdguardTeam/AdGuardSDNSFilter)的锁定快照，全新容器首次启动即可加载这份基础过滤规则，无需先联网下载。规则快照随构建版本记录，默认由 AdGuard Home 每 24 小时从官方地址检查更新；可以在 AdGuard Home 原生界面管理过滤列表。离线时继续使用已保存的规则。重启同一容器保留自身规则与配置；重建时需先恢复私有备份，初始化不会覆盖已恢复的规则。
 
@@ -74,7 +76,7 @@ macvlan 使容器拥有独立 LAN 地址，因此不映射宿主的 80/53 端口
 - 桌面控制面板支持拖动、调整大小、最小化和最大化。顶部“显示桌面”按钮可最小化或恢复设置窗口。手机使用铺满屏幕的设置界面，功能内容独立滚动。
 - “个性化设置”可更换 3 MB 以内的 PNG、JPEG 或 WebP 壁纸，选择填充、适应、拉伸、居中或平铺。点击“应用”后保存到容器内部，刷新页面后保留；“恢复默认壁纸”同样需要点击“应用”。
 
-窗口、右键菜单、表单、下拉框和确认弹窗采用同一浅色主题。浏览器选择本地文件的系统对话框仍由浏览器提供。
+窗口、右键菜单、表单、下拉框和确认弹窗随当前外观模式统一切换。浏览器选择本地文件的系统对话框仍由浏览器提供。
 
 ## 使用 home.arpa
 
@@ -91,33 +93,83 @@ curl --noproxy '*' http://192.168.10.2/healthz
 
 ## 数据、备份和升级
 
-所有用户状态保存在容器内部 `/data`，包括代理配置、订阅、图标与顺序、壁纸与显示方式、管理员密码散列、会话密钥、Tailscale 设备身份、AdGuard 配置与运行记录、组件历史版本及升级备份。Compose 不设置业务 bind mount 或 volume，Dockerfile 不声明匿名卷。Docker 引擎的数据目录应位于 SSD，容器可写层也随 Docker 存放在那里。
+网关应用状态保存在容器内部 `/data`，包括代理配置、订阅、图标与顺序、壁纸与显示方式、管理员密码散列、会话密钥、Tailscale 设备身份、AdGuard 配置与运行记录、组件历史版本及升级备份。Compose 不设置业务 bind mount 或 volume，Dockerfile 不声明匿名卷。容器可写层存放在宿主 Docker 数据目录；建议宿主将该目录放在 SSD，Compose 不负责迁移宿主存储。
 
 `docker compose restart` 或宿主重启保留同一容器的数据。删除、`down`、强制重建或替换镜像会删除原容器可写层，因此必须先做私有备份，再将数据恢复到新容器后启动。
 
-设置页导出的配置备份包含代理配置/提供者凭据、订阅地址及 Tailscale 身份，是**私密文件**。它不包含全部 AdGuard 查询记录、组件二进制、SSH/GitHub 登录及管理员会话。完整更新前先停止容器，私下保存整个 `/data`（这只是备份副本，不作为运行时挂载）：
+设置页导出的配置备份包含代理配置/提供者凭据、订阅地址及 Tailscale 身份，是**私密文件**。它不包含全部 AdGuard 查询记录、组件二进制、SSH/GitHub 登录及管理员会话。
+
+### 网关应用状态升级
+
+`/data` 包含网关应用状态；SSH 主机密钥、用户账号和 SSH/GitHub HOME 位于其他目录。以下流程将应用状态迁入新镜像，不代表完整账号与系统迁移。先停止服务并导出 tar 流，避免在宿主目录展开文件时改变数值 UID/GID 或权限：
 
 ```sh
-container=$(docker compose ps -q gateway)
-private_backup="$(pwd)/private-backup-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$private_backup/data"
-chmod 700 "$private_backup" "$private_backup/data"
+set -eu
+umask 077
+container=$(docker compose ps --all --quiet gateway)
+test -n "$container"
+private_backup="${HOME}/gateway-private-backups/state-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$private_backup"
 docker compose stop gateway
-docker cp -a "$container":/data/. "$private_backup/data/"
+docker cp -a "$container":/data - > "$private_backup/data.tar"
 docker inspect "$container" > "$private_backup/container-inspect.json"
-chmod 600 "$private_backup/container-inspect.json"
-# 仅需备份时可直接重启旧容器：docker compose start gateway
+tar -tf "$private_backup/data.tar" > /dev/null
+(cd "$private_backup" && sha256sum data.tar > data.tar.sha256)
+# 仅需备份时可继续使用旧容器：docker compose start gateway
 ```
 
-确认备份完成后，在 `.env` 中指定新的镜像。创建新容器但暂不启动，恢复数据后再启动：
+确认备份完成后，在 `.env` 中指定并准备好新的镜像。创建新容器但暂不启动，将归档直接恢复到同一父目录：
 
-```sh
-docker compose create --force-recreate gateway
-new_container=$(docker compose ps -aq gateway)
-docker cp -a "$private_backup/data/." "$new_container":/data/
+```bash
+set -euo pipefail
+(cd "$private_backup" && sha256sum -c data.tar.sha256)
+docker compose up --no-start --no-deps --force-recreate gateway
+new_container=$(docker compose ps --all --quiet gateway)
+test -n "$new_container"
+docker cp - "$new_container":/ < "$private_backup/data.tar"
+# 启动前核对数值属主与权限；保留 tar 归档内的原始值。
+docker cp -a "$new_container":/data - | tar --numeric-owner -tvf -
 docker compose start gateway
 docker compose ps gateway
 ```
+
+### 完整私有快照与原版本恢复
+
+需要完整恢复 SSH/GitHub HOME、账号库、主机密钥、系统改动和网关状态时，保存停止容器的私有镜像快照，同时保存运行时定义。该方案恢复原软件版本；升级到新公开镜像时应使用明确的数据迁移流程。以下命令在原部署的 Compose 目录执行：
+
+```sh
+set -eu
+umask 077
+container=$(docker compose ps --all --quiet gateway)
+test -n "$container"
+gateway_stamp=$(date +%Y%m%d-%H%M%S)
+private_backup="${HOME}/gateway-private-backups/full-${gateway_stamp}"
+private_image="local/gateway-private:${gateway_stamp}"
+mkdir -p "$private_backup"
+docker compose stop gateway
+docker inspect "$container" > "$private_backup/container-inspect.json"
+cp .env "$private_backup/runtime.env"
+cp compose.yaml "$private_backup/compose.yaml"
+docker commit "$container" "$private_image"
+docker image save -o "$private_backup/image.tar" "$private_image"
+printf '%s\n' "$private_image" > "$private_backup/image-tag.txt"
+(cd "$private_backup" && sha256sum image.tar > image.tar.sha256)
+docker compose start gateway
+```
+
+恢复时使用原项目名及备份中的网络、环境设置；旧实例应停止。设置 `private_backup` 为备份目录，将 `.env` 中的 **`GATEWAY_IMAGE`** 改为 `image-tag.txt` 中的 **`local/gateway-private:时间戳`**，然后执行：
+
+```sh
+set -eu
+(cd "$private_backup" && sha256sum -c image.tar.sha256)
+docker image load -i "$private_backup/image.tar"
+docker compose config --quiet
+docker compose up --no-start --no-deps --force-recreate gateway
+docker compose start gateway
+docker compose ps gateway
+```
+
+私有镜像保留容器写入层的 UID/GID 和权限，不包含外部挂载或运行中内存；本项目默认 Compose 没有业务挂载。所有快照、环境设置和 inspect 记录仅用于私有恢复，不上传 Git、GHCR 或公开附件。
 
 备份包含个人身份和凭据，应保留权限并离线妥善保存；需完整容器级回退时，还应私下保存旧镜像和容器定义。恢复旧版本时使用升级前的数据备份，避免只回退镜像而保留已改变的数据。私有容器快照或备份不属于公开镜像、GHCR 或离线分发包。
 
@@ -157,10 +209,10 @@ python3 scripts/export-source.py ./dist --include-seed
 
 源码包中没有 Ubuntu 基础镜像和 apt 软件包缓存，因此包含 `seed/` 也不表示能够完全离线重新构建。完全离线运行应使用前述 `docker image save` 镜像包。交付前还需审核实际归档内容与镜像各层，允许清单不能代替凭据检查。
 
-已有 251 迁移应保留旧容器定义、镜像及数据，用全新容器和不冲突的 IP 完成全新启动、网页、DNS、代理、去广告与 Tailscale 验证。私有迁移只复制所需配置/身份到新容器内部 `/data`；保持原始数据完整。验证通过后停止旧容器再接替原地址，失败则停止新容器、恢复旧容器及原始数据。不要从现有个人容器 `docker commit` 生成分发镜像，也不要将私人迁移备份混入离线包。
+迁移已有网关时，应保留旧容器定义、镜像及数据，用全新容器和不冲突的 IP 完成全新启动、网页、DNS、代理、去广告与 Tailscale 验证。私有迁移只复制所需配置/身份到新容器内部 `/data`；保持原始数据完整。验证通过后停止旧容器再接替原地址，失败则停止新容器、恢复旧容器及原始数据。不要从现有个人容器 `docker commit` 生成分发镜像，也不要将私人迁移备份混入离线包。
 
 ## 验证边界
 
 `docker compose config` 只验证 Compose 结构，容器 healthy 只表示内置探针通过。正式接替网关前还应在真实客户端验证主页交互、DNS 实际回答、国内直连/代理分流、广告拦截、NAS 访问、Tailscale 双向访问及升级回滚。发行包实际验收状态见随交付的测试记录；未执行项目应明确记录 NOT RUN。
 
-组件来源及许可证见 [NOTICE](NOTICE)，对应版本许可证原文在 `licenses/`，随镜像放在 `/opt/gateway/licenses`。公开分发前整理对应源码获取材料；本批次以本地镜像与离线交付验收为准。
+组件来源及许可证见 [NOTICE](NOTICE)，对应版本许可证原文在 `licenses/`，随镜像放在 `/opt/gateway/licenses`。公开镜像由 [GitHub Actions](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml) 构建并验证，发布来源以提交标签和镜像摘要为准。

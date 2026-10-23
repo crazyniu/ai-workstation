@@ -1,5 +1,6 @@
 secrets/
 .env
+.venv/
 *.tar
 *.tar.gz
 *.log

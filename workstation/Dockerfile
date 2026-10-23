@@ -52,6 +52,7 @@ RUN install -d /usr/local/libexec/workstation-glycin \
     && chmod 644 /opt/workstation/versions.env /opt/workstation/home-template/.claude.json /opt/workstation/home-template/.codex/config.toml \
     && install -o 1100 -g 1100 -m 644 /opt/workstation/home-template/.profile /home/dev/.profile
 COPY runtime/ /etc/workstation/
+COPY licenses/ /opt/workstation/licenses/
 RUN install -m 755 /etc/workstation/entrypoint.py /usr/local/bin/workstation-entrypoint \
     && install -m 755 /etc/workstation/start-desktop /usr/local/bin/workstation-desktop \
     && install -m 755 /etc/workstation/start-vnc /usr/local/bin/workstation-vnc \

@@ -1,0 +1,84 @@
+"""First-deployment guard tests. Every Docker call uses an isolated fake binary."""
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+FAKE_DOCKER = '''#!/bin/sh
+set -eu
+printf '%s\\n' "$*" >> "$DOCKER_TEST_LOG"
+case "$*" in
+  'compose config --quiet')
+    [ "$DOCKER_TEST_STATE" != configfail ] || exit 17
+    ;;
+  'compose ps --all --quiet')
+    case "$DOCKER_TEST_STATE" in
+      exists) printf 'running-container-id\\n' ;;
+      stopped) printf 'stopped-container-id\\n' ;;
+      checkfail) exit 19 ;;
+    esac
+    ;;
+  'compose pull'|'compose up -d --wait --wait-timeout 240') ;;
+  *) printf 'Unexpected fake Docker command\\n' >&2; exit 98 ;;
+esac
+'''
+
+
+class DeploymentGuardTests(unittest.TestCase):
+    def run_deploy(self, state):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            shutil.copyfile(ROOT / 'deploy.sh', root / 'deploy.sh')
+            (root / '.env.example').write_text('WEB_PASSWORD=do-not-print-this-test-value\n')
+            binary = root / 'bin'
+            binary.mkdir()
+            docker = binary / 'docker'
+            docker.write_text(FAKE_DOCKER)
+            docker.chmod(0o755)
+            log = root / 'docker-calls.txt'
+            # Only our fake Docker is reachable; ordinary shell utilities retain PATH.
+            env = dict(os.environ, PATH=str(binary) + os.pathsep + os.environ.get('PATH', ''),
+                       DOCKER_TEST_STATE=state, DOCKER_TEST_LOG=str(log))
+            result = subprocess.run(['/bin/sh', str(root / 'deploy.sh')], cwd=root,
+                                    env=env, capture_output=True, text=True, timeout=10)
+            self.assertNotIn('do-not-print-this-test-value', result.stdout + result.stderr)
+            self.assertEqual((root / '.env').stat().st_mode & 0o777, 0o600)
+            return result, log.read_text().splitlines()
+
+    def test_fresh_environment_is_created_after_successful_checks(self):
+        result, calls = self.run_deploy('fresh')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls, ['compose config --quiet', 'compose ps --all --quiet',
+                                 'compose pull', 'compose up -d --wait --wait-timeout 240'])
+
+    def test_running_container_blocks_pull_and_recreation(self):
+        result, calls = self.run_deploy('exists')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(calls, ['compose config --quiet', 'compose ps --all --quiet'])
+        self.assertIn('start or restart', result.stderr)
+        self.assertIn('export its internal data', result.stderr)
+
+    def test_stopped_container_also_blocks_pull_and_recreation(self):
+        result, calls = self.run_deploy('stopped')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(calls, ['compose config --quiet', 'compose ps --all --quiet'])
+        self.assertIn('including stopped', result.stderr)
+
+    def test_failed_container_inventory_does_not_start_deployment(self):
+        result, calls = self.run_deploy('checkfail')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(calls, ['compose config --quiet', 'compose ps --all --quiet'])
+        self.assertIn('Unable to check', result.stderr)
+
+    def test_invalid_compose_configuration_stops_before_inventory(self):
+        result, calls = self.run_deploy('configfail')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(calls, ['compose config --quiet'])
+
+
+if __name__ == '__main__':
+    unittest.main()
