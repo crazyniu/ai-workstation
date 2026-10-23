@@ -1,14 +1,7 @@
-# Project illustration
+# Project showcase
 
-`gateway-home-ai.png` was generated on 2026-10-23 with Codex's built-in Imagegen tool.
+[Gateway desktop overview](gateway-home.png) presents the forest-and-lake desktop, application icons, and grouped control-panel entries used by this project.
 
-The visual reference was a screenshot of the running Gateway homepage with the control panel open. The image preserves the forest-and-lake desktop, icon groups, and major interface structure, while presenting it as an illustrated project hero. English labels were chosen for this illustration's legibility; they are not a claim that the running interface has an English localization.
+The image is a project showcase. The running release determines the current interface, labels, and features. It contains no account credentials and serves as presentation material; functional verification is recorded separately.
 
-The raw screenshot is not distributed. The generated image omits the local domain and build identifier and contains no credentials or account information. It is labeled as an AI-generated illustration in the image and in the project README; it is not used as test evidence.
-
-- [Generation prompt](gateway-home-ai.prompt.txt)
-- [Generated illustration](gateway-home-ai.png)
-- Tool mode: built-in Imagegen, reference-image edit, opaque background.
-- Source reference: this project's actual Gateway Web desktop, 1440 × 960.
-
-The underlying project and third-party artwork retain the provenance described in the root and gateway NOTICE files. This record does not assert public-domain status or vendor endorsement.
+Project and third-party artwork retain the terms described in the [root NOTICE](../../NOTICE) and [gateway NOTICE](../../gateway/NOTICE). Product names and marks belong to their respective owners.

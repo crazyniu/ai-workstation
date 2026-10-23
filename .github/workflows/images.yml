@@ -5,6 +5,8 @@ on:
     tags: ['v*']
     paths-ignore:
       - 'README.md'
+      - 'AI-INSTALL.md'
+      - 'AGENTS.md'
       - 'gateway/README.md'
       - 'workstation/README.md'
       - 'workstation/VALIDATION.md'
@@ -19,6 +21,8 @@ on:
   pull_request:
     paths-ignore:
       - 'README.md'
+      - 'AI-INSTALL.md'
+      - 'AGENTS.md'
       - 'gateway/README.md'
       - 'workstation/README.md'
       - 'workstation/VALIDATION.md'
