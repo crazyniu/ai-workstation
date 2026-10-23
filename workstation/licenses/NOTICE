@@ -1,0 +1,45 @@
+AI Workstation & Gateway
+========================
+
+Original project code is licensed under LICENSE (MIT). Third-party code,
+release artifacts, packages and trademarks retain their upstream terms.
+The repository license does not relicense all software in the container images.
+
+Gateway
+-------
+The detailed component inventory, pinned source references and license texts
+are in gateway/NOTICE, gateway/components.lock.json and gateway/licenses/.
+Editor notices are in gateway/web/assets/editor-licenses.txt. Vendored WinBox
+source provenance is in gateway/web/vendor/winbox/provenance.json.
+
+Workstation
+-----------
+Pinned application versions and artifact checksums: workstation/versions.env.
+Tool installation sources: workstation/scripts/install-tools.sh and Dockerfile.
+MCP dependency versions and package licenses: workstation/mcp/package-lock.json.
+
+Upstream projects and terms:
+- Ubuntu and Debian packages: their package copyright files in /usr/share/doc.
+- Node.js: https://github.com/nodejs/node/blob/main/LICENSE
+- XFCE: https://www.xfce.org/about
+- TigerVNC: https://github.com/TigerVNC/tigervnc
+- Google Chrome: https://www.google.com/chrome/terms/
+- Microsoft Visual Studio Code: https://code.visualstudio.com/license
+- Godot: https://godotengine.org/license/
+- OpenAI Codex: https://github.com/openai/codex
+- Claude Code: https://github.com/anthropics/claude-code
+- GitHub CLI: https://github.com/cli/cli
+
+Chrome, the Microsoft VS Code distribution and Claude Code have their own
+vendor terms. Their inclusion does not mean those distributions are MIT
+licensed or that this project grants rights to vendor accounts or services.
+Installed packages retain their included license and copyright materials.
+
+Artwork
+-------
+Gateway SVG icons and the dedicated favicon were authored for this project.
+Generated wallpaper provenance accompanies the assets in gateway/web/assets/.
+The README hero is an AI-generated illustration based on the project's actual
+home page; its generation details and prompt are in docs/images/README.md and
+docs/images/gateway-home-ai.prompt.txt. It is not an exact runtime screenshot.
+AI provenance does not assert public-domain status or rights in vendor marks.

@@ -10,6 +10,8 @@
 !mcp/package-lock.json
 !desktop/
 !desktop/**
+!licenses/
+!licenses/*
 **/__pycache__/**
 **/*.pyc
 **/node_modules/**

@@ -3,7 +3,33 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+    paths-ignore:
+      - 'README.md'
+      - 'gateway/README.md'
+      - 'workstation/README.md'
+      - 'workstation/VALIDATION.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - 'NOTICE'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'CODE_OF_CONDUCT.md'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
   pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'gateway/README.md'
+      - 'workstation/README.md'
+      - 'workstation/VALIDATION.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - 'NOTICE'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'CODE_OF_CONDUCT.md'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
   workflow_dispatch:
 permissions:
   contents: read
@@ -37,6 +63,7 @@ jobs:
           python3 -m pip install PyYAML
           python3 gateway/scripts/fetch-components.py amd64
           python3 -m unittest discover -s gateway/tests -v
+          python3 -m unittest discover -s tests -p 'test_deploy.py' -v
           node --check gateway/web/app.js
           node --check gateway/web/build-info.js
       - name: Build candidate
@@ -56,7 +83,10 @@ jobs:
           bash gateway/tests/clean-smoke.sh candidate:gateway
       - name: Verify workstation clean deployment
         if: matrix.component == 'workstation'
-        run: bash workstation/tests/smoke.sh candidate:workstation
+        run: |
+          set -e
+          for test in workstation/tests/test-*.py; do python3 "$test"; done
+          bash workstation/tests/smoke.sh candidate:workstation
       - name: Verify workstation internal storage
         if: matrix.component == 'workstation'
         run: bash workstation/tests/internal-storage.sh candidate:workstation

@@ -20,7 +20,7 @@ def source_files(root, include_seed):
             files.append(root / name)
     for directory, pattern in (
         ('app', '*.py'), ('runtime', '*'), ('web', '**/*'),
-        ('licenses', '*'), ('scripts', '*.py'), ('scripts', '*.sh'),
+        ('licenses', '*'), ('scripts', '*.py'), ('scripts', '*.sh'), ('scripts', '*.cjs'),
         ('tests', '*.py'), ('tests', '*.sh'),
     ):
         files.extend(path for path in (root / directory).glob(pattern)
