@@ -342,7 +342,7 @@ class Handler(legacy.Handler):
             self.reply(202,submit('restore',lambda:restore(payload)));return
         self.reply(404,{'error':'接口不存在'})
     def apply_content(self,content):
-        payload={'content':content,'filename':'subscription.yaml','revision':legacy.revision(CONFIG.read_bytes())}
+        payload={'content':content,'filename':'subscription.yaml','revision':legacy.revision(CONFIG.read_bytes()),'refresh_providers':True}
         original_body,original_reply=self.body,self.reply
         captured={}
         self.body=lambda *args:payload

@@ -364,6 +364,110 @@ class AppearanceTests(DataTest):
 
 
 class ImportTests(DataTest):
+    def existing_providers(self):
+        value = state.config()
+        value['hosts'] = {'home.arpa': '192.0.2.251'}
+        value['proxy-providers'] = {
+            name: {'type': 'http', 'url': 'https://example.invalid/' + name,
+                   'path': 'providers/' + name + '.yaml'} for name in ('A', 'B')}
+        state.write_config(value)
+        for name in ('A', 'B'):
+            state.atomic(self.config.parent / ('providers/' + name + '.yaml'), 'cache-' + name)
+        return value
+
+    @patch.object(legacy.subprocess, 'run')
+    @patch.object(legacy, 'controller_request', return_value=b'{"version":"test"}')
+    def test_identical_save_checks_live_service_without_reload_or_download(self, controller, run):
+        value = self.existing_providers()
+        before = self.config.read_bytes()
+        h = self.handler(yaml.safe_dump(value))
+        legacy.Handler.apply_config(h)
+        self.assertEqual(h.reply.call_args.args[0], 200)
+        self.assertTrue(h.reply.call_args.args[1]['unchanged'])
+        self.assertEqual(self.config.read_bytes(), before)
+        controller.assert_called_once_with('/version')
+        run.assert_not_called()
+        self.assertFalse((self.config.parent / 'backups').exists())
+
+    @patch.object(legacy.subprocess, 'run', return_value=Mock(returncode=0))
+    @patch.object(legacy, 'controller_request')
+    def test_rule_edit_reuses_unchanged_provider_caches_without_network_refresh(self, controller, run):
+        value = self.existing_providers()
+        value['rules'] = ['DOMAIN,example.test,DIRECT', 'MATCH,DIRECT']
+        def reload(*args, **kwargs):
+            for name in ('A', 'B'):
+                self.assertEqual((self.config.parent / ('providers/' + name + '.yaml')).read_text(), 'cache-' + name)
+            return b'{}'
+        controller.side_effect = reload
+        h = self.handler(yaml.safe_dump(value))
+        legacy.Handler.apply_config(h)
+        self.assertEqual(h.reply.call_args.args[0], 200)
+        self.assertEqual(controller.call_count, 1)
+        self.assertEqual(controller.call_args.args[0], '/configs?force=true')
+        self.assertEqual(state.config()['rules'], value['rules'])
+        self.assertEqual(h.reply.call_args.args[1]['refreshed_providers'], [])
+
+    @patch.object(legacy.subprocess, 'run', return_value=Mock(returncode=0))
+    @patch.object(legacy, 'controller_request')
+    def test_changed_subscription_refreshes_only_changed_provider(self, controller, run):
+        value = self.existing_providers()
+        value['proxy-providers']['A']['url'] = 'https://example.invalid/new'
+        def reload(path, **kwargs):
+            self.assertEqual((self.config.parent / 'providers/B.yaml').read_text(), 'cache-B')
+            self.assertFalse((self.config.parent / 'providers/A.yaml').exists())
+            return b'{"proxies":[{"name":"new"}]}'
+        controller.side_effect = reload
+        h = self.handler(yaml.safe_dump(value))
+        legacy.Handler.apply_config(h)
+        self.assertEqual(h.reply.call_args.args[0], 200)
+        self.assertEqual([c.args[0] for c in controller.call_args_list],
+                         ['/configs?force=true', '/providers/proxies/A', '/providers/proxies/A'])
+        self.assertEqual(h.reply.call_args.args[1]['refreshed_providers'], [{'name': 'A', 'nodes': 1}])
+
+    @patch.object(legacy.subprocess, 'run', return_value=Mock(returncode=0))
+    @patch.object(legacy, 'controller_request', return_value=b'{"proxies":[{"name":"fresh"}]}')
+    def test_explicit_subscription_refresh_still_fetches_unchanged_providers(self, controller, run):
+        value = self.existing_providers()
+        h = self.handler(yaml.safe_dump(value))
+        result = h.apply_content(yaml.safe_dump(value))
+        self.assertEqual([p['name'] for p in result['refreshed_providers']], ['A', 'B'])
+        self.assertEqual(sum(c.kwargs.get('method') == 'PUT' for c in controller.call_args_list), 3)
+
+    @patch.object(legacy.subprocess, 'run', return_value=Mock(returncode=0))
+    @patch.object(legacy, 'controller_request', return_value=b'{"proxies":[{"name":"fresh"}]}')
+    def test_missing_cache_is_refetched_even_when_configuration_is_unchanged(self, controller, run):
+        value = self.existing_providers()
+        (self.config.parent / 'providers/A.yaml').unlink()
+        h = self.handler(yaml.safe_dump(value))
+        legacy.Handler.apply_config(h)
+        self.assertEqual(h.reply.call_args.args[0], 200)
+        self.assertEqual(h.reply.call_args.args[1]['refreshed_providers'], [{'name': 'A', 'nodes': 1}])
+
+    @patch.object(legacy.subprocess, 'run')
+    @patch.object(legacy, 'controller_request', side_effect=OSError('unavailable'))
+    def test_identical_save_does_not_report_success_when_service_is_unavailable(self, controller, run):
+        value = self.existing_providers()
+        before = self.config.read_bytes()
+        h = self.handler(yaml.safe_dump(value))
+        legacy.Handler.apply_config(h)
+        self.assertEqual(h.reply.call_args.args[0], 400)
+        self.assertEqual(self.config.read_bytes(), before)
+        run.assert_not_called()
+
+    @patch.object(legacy.subprocess, 'run', return_value=Mock(returncode=0))
+    @patch.object(legacy, 'controller_request')
+    def test_changed_subscription_failure_restores_both_provider_caches(self, controller, run):
+        value = self.existing_providers()
+        before = self.config.read_bytes()
+        value['proxy-providers']['A']['url'] = 'https://example.invalid/new'
+        controller.side_effect = [b'{}', ValueError('download failed'), b'{}']
+        h = self.handler(yaml.safe_dump(value))
+        legacy.Handler.apply_config(h)
+        self.assertEqual(h.reply.call_args.args[0], 400)
+        self.assertEqual(self.config.read_bytes(), before)
+        for name in ('A', 'B'):
+            self.assertEqual((self.config.parent / ('providers/' + name + '.yaml')).read_text(), 'cache-' + name)
+
     def handler(self, content, revision=None):
         h = server.Handler.__new__(server.Handler)
         h.headers = {}
