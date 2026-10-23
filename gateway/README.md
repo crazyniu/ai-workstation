@@ -2,6 +2,25 @@
 
 将网关桌面、Mihomo（Clash）、MetaCubeXD 面板、AdGuard Home 和 Tailscale 打包在一个 Ubuntu 24.04 容器中。首页采用可更换壁纸与应用图标，配置、DNS、远程访问、升级和备份集中在设置窗口，支持亮色、暗色和跟随系统。窗口管理基于 [WinBox 0.2.82](https://github.com/nextapps-de/winbox/tree/0.2.82)，静态资源随镜像提供。镜像首次启动不包含代理节点、订阅地址或 Tailscale 登录身份。
 
+## 已安装的软件
+
+| 软件 | 构建版本 / 来源 | 用途 |
+| --- | --- | --- |
+| Mihomo | `v1.19.33` | Clash 配置、代理转发与网关 DNS |
+| MetaCubeXD | `v1.273.1` | 节点选择、测速与代理状态面板 |
+| AdGuard Home | `v0.107.79` | DNS 管理、广告过滤与查询记录 |
+| AdGuard DNS filter | 锁定的官方规则快照 | 首次启动的基础过滤规则 |
+| Tailscale | `1.104.2` | 设备连接与局域网子网路由 |
+| 网关桌面 | 本仓库源码 | 配置、账户、桌面链接、主题、升级和备份管理 |
+| WinBox / CodeMirror | WinBox `0.2.82`；编辑器版本见随包许可清单 | 桌面窗口与 YAML 编辑 |
+| Ubuntu | `24.04` | 基础系统 |
+| Python 3 / PyYAML | Ubuntu 系统软件包 | 网关后台、配置处理与健康检查 |
+| Nginx / Supervisor / Tini | Ubuntu 系统软件包 | Web 入口、服务管理和容器启动 |
+| OpenSSH Server / Git / GitHub CLI | Ubuntu 系统软件包 | SSH 管理、源码与 GitHub 操作 |
+| curl / dnsutils / iproute2 / iptables | Ubuntu 系统软件包 | 连通性检查、DNS 查询、路由和防火墙 |
+
+组件的精确下载地址及 SHA256 见 [`components.lock.json`](components.lock.json)，编辑器依赖见 [`web/assets/editor-licenses.txt`](web/assets/editor-licenses.txt)，安装定义见 [`Dockerfile`](Dockerfile)。APT 软件版本由构建时的软件源决定。开发用 Python、AI CLI 和 MCP 工具位于 [工作站容器](../workstation/README.md)。
+
 ## 部署前准备
 
 首发目标为 **Linux amd64 Docker Engine**，采用 macvlan 接入局域网；arm64 尚未构建及验收。macOS/Windows 上的 Docker Desktop 不作为旁路网关运行环境。[Docker Compose 需要 2.33.1 或更新版本](https://docs.docker.com/reference/compose-file/networks/#enable_ipv4)以支持 `enable_ipv4`，宿主 Docker Engine 也必须支持禁用网络自动 IPv4 分配。宿主机需要 `/dev/net/tun`、macvlan、iptables 和可用的物理 LAN 接口，容器需要 `NET_ADMIN`。部署不使用 `privileged`、宿主网络或 Docker socket。

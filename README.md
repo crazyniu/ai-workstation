@@ -5,9 +5,32 @@
 
 面向家庭网络与远程开发的双容器环境：一个带桌面式 Web 后台的网关，一个可通过 SSH / VNC 使用的 Linux 开发工作站。
 
-![AI Workstation 与网关桌面展示](docs/images/gateway-home-ai.png)
+## 让 AI 帮你安装
 
-*基于真实主页截图生成的 AI 示意图；实际界面以运行版本为准。[图片来源与生成说明](docs/images/README.md)*
+点击下面代码块右上角的复制按钮，发送给能操作你主机的 AI 助手。也可以直接发送本仓库链接并说明“请按仓库的 AI-INSTALL.md 帮我安装”；仓库提供 [AI 安装指引](AI-INSTALL.md) 和 [Agent 入口](AGENTS.md)。
+
+```text
+请帮我安装 https://github.com/crazyniu/ai-workstation 。
+先读取仓库 README.md、AGENTS.md 和 AI-INSTALL.md，按实际主机环境执行。
+
+目标是在 Linux amd64 / NAS Docker 主机上部署两个服务：
+Clash 网关默认 192.168.1.250，Claude 开发工作站默认 192.168.1.251。
+先检查 Docker、Compose、LAN 网卡、路由、地址占用以及已有容器和数据。
+地址和网卡必须依据现场核实；缺少关键参数时向我询问，不能猜测。
+
+两个服务的配置、HOME 和身份保存在容器内部，不添加业务目录挂载或数据卷。
+发现已有部署时先说明现状和方案，不删除或重建已有容器，不改动其他服务。
+首次安装使用仓库 deploy.sh；密码通过私有 .env 配置，不回显，不提交 Git。
+不擅自迁移 Docker 存储、修改主路由器或向公网开放端口。
+
+完成后验证容器状态、实际地址、Mounts、网关网页/DNS/代理、工作站 SSH/VNC，
+核对 Python 和工具版本；需要账号登录的服务交由我登录后再验证。
+最后给我访问入口、实际通过和未验证项目，以及重启、备份和重建的数据注意事项。
+```
+
+![AI Workstation 与网关桌面展示](docs/images/gateway-home.png)
+
+*项目展示图；实际界面以运行版本为准。[图片说明](docs/images/README.md)*
 
 ## 两个服务
 
@@ -20,6 +43,35 @@
 - 网关统一管理代理配置、DNS、子网访问、组件升级与备份恢复。
 - 工作站的桌面和 CLI 默认经网关代理访问外网，局域网地址绕过显式代理。
 - 配置、HOME 和账号身份全部保存在各自容器内部。公开镜像包含程序和默认模板，个人订阅、身份和业务数据由用户自行配置。
+
+## 每个容器的软件
+
+以下清单对应仓库的镜像构建定义。固定版本以 [网关组件锁定文件](gateway/components.lock.json)、[工作站版本文件](workstation/versions.env) 和 [MCP 依赖锁定文件](workstation/mcp/package-lock.json) 为准；通过 Ubuntu APT 安装的软件版本由构建时的软件源决定。
+
+### `192.168.1.250`：Clash 网关
+
+| 类别 | 安装的软件 |
+| --- | --- |
+| 代理与面板 | Mihomo `1.19.33`、MetaCubeXD `1.273.1` |
+| DNS 与过滤 | AdGuard Home `0.107.79`、内置 AdGuard DNS filter 规则快照 |
+| 远程网络 | Tailscale `1.104.2` |
+| Web 后台 | 项目网关桌面、WinBox `0.2.82`、CodeMirror YAML 编辑器 |
+| 系统与运行时 | Ubuntu `24.04`、发行版系统 Python 3 / PyYAML、Nginx、Supervisor、Tini |
+| 管理工具 | OpenSSH Server、Git、GitHub CLI、curl、DNS 查询及路由/防火墙工具 |
+
+### `192.168.1.251`：Claude 开发工作站
+
+| 类别 | 安装的软件 |
+| --- | --- |
+| 桌面与连接 | Ubuntu `26.04`、XFCE、Thunar 文件管理器、XFCE Terminal、TigerVNC、OpenSSH Server |
+| 浏览器与编辑器 | Google Chrome `156.0.8078.47`、Visual Studio Code `1.143.1`、Godot `4.7.2` |
+| AI CLI | Codex `0.164.0`、Claude Code `2.1.309` |
+| 开发运行时 | Python 3（Ubuntu 软件包，`3.14` 系列）、Node.js `24.22.1`、npm / npx、GCC |
+| 开发与进程管理 | Git、GitHub CLI、curl、Supervisor；Ubuntu 系统 Python `3.14` 用于系统服务 |
+| 本地 MCP | Context7 `4.4.4`、Playwright `0.0.83`、Chrome DevTools `1.12.0`、Godot MCP `0.1.1` |
+| 远程 MCP | GitHub MCP 连接配置，使用个人账号授权 |
+
+工作站通过 `python3` 使用 Ubuntu 提供的 Python `3.14` 系列，补丁版本随系统软件包更新。MCP 配置同时提供给 Codex 和 Claude，浏览器工具使用容器内的 Chrome。详细清单与使用方式见 [工作站说明](workstation/README.md)。
 
 ## 首次部署
 

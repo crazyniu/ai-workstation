@@ -2,7 +2,50 @@
 
 此目录是统一仓库中的工作站构建上下文，网关、正式 Compose 和 GHCR 发布由仓库根目录统一管理。支持 `linux/amd64`。可复现的验证步骤及发布记录见 [验证记录](VALIDATION.md)。
 
-包含 Ubuntu、繁体中文及台北时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot 和 GitHub 五项 MCP 配置。基础镜像固定到官方 amd64 manifest digest，应用版本及公开下载校验值见 `versions.env`；Ubuntu 系统软件随 APT 仓库更新。
+包含 Ubuntu、繁体中文及台北时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot 和 GitHub 五项 MCP 配置。基础镜像固定到官方 amd64 manifest digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Ubuntu 系统软件随 APT 仓库更新。
+
+## 已安装的软件
+
+| 类别 | 软件与版本 | 用途 |
+| --- | --- | --- |
+| 基础系统 | Ubuntu `26.04` | Linux amd64；繁体中文与台北时区 |
+| 桌面 | XFCE、XFWM、XFCE Panel / Terminal、Thunar | 图形桌面、终端与文件管理 |
+| 远程连接 | TigerVNC、OpenSSH Server | VNC 桌面与 SSH 登录 |
+| 浏览器 | Google Chrome `156.0.8078.47-1` | 桌面浏览器和浏览器 MCP 运行环境 |
+| 编辑器 | Visual Studio Code `1.143.1-1792691907` | 项目编辑与开发 |
+| 游戏开发 | Godot `4.7.2` | 编辑器、命令行与 Godot MCP |
+| AI CLI | Codex `0.164.0`、Claude Code `2.1.309` | 终端及桌面入口，使用个人模型账号 |
+| Python | Python 3（Ubuntu 软件包，`3.14` 系列） | 脚本、工具与系统服务运行 |
+| JavaScript 开发 | Node.js `24.22.1`、npm / npx | JavaScript 开发与本地 MCP 服务 |
+| 开发工具 | Git、GitHub CLI、GCC、curl | 版本管理、GitHub、C 编译与下载 |
+| 系统服务 | Supervisor、D-Bus、Ubuntu 系统 Python `3.14` | 会话、SSH/VNC 和工作站启动服务 |
+| 桌面资源 | Arc、Papirus、Inter、Noto CJK、DejaVu、Mesa | 主题、图标、中西文字体与软件图形渲染 |
+
+Chrome、VS Code、AI CLI、Godot 和 Node.js 的固定版本以 [`versions.env`](versions.env) 及 [`Dockerfile`](Dockerfile) 为准；Python 和其他 Ubuntu 软件包按构建时的软件源安装，补丁版本随系统更新。
+
+### MCP 工具
+
+以下默认配置同时写入 Codex 与 Claude 的配置文件，已有同名用户设置保留。
+
+| 工具 | 类型 / 固定版本 | 用途 |
+| --- | --- | --- |
+| Context7 | 本地 `@upstash/context7-mcp` `4.4.4` | 查询开发文档与示例 |
+| Playwright | 本地 `@playwright/mcp` `0.0.83` | 使用容器内 Chrome 进行浏览器操作 |
+| Chrome DevTools | 本地 `chrome-devtools-mcp` `1.12.0` | Chrome 调试与浏览器检查 |
+| Godot | 本地 `@coding-solo/godot-mcp` `0.1.1` | 调用容器内 Godot 工具 |
+| GitHub | 远程 `https://api.githubcopilot.com/mcp/` | GitHub 操作，需个人授权 |
+
+本地 MCP 通过 `/usr/local/bin/workstation-mcp` 启动，依赖锁定在 [`mcp/package-lock.json`](mcp/package-lock.json)，其中 MCP SDK 为 `1.32.1`。配置生成方式见 [`scripts/configure-mcp.py`](scripts/configure-mcp.py)。
+
+### Python 环境
+
+工作站使用 Ubuntu 提供的 Python `3.14` 系列，解释器位于 `/usr/bin/python3`。在桌面终端或 SSH 会话中通过 `python3` 运行脚本，具体补丁版本可直接查询：
+
+```sh
+python3 --version
+```
+
+## 构建与运行
 
 ```sh
 docker build -t ai-workstation:test ./workstation
