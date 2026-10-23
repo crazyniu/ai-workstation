@@ -1,0 +1,12 @@
+{
+  "asset": "mountain.png",
+  "created": "2026-10-23",
+  "method": "OpenAI built-in image_gen tool",
+  "prompt": "Original photographic mountain lake landscape, distant alpine peaks in pale blue mist reflected in still blue water, granite shore low in foreground, natural morning light, desaturated icy blue and cyan, wide 16:9 spacious composition. No buildings, people, boats, text, UI, borders, watermark or logos.",
+  "dimensions": [
+    1672,
+    941
+  ],
+  "sha256": "d2fc73e8391949667f9d96d96c5a568f632cddd097300d119eefb2953b38f21d",
+  "source": "Original generated landscape; not a third-party photograph"
+}

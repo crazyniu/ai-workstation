@@ -1,0 +1,12 @@
+{
+  "asset": "forest.png",
+  "created": "2026-10-23",
+  "method": "OpenAI built-in image_gen tool",
+  "prompt": "Original photographic misty evergreen forest lake, fog between layered pine covered hills, still teal water with reflection, early morning diffused light, muted teal, forest green and silver blue, wide 16:9 composition. No people, buildings, boats, sun rays, text, UI, watermark, logos or borders.",
+  "dimensions": [
+    1672,
+    941
+  ],
+  "sha256": "3451229056b1c54bb8546ea64076150b211be34b520c14e145beb8bd010c794e",
+  "source": "Original generated landscape; not a third-party photograph"
+}

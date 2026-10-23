@@ -1,0 +1,43 @@
+{
+  "arch": "amd64",
+  "components": {
+    "mihomo": {
+      "component": "mihomo",
+      "version": "v1.19.33",
+      "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-amd64-compatible-v1.19.33.gz",
+      "sha256": "386508bfb1c72c43b6a0eda73708ecdce82546581b0ebcb16366c53757c622b6"
+    },
+    "adguard": {
+      "component": "adguard",
+      "version": "v0.107.79",
+      "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_amd64.tar.gz",
+      "sha256": "c48f4a43000665484c5ec28177de11a004759b620dae8f77b2aabefc9ef3687f"
+    },
+    "tailscale": {
+      "component": "tailscale",
+      "version": "1.104.2",
+      "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_amd64.tgz",
+      "sha256": "512f613ed7d04fc7282f7dc5bd76aa105aae28168fbb9357eb749ebcbc29f0ae"
+    },
+    "panel": {
+      "component": "panel",
+      "version": "v1.273.1",
+      "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+      "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+    }
+  },
+  "filters": {
+    "adguard-dns": {
+      "name": "AdGuard DNS filter",
+      "url": "https://raw.githubusercontent.com/AdguardTeam/AdGuardSDNSFilter/81ff5e6e82079e98d0282dc8ff9a6e5bd2467cdf/Filters/filter.txt",
+      "update_url": "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt",
+      "source_commit": "81ff5e6e82079e98d0282dc8ff9a6e5bd2467cdf",
+      "committed_at": "2026-10-23T08:19:23Z",
+      "fetched_at": "2026-10-23T08:27:20.698154+00:00",
+      "sha256": "0b829b81b6204da07d46d0ed2541ee1a0d81b80293331e4f3c78ed33e099d5f4",
+      "file": "adguard-dns.txt",
+      "license": "GPL-3.0",
+      "license_url": "https://github.com/AdguardTeam/AdGuardSDNSFilter/blob/master/LICENSE"
+    }
+  }
+}

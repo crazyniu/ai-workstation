@@ -1,0 +1,22 @@
+.auto-icon-choice {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 18px;
+  gap: 12px;
+  width: 100%;
+  min-height: 72px;
+  margin: 0 0 16px;
+  padding: 12px;
+  white-space: normal;
+  text-align: left;
+}
+.auto-icon-choice[aria-pressed=true] { border-color: var(--blue); background: var(--selected); }
+.auto-icon-preview { position: relative; display: grid; place-items: center; width: 40px; height: 40px; }
+.auto-icon-preview img { width: 40px; height: 40px; aspect-ratio: 1; object-fit: contain; }
+.auto-icon-copy { display: grid; gap: 4px; }
+.auto-icon-copy strong { font-weight: 500; }
+.auto-icon-copy>span { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.auto-icon-check { width: 18px; height: 18px; color: var(--blue); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; visibility: hidden; }
+.auto-icon-choice[aria-pressed=true] .auto-icon-check { visibility: visible; }
+.favicon-spinner { display: none; width: 26px; height: 26px; color: var(--blue); }
+.auto-icon-choice[aria-busy=true] .favicon-spinner { display: block; }
+.auto-icon-choice[aria-busy=true] .auto-icon-preview img { display: none; }

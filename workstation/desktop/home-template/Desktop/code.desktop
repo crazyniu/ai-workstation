@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=VS Code
+Exec=/usr/bin/code --new-window /home/dev/Projects
+Icon=visual-studio-code
+Terminal=false
+StartupNotify=true

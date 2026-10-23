@@ -1,0 +1,59 @@
+Third-party components
+======================
+
+This image bundles unmodified official release artifacts. Exact versions,
+release URLs and SHA256 digests are recorded in components.lock.json and the
+installed component's version.json. Included license texts are in licenses/. Product names and marks belong to their
+respective owners. No upstream endorsement is implied.
+
+Mihomo — MetaCubeX and contributors — GNU GPL v3
+Source: https://github.com/MetaCubeX/mihomo/tree/v1.19.33
+License: https://github.com/MetaCubeX/mihomo/blob/v1.19.33/LICENSE
+
+AdGuard Home — AdGuard and contributors — GNU GPL v3
+Source: https://github.com/AdguardTeam/AdGuardHome/tree/v0.107.79
+License: https://github.com/AdguardTeam/AdGuardHome/blob/v0.107.79/LICENSE.txt
+
+AdGuard DNS filter — AdGuard and contributing filter authors — GNU GPL v3
+Source: https://github.com/AdguardTeam/AdGuardSDNSFilter/tree/81ff5e6e82079e98d0282dc8ff9a6e5bd2467cdf
+License: https://github.com/AdguardTeam/AdGuardSDNSFilter/blob/master/LICENSE
+An unmodified official filter snapshot is bundled in seed/filters/adguard-dns.txt
+for initial offline protection. The exact source commit, source URL, fetch date
+and SHA256 are recorded in components.lock.json and seed/filters/manifest.json.
+The upstream file's own copyright and constituent-filter notices are retained.
+The full license is in licenses/adguard-dns-filter-GPL-3.0.txt. Existing user
+filter caches and custom filter settings are preserved on subsequent starts.
+
+Tailscale — Tailscale Inc. and contributors — BSD 3-Clause
+Source: https://github.com/tailscale/tailscale/tree/v1.104.2
+License: https://github.com/tailscale/tailscale/blob/v1.104.2/LICENSE
+
+MetaCubeXD — MetaCubeX — MIT
+Source: https://github.com/MetaCubeX/metacubexd/tree/v1.273.1
+License: https://github.com/MetaCubeX/metacubexd/blob/v1.273.1/LICENSE
+
+WinBox 0.2.82 — Thomas Wilkerling / Nextapps GmbH — Apache License 2.0
+Source: https://github.com/nextapps-de/winbox/tree/0.2.82
+License: https://github.com/nextapps-de/winbox/blob/0.2.82/LICENSE
+Unmodified upstream JS and CSS are included under web/vendor/winbox/.
+Their source URLs, byte sizes and SHA256 digests are recorded in
+web/vendor/winbox/provenance.json. Gateway styling and interaction code
+are maintained separately from these upstream files.
+
+CodeMirror and bundled editor dependencies — MIT and other notices as listed
+in web/assets/editor-licenses.txt. This file includes the package names,
+versions, copyright notices and full license texts for the shipped editor
+bundle. Gateway YAML editor styling is maintained by this project.
+
+Gateway desktop artwork
+The coast wallpaper was generated specifically for this project on
+2026-10-23. Its generation prompt and date are included in
+web/assets/coast-wallpaper.webp.json. Desktop SVG icons were authored for
+this project. No NAS screenshot or downloaded wallpaper is distributed.
+This provenance statement does not assert public-domain status.
+
+Ubuntu packages retain their package-specific copyright and license material
+under /usr/share/doc in the image. See the upstream source trees and release
+artifacts for all notices and dependencies. Public redistribution must include
+the applicable license texts, notices and corresponding-source arrangements.
+This notice is an inventory and does not replace those materials.

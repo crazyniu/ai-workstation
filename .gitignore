@@ -1,0 +1,15 @@
+secrets/
+.env
+*.tar
+*.tar.gz
+*.log
+__pycache__/
+node_modules/
+test-results/
+gateway/seed/
+outputs/
+dist/
+**/.impeccable/review/
+**/.DS_Store
+**/._*
+*.pyc

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=專案檔案
+Exec=thunar /home/dev/Projects
+Icon=folder-development
+Terminal=false

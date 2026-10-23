@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Godot
+Exec=/usr/local/bin/godot --project-manager
+Icon=godot
+Terminal=false
+StartupNotify=true

@@ -1,0 +1,12 @@
+{
+  "asset": "dusk.png",
+  "created": "2026-10-23",
+  "method": "OpenAI built-in image_gen tool",
+  "prompt": "Original fine-art photographic Scandinavian rocky coastline at blue hour, low smooth granite islands over calm water, quiet horizon, mauve pink sunset strip and indigo sky, subtle warm peach, wide 16:9 serene composition. No people, buildings, boats, text, UI, watermark, logos or borders.",
+  "dimensions": [
+    1672,
+    941
+  ],
+  "sha256": "bbf75afd708aecb0b82ff0ce922971fb56aafc9c0901070c5c18b58370745ff7",
+  "source": "Original generated landscape; not a third-party photograph"
+}

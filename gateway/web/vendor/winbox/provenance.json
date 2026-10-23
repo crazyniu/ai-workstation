@@ -1,0 +1,27 @@
+{
+  "name": "WinBox",
+  "version": "0.2.82",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/nextapps-de/winbox",
+  "modified": false,
+  "files": [
+    {
+      "path": "web/vendor/winbox/winbox.min.js",
+      "url": "https://raw.githubusercontent.com/nextapps-de/winbox/0.2.82/dist/js/winbox.min.js",
+      "bytes": 10955,
+      "sha256": "cd0b4efd94504718627bb3ba78ed9304b1efac74db7b78a5d1923f002bf91c3b"
+    },
+    {
+      "path": "web/vendor/winbox/winbox.min.css",
+      "url": "https://raw.githubusercontent.com/nextapps-de/winbox/0.2.82/dist/css/winbox.min.css",
+      "bytes": 4843,
+      "sha256": "9d6b72dc5f0383ec0217cd4ea155c65f5ce438af1910bd9b548e47082b83b424"
+    },
+    {
+      "path": "licenses/winbox-Apache-2.0.txt",
+      "url": "https://raw.githubusercontent.com/nextapps-de/winbox/0.2.82/LICENSE",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  ]
+}

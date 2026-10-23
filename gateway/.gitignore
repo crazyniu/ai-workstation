@@ -1,0 +1,7 @@
+seed/
+__pycache__/
+*.pyc
+.env
+data/
+*.tar
+*.tgz

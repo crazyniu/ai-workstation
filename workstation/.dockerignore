@@ -1,0 +1,17 @@
+**
+!Dockerfile
+!versions.env
+!runtime/
+!runtime/**
+!scripts/
+!scripts/**
+!mcp/
+!mcp/package.json
+!mcp/package-lock.json
+!desktop/
+!desktop/**
+**/__pycache__/**
+**/*.pyc
+**/node_modules/**
+**/.DS_Store
+**/._*

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "coast",
+    "name": "晴日海岸",
+    "path": "/assets/coast-wallpaper.webp"
+  },
+  {
+    "id": "mountain",
+    "name": "山湖晨光",
+    "path": "/assets/wallpapers/mountain.png"
+  },
+  {
+    "id": "dusk",
+    "name": "海岸暮色",
+    "path": "/assets/wallpapers/dusk.png"
+  },
+  {
+    "id": "forest",
+    "name": "林间薄雾",
+    "path": "/assets/wallpapers/forest.png"
+  }
+]

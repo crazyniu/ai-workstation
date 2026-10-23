@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-23T11:34:33.822568+00:00",
+  "title": "Design System: Gateway Desktop",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "primary",
+        "canonical": "#075cff",
+        "tonalRamp": [
+          "oklch(15% 0.2515 262.30)",
+          "oklch(26% 0.2515 262.30)",
+          "oklch(38% 0.2515 262.30)",
+          "oklch(49% 0.2515 262.30)",
+          "oklch(61% 0.2515 262.30)",
+          "oklch(72% 0.2515 262.30)",
+          "oklch(84% 0.2515 262.30)",
+          "oklch(95% 0.2515 262.30)"
+        ]
+      },
+      "primary-hover": {
+        "role": "primary",
+        "displayName": "primary-hover",
+        "canonical": "#004cdd",
+        "tonalRamp": [
+          "oklch(15% 0.2291 262.28)",
+          "oklch(26% 0.2291 262.28)",
+          "oklch(38% 0.2291 262.28)",
+          "oklch(49% 0.2291 262.28)",
+          "oklch(61% 0.2291 262.28)",
+          "oklch(72% 0.2291 262.28)",
+          "oklch(84% 0.2291 262.28)",
+          "oklch(95% 0.2291 262.28)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "surface",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(26% 0.0000 89.88)",
+          "oklch(38% 0.0000 89.88)",
+          "oklch(49% 0.0000 89.88)",
+          "oklch(61% 0.0000 89.88)",
+          "oklch(72% 0.0000 89.88)",
+          "oklch(84% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "chrome": {
+        "role": "neutral",
+        "displayName": "chrome",
+        "canonical": "#f2f4f7",
+        "tonalRamp": [
+          "oklch(15% 0.0045 258.32)",
+          "oklch(26% 0.0045 258.32)",
+          "oklch(38% 0.0045 258.32)",
+          "oklch(49% 0.0045 258.32)",
+          "oklch(61% 0.0045 258.32)",
+          "oklch(72% 0.0045 258.32)",
+          "oklch(84% 0.0045 258.32)",
+          "oklch(95% 0.0045 258.32)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "sidebar",
+        "canonical": "#e9edf1",
+        "tonalRamp": [
+          "oklch(15% 0.0069 247.90)",
+          "oklch(26% 0.0069 247.90)",
+          "oklch(38% 0.0069 247.90)",
+          "oklch(49% 0.0069 247.90)",
+          "oklch(61% 0.0069 247.90)",
+          "oklch(72% 0.0069 247.90)",
+          "oklch(84% 0.0069 247.90)",
+          "oklch(95% 0.0069 247.90)"
+        ]
+      },
+      "field": {
+        "role": "neutral",
+        "displayName": "field",
+        "canonical": "#f3f5f7",
+        "tonalRamp": [
+          "oklch(15% 0.0034 247.86)",
+          "oklch(26% 0.0034 247.86)",
+          "oklch(38% 0.0034 247.86)",
+          "oklch(49% 0.0034 247.86)",
+          "oklch(61% 0.0034 247.86)",
+          "oklch(72% 0.0034 247.86)",
+          "oklch(84% 0.0034 247.86)",
+          "oklch(95% 0.0034 247.86)"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "text",
+        "canonical": "#30343b",
+        "tonalRamp": [
+          "oklch(15% 0.0136 261.72)",
+          "oklch(26% 0.0136 261.72)",
+          "oklch(38% 0.0136 261.72)",
+          "oklch(49% 0.0136 261.72)",
+          "oklch(61% 0.0136 261.72)",
+          "oklch(72% 0.0136 261.72)",
+          "oklch(84% 0.0136 261.72)",
+          "oklch(95% 0.0136 261.72)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "muted",
+        "canonical": "#5a6470",
+        "tonalRamp": [
+          "oklch(15% 0.0228 253.03)",
+          "oklch(26% 0.0228 253.03)",
+          "oklch(38% 0.0228 253.03)",
+          "oklch(49% 0.0228 253.03)",
+          "oklch(61% 0.0228 253.03)",
+          "oklch(72% 0.0228 253.03)",
+          "oklch(84% 0.0228 253.03)",
+          "oklch(95% 0.0228 253.03)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "border",
+        "canonical": "#d9dee5",
+        "tonalRamp": [
+          "oklch(15% 0.0110 256.70)",
+          "oklch(26% 0.0110 256.70)",
+          "oklch(38% 0.0110 256.70)",
+          "oklch(49% 0.0110 256.70)",
+          "oklch(61% 0.0110 256.70)",
+          "oklch(72% 0.0110 256.70)",
+          "oklch(84% 0.0110 256.70)",
+          "oklch(95% 0.0110 256.70)"
+        ]
+      },
+      "selected": {
+        "role": "neutral",
+        "displayName": "selected",
+        "canonical": "#edf4ff",
+        "tonalRamp": [
+          "oklch(15% 0.0165 259.42)",
+          "oklch(26% 0.0165 259.42)",
+          "oklch(38% 0.0165 259.42)",
+          "oklch(49% 0.0165 259.42)",
+          "oklch(61% 0.0165 259.42)",
+          "oklch(72% 0.0165 259.42)",
+          "oklch(84% 0.0165 259.42)",
+          "oklch(95% 0.0165 259.42)"
+        ]
+      },
+      "danger": {
+        "role": "neutral",
+        "displayName": "danger",
+        "canonical": "#c9343f",
+        "tonalRamp": [
+          "oklch(15% 0.1850 21.89)",
+          "oklch(26% 0.1850 21.89)",
+          "oklch(38% 0.1850 21.89)",
+          "oklch(49% 0.1850 21.89)",
+          "oklch(61% 0.1850 21.89)",
+          "oklch(72% 0.1850 21.89)",
+          "oklch(84% 0.1850 21.89)",
+          "oklch(95% 0.1850 21.89)"
+        ]
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "dark-surface",
+        "canonical": "#222932",
+        "tonalRamp": [
+          "oklch(15% 0.0194 254.83)",
+          "oklch(26% 0.0194 254.83)",
+          "oklch(38% 0.0194 254.83)",
+          "oklch(49% 0.0194 254.83)",
+          "oklch(61% 0.0194 254.83)",
+          "oklch(72% 0.0194 254.83)",
+          "oklch(84% 0.0194 254.83)",
+          "oklch(95% 0.0194 254.83)"
+        ]
+      },
+      "dark-chrome": {
+        "role": "neutral",
+        "displayName": "dark-chrome",
+        "canonical": "#2b333e",
+        "tonalRamp": [
+          "oklch(15% 0.0226 256.40)",
+          "oklch(26% 0.0226 256.40)",
+          "oklch(38% 0.0226 256.40)",
+          "oklch(49% 0.0226 256.40)",
+          "oklch(61% 0.0226 256.40)",
+          "oklch(72% 0.0226 256.40)",
+          "oklch(84% 0.0226 256.40)",
+          "oklch(95% 0.0226 256.40)"
+        ]
+      },
+      "dark-text": {
+        "role": "neutral",
+        "displayName": "dark-text",
+        "canonical": "#e9eef6",
+        "tonalRamp": [
+          "oklch(15% 0.0120 259.82)",
+          "oklch(26% 0.0120 259.82)",
+          "oklch(38% 0.0120 259.82)",
+          "oklch(49% 0.0120 259.82)",
+          "oklch(61% 0.0120 259.82)",
+          "oklch(72% 0.0120 259.82)",
+          "oklch(84% 0.0120 259.82)",
+          "oklch(95% 0.0120 259.82)"
+        ]
+      },
+      "dark-muted": {
+        "role": "neutral",
+        "displayName": "dark-muted",
+        "canonical": "#b1bdcc",
+        "tonalRamp": [
+          "oklch(15% 0.0251 253.98)",
+          "oklch(26% 0.0251 253.98)",
+          "oklch(38% 0.0251 253.98)",
+          "oklch(49% 0.0251 253.98)",
+          "oklch(61% 0.0251 253.98)",
+          "oklch(72% 0.0251 253.98)",
+          "oklch(84% 0.0251 253.98)",
+          "oklch(95% 0.0251 253.98)"
+        ]
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "dark-accent",
+        "canonical": "#8ab7ff",
+        "tonalRamp": [
+          "oklch(15% 0.1145 259.55)",
+          "oklch(26% 0.1145 259.55)",
+          "oklch(38% 0.1145 259.55)",
+          "oklch(49% 0.1145 259.55)",
+          "oklch(61% 0.1145 259.55)",
+          "oklch(72% 0.1145 259.55)",
+          "oklch(84% 0.1145 259.55)",
+          "oklch(95% 0.1145 259.55)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "设置内容标题",
+        "purpose": "二级设置页标题。"
+      },
+      "body": {
+        "displayName": "系统正文",
+        "purpose": "管理内容与桌面名称。"
+      },
+      "label": {
+        "displayName": "辅助标签",
+        "purpose": "说明、菜单与次级信息。"
+      }
+    },
+    "shadows": [
+      {
+        "name": "window",
+        "value": "0 20px 64px #14314240, 0 4px 16px #14314214",
+        "purpose": "桌面浮动设置窗口。"
+      },
+      {
+        "name": "window-dark",
+        "value": "0 20px 64px #08101970, 0 4px 16px #08101933",
+        "purpose": "暗色主题窗口。"
+      },
+      {
+        "name": "context-menu",
+        "value": "0 10px 32px #14364240, 0 2px 8px #1436421a",
+        "purpose": "桌面右键菜单。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "control-state",
+        "value": "background-color 120ms ease-out, border-color 120ms ease-out",
+        "purpose": "按钮与可交互表面；减少动态效果偏好停用。"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-sidebar",
+        "value": "900px"
+      },
+      {
+        "name": "mobile",
+        "value": "700px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "设置中的保存、应用与上传操作。",
+      "html": "<button class=\"ds-primary\">保存并应用</button>",
+      "css": ".ds-primary{font:14px -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;cursor:pointer;border-radius:7px;min-height:38px;padding:8px 18px;transition:background-color 120ms ease-out,border-color 120ms ease-out;background:#075cff;color:#fff;border:1px solid #075cff}.ds-primary:hover{background:#004cdd;border-color:#004cdd}.ds-primary:focus-visible{outline:2px solid var(--blue,#075cff);outline-offset:3px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "取消及次要操作。",
+      "html": "<button class=\"ds-secondary\">取消</button>",
+      "css": ".ds-secondary{font:14px -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;cursor:pointer;border-radius:7px;min-height:38px;padding:8px 18px;transition:background-color 120ms ease-out,border-color 120ms ease-out;background:var(--surface,#fff);color:var(--text,#30343b);border:1px solid var(--border,#d9dee5)}.ds-secondary:hover{background:var(--hover,#f3f6fa);border-color:#c3cbd5}.ds-secondary:focus-visible{outline:2px solid var(--blue,#075cff);outline-offset:3px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "浅灰输入区及蓝色聚焦边框。",
+      "html": "<input class=\"ds-input\" aria-label=\"名称\" placeholder=\"例如：我的 NAS\">",
+      "css": ".ds-input{font:14px -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;min-height:40px;padding:10px 13px;border:1px solid transparent;border-radius:7px;background:var(--field,#f3f5f7);color:var(--text,#30343b)}.ds-input::placeholder{color:var(--muted,#5a6470)}.ds-input:hover{border-color:#d5dce5}.ds-input:focus-visible{outline:2px solid var(--blue,#075cff);outline-offset:3px;border-color:var(--blue,#075cff);background:var(--surface,#fff)}"
+    },
+    {
+      "name": "Pure Icon Choice",
+      "kind": "custom",
+      "refersTo": "picker-icon",
+      "description": "52项纯图标选择器之一；名称保留在title和aria-label。",
+      "html": "<button class=\"ds-icon-choice\" aria-label=\"Hermes\" aria-selected=\"true\" title=\"Hermes\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 96 96\" fill=\"none\"><defs><linearGradient id=\"tile\" x1=\"48\" y1=\"9\" x2=\"48\" y2=\"85\" gradientUnits=\"userSpaceOnUse\"><stop stop-color=\"#ffffff\"/><stop offset=\"1\" stop-color=\"#eaf1f7\"/></linearGradient><linearGradient id=\"color\" x1=\"24\" y1=\"24\" x2=\"72\" y2=\"72\" gradientUnits=\"userSpaceOnUse\"><stop stop-color=\"#36beff\"/><stop offset=\"1\" stop-color=\"#1268e9\"/></linearGradient><filter id=\"shadow\" x=\"0\" y=\"0\" width=\"96\" height=\"96\" filterUnits=\"userSpaceOnUse\"><feDropShadow dx=\"0\" dy=\"3\" stdDeviation=\"2.5\" flood-color=\"#163e52\" flood-opacity=\".22\"/></filter></defs><rect x=\"10\" y=\"8\" width=\"76\" height=\"76\" rx=\"21\" fill=\"url(#tile)\" filter=\"url(#shadow)\"/><path d=\"M32 29h9v14h14V29h9v37h-9V52H41v14h-9V29Z\" fill=\"url(#color)\"/><path d=\"M30 36 19 29l4 10 7 4m36-7 11-7-4 10-7 4\" fill=\"#86d7fb\"/><path d=\"M27 67h42\" stroke=\"#a9d9ef\" stroke-width=\"3\" stroke-linecap=\"round\"/></svg></button>",
+      "css": ".ds-icon-choice{display:flex;align-items:center;justify-content:center;min-height:60px;padding:9px;border:1px solid var(--blue,#075cff);border-radius:7px;background:var(--selected,#edf4ff);cursor:pointer}.ds-icon-choice svg{width:40px;height:40px;aspect-ratio:1;object-fit:contain}.ds-icon-choice:hover{background:var(--hover,#f3f6fa)}.ds-icon-choice:focus-visible{outline:2px solid var(--blue,#075cff);outline-offset:0}"
+    },
+    {
+      "name": "Settings Navigation",
+      "kind": "nav",
+      "refersTo": "button-secondary",
+      "description": "侧栏中的当前设置页面。",
+      "html": "<button class=\"ds-nav\" aria-current=\"page\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 96 96\" fill=\"none\"><defs><linearGradient id=\"tile\" x1=\"48\" y1=\"9\" x2=\"48\" y2=\"85\" gradientUnits=\"userSpaceOnUse\"><stop stop-color=\"#ffffff\"/><stop offset=\"1\" stop-color=\"#eaf1f7\"/></linearGradient><linearGradient id=\"color\" x1=\"24\" y1=\"24\" x2=\"72\" y2=\"72\" gradientUnits=\"userSpaceOnUse\"><stop stop-color=\"#36beff\"/><stop offset=\"1\" stop-color=\"#1268e9\"/></linearGradient><filter id=\"shadow\" x=\"0\" y=\"0\" width=\"96\" height=\"96\" filterUnits=\"userSpaceOnUse\"><feDropShadow dx=\"0\" dy=\"3\" stdDeviation=\"2.5\" flood-color=\"#163e52\" flood-opacity=\".22\"/></filter></defs><rect x=\"10\" y=\"8\" width=\"76\" height=\"76\" rx=\"21\" fill=\"url(#tile)\" filter=\"url(#shadow)\"/><path d=\"M32 29h9v14h14V29h9v37h-9V52H41v14h-9V29Z\" fill=\"url(#color)\"/><path d=\"M30 36 19 29l4 10 7 4m36-7 11-7-4 10-7 4\" fill=\"#86d7fb\"/><path d=\"M27 67h42\" stroke=\"#a9d9ef\" stroke-width=\"3\" stroke-linecap=\"round\"/></svg><span>代理配置</span></button>",
+      "css": ".ds-nav{display:flex;align-items:center;gap:12px;min-height:43px;padding:9px 12px;border:0;border-radius:7px;background:var(--surface,#fff);color:var(--blue,#075cff);font:500 14px -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;cursor:pointer}.ds-nav svg{width:23px;height:23px;object-fit:contain}.ds-nav:hover{background:var(--hover,#f3f6fa)}.ds-nav:focus-visible{outline:2px solid var(--blue,#075cff);outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "蓝色海岸上的轻量 NAS 桌面",
+    "overview": "蓝色海岸壁纸承托图标与名称，白色设置窗口保留熟悉的桌面秩序。彩色图标采用同一浅色圆角底板；主要操作使用清晰的蓝色按钮，内容与设置停留在二级界面。\n\n桌面保持轻量、疏朗，管理表单采用紧凑而有留白的布局。深色模式通过同一组语义变量切换窗口、表单、编辑器与菜单的表面和文字；自动模式跟随系统偏好，保持同一布局与图标比例。",
+    "keyCharacteristics": [
+      "蓝色自然摄影壁纸与白色浮动窗口。",
+      "统一彩色应用图标和纯图标选择网格。",
+      "设置分层、文件上传优先、手机端完整设置页面。",
+      "亮色、暗色和跟随系统的自动模式。"
+    ],
+    "rules": [
+      {
+        "name": "The Single Accent Rule",
+        "body": "操作强调使用蓝色；彩色应用图标和壁纸承担其余颜色，避免为设置模块各造一套颜色。",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "沿用已有的蓝色海岸桌面、统一图标底板和窗口层级。",
+      "所有应用图标保持正方形并使用 object-fit: contain。",
+      "图标选择区只显示图形，通过 title 和 aria-label 提供名称。",
+      "将配置、服务升级、备份和账户操作放在设置的二级页面。",
+      "手机端保留至少 44px 的常用操作触摸区域，并遵循减少动态效果偏好。"
+    ],
+    "donts": [
+      "不要恢复系统默认下拉框或混用不同风格的应用图标。",
+      "不要在纯图标选择区增加逐项文字、文件路径或卡片说明。",
+      "不要拉伸图标或用大号线条菜单图形替代彩色应用底板。",
+      "不要把管理表单、长说明和全部服务状态堆到桌面首页。",
+      "不要把截图或浏览器检查当作真实手机硬件验收。"
+    ]
+  }
+}

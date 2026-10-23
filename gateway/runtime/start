@@ -1,0 +1,39 @@
+#!/bin/bash
+set -Eeuo pipefail
+export DATA_DIR=${DATA_DIR:-/data}
+export SAFE_PATHS=$DATA_DIR
+mkdir -p "$DATA_DIR" /run/gateway /run/tailscale /var/log/supervisor
+if [[ -n ${GATEWAY_LAN_ADDRESS:-} ]]; then
+  iface=${GATEWAY_LAN_INTERFACE:-$(ip -j -d link show | python3 -c 'import json,sys;print(next(x["ifname"] for x in json.load(sys.stdin) if x.get("linkinfo",{}).get("info_kind")=="macvlan"))')}
+  ip addr replace "$GATEWAY_LAN_ADDRESS" dev "$iface"
+  ip link set "$iface" up
+  ip route replace default via "${GATEWAY_LAN_ROUTER:?Set upstream router}" dev "$iface"
+else
+  iface=$(ip -4 route show default | awk '{for(i=1;i<=NF;i++)if($i=="dev"){print $(i+1);exit}}')
+fi
+export GATEWAY_RUNTIME_INTERFACE=$iface
+python3 /opt/gateway/app/state.py
+python3 /opt/gateway/runtime/account.py
+unset GATEWAY_CONTAINER_PASSWORD GATEWAY_ADMIN_PASSWORD
+if [[ ${GATEWAY_MODE:-true} == true ]]; then
+  ip rule show | grep -q 'fwmark 0x1a0a.*lookup main' || ip rule add priority 8000 fwmark 6666 lookup main
+  iptables -t nat -C POSTROUTING -o "$iface" -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o "$iface" -j MASQUERADE
+  for proto in tcp udp; do
+    iptables -t nat -C PREROUTING -i "$iface" -p "$proto" --dport 53 -j REDIRECT --to-ports 5353 2>/dev/null || iptables -t nat -I PREROUTING 1 -i "$iface" -p "$proto" --dport 53 -j REDIRECT --to-ports 5353
+  done
+  lan=$(PYTHONPATH=/opt/gateway/app python3 -c 'from state import lan_networks; print(lan_networks()[0])')
+  if [[ -n $lan ]]; then
+    ip rule show | grep -q "5200:.*to $lan lookup main" || ip rule add pref 5200 to "$lan" lookup main
+    iptables -t nat -C POSTROUTING -s "$lan" -o tailscale0 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s "$lan" -o tailscale0 -j MASQUERADE
+  fi
+  iptables -t mangle -C FORWARD -o tailscale0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || iptables -t mangle -A FORWARD -o tailscale0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+  if [[ -n ${GATEWAY_HOST_ADDRESS:-} && -n ${GATEWAY_BRIDGE_ROUTER:-} ]]; then
+    bridgeiface=$(ip -j -4 addr | python3 -c 'import os,json,sys,ipaddress;gw=ipaddress.ip_address(os.environ["GATEWAY_BRIDGE_ROUTER"]);print(next(x["ifname"] for x in json.load(sys.stdin) for a in x["addr_info"] if a["family"]=="inet" and gw in ipaddress.ip_network(a["local"]+"/"+str(a["prefixlen"]),strict=False)))')
+    ip route replace "$GATEWAY_HOST_ADDRESS/32" via "$GATEWAY_BRIDGE_ROUTER" dev "$bridgeiface"
+  fi
+  for client in ${GATEWAY_BLOCK_DIRECT_CLIENTS:-}; do
+    iptables -C FORWARD -s "$client/32" -o "$iface" ! -d "$lan" -j REJECT 2>/dev/null || iptables -I FORWARD -s "$client/32" -o "$iface" ! -d "$lan" -j REJECT
+  done
+fi
+/opt/gateway/runtime/service mihomo-test
+exec supervisord -n -c /opt/gateway/runtime/supervisord.conf

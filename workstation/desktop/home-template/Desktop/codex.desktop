@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Codex CLI
+Exec=xfce4-terminal --hold --command="/usr/bin/python3 /etc/workstation/desktop-cli.py codex"
+Icon=applications-development
+Terminal=false
+StartupNotify=true

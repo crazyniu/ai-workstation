@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Gateway · 网关桌面</title>
+  <link rel="icon" href="/icons/server.svg">
+  <link rel="stylesheet" href="/vendor/winbox/winbox.min.css">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/loading.css">
+  <link rel="stylesheet" href="/favicon.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="desktop-toolbar" aria-label="桌面工具">
+      <button id="show-desktop" title="显示桌面" aria-label="显示桌面"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
+      <button id="open-settings" title="控制面板" aria-label="控制面板"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor" stroke="none"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></g></svg></button>
+      <span class="toolbar-divider"></span><a class="brand" href="/" aria-label="网关桌面">Gateway</a>
+    </div>
+    <div class="top-actions">
+      <button id="add" title="添加链接" aria-label="添加链接"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button id="open-personalization" title="个性化设置" aria-label="个性化设置"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m4 16 5-5 4 4 3-3 5 5"/><circle cx="16.5" cy="8.5" r="1.5"/></svg></button>
+    </div>
+  </header>
+  <main class="desktop-workspace">
+    <section class="desktop" id="desktop" aria-label="桌面应用"></section>
+    <footer class="desktop-footer"><span id="home-domain"></span></footer>
+  </main>
+
+  <dialog id="auth-dialog" aria-labelledby="auth-title">
+    <form id="auth-form" class="auth">
+      <img class="auth-icon" src="/icons/server.svg" alt="" width="64" height="64">
+      <h1 id="auth-title">欢迎使用 Gateway</h1><p id="auth-copy"></p>
+      <label>管理员密码<input type="password" id="password" autocomplete="current-password" required maxlength="256" placeholder="输入管理员密码"></label>
+      <label id="confirm-field" hidden>确认密码<input type="password" id="confirm-password" autocomplete="new-password" placeholder="再次输入密码"></label>
+      <p class="feedback" id="auth-message" role="status"></p><button class="primary" type="submit" id="auth-submit">登录</button>
+    </form>
+  </dialog>
+
+  <dialog id="settings-dialog" class="settings-window is-overview" aria-labelledby="settings-title">
+    <header class="window-header">
+      <div class="window-controls"><button class="traffic-close" id="close-settings" aria-label="关闭设置"></button><button class="traffic-min" id="minimize-settings" aria-label="最小化设置"></button><button class="traffic-max" id="maximize-settings" aria-label="最大化设置"></button></div>
+      <h1 id="settings-title"><img src="/icons/settings.svg" alt="">控制面板</h1>
+    </header>
+    <div class="settings-body">
+      <nav id="settings-nav" aria-label="设置分类">
+        <button class="nav-overview" data-page="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>所有设置</span></button>
+        <p class="nav-group">连接与访问</p>
+        <button data-page="proxy"><img src="/icons/clash.svg" alt=""><span>代理配置</span></button>
+        <button data-page="dns"><img src="/icons/globe.svg" alt=""><span>DNS 与访问</span></button>
+        <button data-page="tailscale"><img src="/icons/tailscale.svg" alt=""><span>Tailscale</span></button>
+        <p class="nav-group">通用设置</p>
+        <button data-page="desktop"><img src="/icons/folder.svg" alt=""><span>桌面管理</span></button>
+        <button data-page="account"><img src="/icons/settings.svg" alt=""><span>账户</span></button>
+        <p class="nav-group">系统服务</p>
+        <button data-page="updates"><img src="/icons/update.svg" alt=""><span>服务升级</span></button>
+        <button data-page="backup"><img src="/icons/server.svg" alt=""><span>备份与恢复</span></button>
+      </nav>
+      <div class="content" id="settings-content">
+        <p id="message" class="feedback" role="status" aria-live="polite"></p>
+        <section id="settings-overview" data-section="overview">
+          <div class="settings-group"><h2>连接与访问</h2><div class="settings-grid">
+            <button data-page="proxy"><img src="/icons/clash.svg" alt=""><span>代理配置</span></button>
+            <button data-page="dns"><img src="/icons/globe.svg" alt=""><span>DNS 与访问</span></button>
+            <button data-page="tailscale"><img src="/icons/tailscale.svg" alt=""><span>Tailscale</span></button>
+            <a href="/adguard/" target="_blank" rel="noopener"><img src="/icons/adguard.svg" alt=""><span>广告过滤</span></a>
+          </div></div>
+          <div class="settings-group"><h2>通用设置</h2><div class="settings-grid">
+            <button data-page="desktop"><img src="/icons/folder.svg" alt=""><span>桌面管理</span></button>
+            <button data-personalization><img src="/icons/appearance.svg" alt=""><span>个性化设置</span></button>
+            <button data-page="account"><img src="/icons/settings.svg" alt=""><span>账户</span></button>
+          </div></div>
+          <div class="settings-group"><h2>系统服务</h2><div class="settings-grid">
+            <button data-page="updates"><img src="/icons/update.svg" alt=""><span>服务升级</span></button>
+            <button data-page="backup"><img src="/icons/server.svg" alt=""><span>备份与恢复</span></button>
+            <a id="source-link" href="https://github.com/crazyniu/ai-workstation" target="_blank" rel="noopener noreferrer"><img src="/icons/github.svg" alt=""><span>源码</span></a>
+          </div></div>
+          <footer class="settings-version"><span id="gateway-version">版本信息不可用</span></footer>
+        </section>
+
+        <section data-section="proxy" hidden>
+          <div class="page-heading"><h2>代理配置</h2><p class="muted">上传 Clash / Mihomo 的 YAML 配置文件，即可配置代理。节点选择与测速在 Clash 中完成。</p></div>
+          <div class="config-upload"><button id="upload-config" class="primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>上传配置文件</button><div class="config-file-state"><span id="config-filename" role="status">尚未选择文件</span><span class="muted">支持 .yaml / .yml，最大 2 MB</span></div></div>
+          <input id="config-file" type="file" accept=".yaml,.yml" hidden>
+          <div class="row spread config-editor-heading"><h3>查看与编辑</h3><button id="save-config" class="primary">保存并应用</button></div>
+          <div id="config-editor"><textarea id="config-content" aria-label="Mihomo 配置" spellcheck="false"></textarea></div><p class="muted" id="config-note">上传后可以查看和编辑内容，点击“保存并应用”后生效。配置校验失败时保留原配置。</p>
+          <details class="advanced-settings"><summary>高级：订阅链接</summary><div class="advanced-settings-content"><p class="muted">只有使用订阅链接时才需要展开。已上传配置文件，可直接使用上方的文件管理。</p>
+            <form id="subscription-form"><label>订阅链接<input id="subscription-url" type="url" required placeholder="https://example.com/config.yaml" autocomplete="off"></label>
+              <div class="row form-actions"><label>自动更新<select id="subscription-interval"><option value="0">关闭</option><option value="1">每小时</option><option value="6">每 6 小时</option><option value="12">每 12 小时</option><option value="24">每天</option></select></label><button type="submit" class="primary">导入订阅</button><button type="button" id="refresh-subscription">立即刷新</button></div>
+              <p class="muted" id="subscription-status"></p>
+            </form>
+          </div></details>
+        </section>
+        <section data-section="dns" hidden>
+          <div class="page-heading"><h2>DNS 与访问</h2><p class="muted">设备使用本机 DNS 后，可以通过本地域名进入桌面。</p></div>
+          <form id="domain-form"><label>主页域名<input id="domain" required placeholder="home.arpa"></label><p id="domain-address" class="muted"></p><button class="primary">保存域名</button></form>
+          <div class="section-divider"></div><h3>去广告与 DNS 查询</h3><p class="muted">过滤规则、白名单、DNS 上游与查询日志由 AdGuard Home 管理。</p><a href="/adguard/" target="_blank" rel="noopener" class="button-link">打开 AdGuard Home</a><p class="muted">浏览器安全 DNS 若绕过本网关，本地域名可能无法解析。网关 IP 始终可以作为备用入口。</p>
+        </section>
+        <section data-section="tailscale" hidden>
+          <div class="page-heading"><h2>Tailscale</h2></div>
+          <dl id="tailscale-status"></dl>
+          <div class="row wrap" id="tailscale-actions">
+            <button id="tailscale-action" data-ts="connect" class="primary" disabled>连接</button>
+            <a id="tailscale-login-link" class="button-link primary" target="_blank" rel="noopener noreferrer" hidden>打开授权页面</a>
+          </div>
+          <p id="tailscale-refresh-status" class="muted" role="status">状态自动更新</p>
+          <div class="section-divider"></div>
+          <h3>内网访问</h3>
+          <dl><dt>自动识别子网</dt><dd id="tailscale-subnets">—</dd></dl>
+          <p class="muted" id="tailscale-approval" role="status">连接后自动配置内网访问，无需填写网段。</p>
+          <p id="tailscale-admin" hidden><a class="button-link" href="https://login.tailscale.com/admin/machines" target="_blank" rel="noopener noreferrer">打开 Tailscale 管理控制台</a></p>
+          <details id="tailscale-account" class="advanced-settings" hidden><summary>账号操作</summary><p class="muted">断开连接会保留登录身份；退出账号后需要重新授权。</p><button data-ts="logout" class="danger">退出账号</button></details>
+        </section>
+        <section data-section="updates" hidden>
+          <div class="row spread page-heading"><h2>服务升级</h2><button id="check-updates">检查更新</button></div><p class="muted">从官方来源获取稳定版本，校验后逐项升级。升级期间对应服务会短暂中断。</p><div id="components" class="service-list"></div><p id="upgrade-status" class="muted" role="status"></p><button id="refresh-job" hidden>刷新任务</button><div class="section-divider"></div><h3>网关镜像</h3><p class="muted">后台和基础系统随 Docker 镜像更新。更换镜像前先导出容器内部数据，创建新容器后恢复并验证。直接删除或重建会丢失内部数据。</p>
+        </section>
+        <section data-section="desktop" hidden>
+          <div class="row spread page-heading"><h2>桌面管理</h2><button id="add-from-settings" class="primary">添加链接</button></div><p class="muted">内置入口始终保留。自定义链接可以指向其他设备的 IP、域名或端口。</p><div id="link-list" class="service-list"></div>
+        </section>
+        <section data-section="account" hidden>
+          <div class="page-heading"><h2>账户</h2><p class="muted">管理进入网关桌面使用的密码。</p></div>
+          <form id="password-form" class="account-form">
+            <label>当前密码<input type="password" id="current-password" autocomplete="current-password" required maxlength="256" placeholder="输入当前密码"></label>
+            <label>新密码<input type="password" id="new-password" autocomplete="new-password" required maxlength="256" placeholder="输入新密码"></label>
+            <label>确认新密码<input type="password" id="repeat-password" autocomplete="new-password" required maxlength="256" placeholder="再次输入新密码"></label>
+            <button class="primary" type="submit">保存密码</button>
+          </form>
+          <div class="section-divider"></div><h3>登录状态</h3><p class="muted">退出后，再次进入桌面需要输入密码。</p><button id="logout">退出后台登录</button>
+        </section>
+        <section data-section="backup" hidden>
+          <div class="page-heading"><h2>备份与恢复</h2><p>导出代理、DNS、桌面、订阅和 Tailscale 身份配置。</p></div><p class="muted">备份包含节点凭据和登录身份，请妥善保存；管理员密码不会导出。</p><button class="primary" id="backup">下载备份</button><div class="section-divider"></div><h3>从备份恢复</h3><p class="muted">恢复会替换当前配置及 Tailscale 身份，并短暂重启服务。操作前自动保存原配置。</p>
+          <div class="file-picker"><input id="restore-file" type="file" accept=".tgz,.gz" hidden><label class="button-link" for="restore-file">选择备份文件</label><span id="restore-filename" class="muted">未选择文件</span></div>
+          <label class="check"><input id="restore-confirm" type="checkbox">我确认替换当前配置和远程登录身份</label><button id="restore" class="danger">恢复备份</button>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="link-dialog" class="small-window" aria-labelledby="link-title">
+    <form id="link-form" class="link-form">
+      <header class="window-header"><div class="window-controls"><button type="button" class="traffic-close" id="close-link" aria-label="关闭链接编辑"></button></div><h2 id="link-title">添加链接</h2></header>
+      <div class="form-content"><label>名称<input id="link-name" required maxlength="80" placeholder="例如：我的 NAS"></label><label>链接地址<input id="link-url" type="url" required placeholder="http://192.168.10.10:8080" maxlength="500"></label><div class="icon-picker"><div class="icon-picker-heading"><span id="icon-picker-label">图标</span></div><input id="link-icon" type="hidden" value="auto"><button type="button" id="auto-icon" class="auto-icon-choice" aria-pressed="true"><span class="auto-icon-preview" aria-hidden="true"><img id="auto-icon-preview" src="/icons/link.svg" alt="" width="40" height="40"><span class="loading-spinner favicon-spinner"></span></span><span class="auto-icon-copy"><strong>自动获取网站图标</strong><span>根据链接地址获取，也可以选择下方图标</span></span><svg class="auto-icon-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></button><label class="icon-search-label"><span class="visually-hidden">搜索图标</span><input id="icon-search" type="search" placeholder="搜索软件或图标" autocomplete="off"></label><div id="icon-choices" class="icon-choices" role="listbox" aria-labelledby="icon-picker-label"></div><p id="icon-empty" class="muted" hidden>没有找到图标，试试其他名称。</p></div><label class="check"><input id="link-newtab" type="checkbox" checked>在新标签页打开</label><p id="link-message" class="feedback" role="status"></p></div>
+      <div class="window-actions"><button class="primary" type="submit">保存链接</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="personalization-dialog" class="personalization-window" aria-labelledby="personalization-title">
+    <header class="window-header"><div class="window-controls"><button class="traffic-close" id="close-personalization" aria-label="关闭个性化设置"></button></div><h2 id="personalization-title">个性化设置</h2></header>
+    <div class="personalization-content"><div class="appearance-heading"><h3>外观模式</h3><fieldset class="theme-options"><legend class="visually-hidden">外观模式</legend><label><input type="radio" name="appearance-theme" value="light"><span>亮色</span></label><label><input type="radio" name="appearance-theme" value="dark"><span>暗色</span></label><label><input type="radio" name="appearance-theme" value="auto" checked><span>跟随系统</span></label></fieldset></div><div class="wallpaper-monitor"><button id="wallpaper-preview" aria-label="更改壁纸"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3M6 16l4-5 3 3 2-2 3 4"/><circle cx="15.5" cy="7.5" r="1"/></svg>更改壁纸</span></button></div><input id="wallpaper-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+      <div class="wallpaper-gallery-heading"><h3>默认壁纸</h3><button class="text-button" type="button" id="wallpaper-upload">上传图片</button></div><div id="wallpaper-gallery" class="wallpaper-gallery" role="group" aria-label="默认壁纸"></div>
+      <fieldset class="wallpaper-fit"><legend class="visually-hidden">壁纸显示方式</legend><label><input type="radio" name="wallpaper-fit" value="cover" checked>填充</label><label><input type="radio" name="wallpaper-fit" value="contain">适应</label><label><input type="radio" name="wallpaper-fit" value="stretch">拉伸</label><label><input type="radio" name="wallpaper-fit" value="center">居中</label><label><input type="radio" name="wallpaper-fit" value="tile">平铺</label></fieldset>
+      <button class="text-button" id="wallpaper-reset">恢复默认壁纸</button><p class="feedback" id="personalization-message" role="status"></p>
+    </div>
+    <div class="window-actions"><button id="wallpaper-cancel">取消</button><button class="primary" id="wallpaper-apply">应用</button></div>
+  </dialog>
+  <dialog id="confirm-dialog" class="confirm-window" aria-labelledby="confirm-title"><div class="confirm-content"><h2 id="confirm-title">确认操作</h2><p id="confirm-copy"></p></div><div class="window-actions"><button id="confirm-cancel">取消</button><button class="primary" id="confirm-accept">确定</button></div></dialog>
+  <div id="desktop-context-menu" class="context-menu" role="menu" aria-label="桌面菜单" hidden></div>
+  <div id="desktop-toast" class="desktop-toast" role="status" hidden></div>
+  <script src="/assets/config-editor.bundle.js"></script>
+  <script src="/vendor/winbox/winbox.min.js"></script>
+  <script src="/app.js"></script>
+  <script src="/build-info.js"></script>
+</body>
+</html>

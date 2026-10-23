@@ -1,0 +1,17 @@
+services:
+  workstation:
+    image: ghcr.io/crazyniu/ai-workstation:latest
+    platform: linux/amd64
+    hostname: ai-workstation
+    restart: unless-stopped
+    shm_size: 512mb
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./security/seccomp-chrome.json
+    ports:
+      - "127.0.0.1:${SSH_PORT:-2222}:22"
+      - "127.0.0.1:${VNC_PORT:-5901}:5901"
+    environment:
+      DEV_PASSWORD: ${WORKSTATION_PASSWORD:-admin}
+      VNC_PASSWORD: ${VNC_PASSWORD:-admin}
+      ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-}

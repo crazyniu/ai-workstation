@@ -1,0 +1,31 @@
+/* A request owns the loading state of its content region, never the whole window. */
+.loading-region { position: relative; }
+.loading-overlay {
+  position: absolute;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--blue);
+  box-shadow: 0 5px 18px #14314226;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.loading-spinner {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: currentColor;
+  border-right-color: currentColor;
+  border-radius: 50%;
+  animation: gateway-loading-turn .8s linear infinite;
+}
+@keyframes gateway-loading-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner { animation: none; }
+}

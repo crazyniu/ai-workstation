@@ -1,0 +1,88 @@
+name: Container images
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: gateway
+            image: ai-workstation-gateway
+          - component: workstation
+            image: ai-workstation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: docker/setup-buildx-action@v3
+      - name: Prepare gateway components and tests
+        if: matrix.component == 'gateway'
+        run: |
+          python3 -m pip install PyYAML
+          python3 gateway/scripts/fetch-components.py amd64
+          python3 -m unittest discover -s gateway/tests -v
+          node --check gateway/web/app.js
+          node --check gateway/web/build-info.js
+      - name: Build candidate
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.component }}
+          platforms: linux/amd64
+          load: true
+          tags: candidate:${{ matrix.component }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+      - name: Verify gateway clean deployment
+        if: matrix.component == 'gateway'
+        run: |
+          sudo mkdir -p /dev/net
+          if [ ! -c /dev/net/tun ]; then sudo mknod /dev/net/tun c 10 200; fi
+          bash gateway/tests/clean-smoke.sh candidate:gateway
+      - name: Verify workstation clean deployment
+        if: matrix.component == 'workstation'
+        run: bash workstation/tests/smoke.sh candidate:workstation
+      - name: Verify workstation internal storage
+        if: matrix.component == 'workstation'
+        run: bash workstation/tests/internal-storage.sh candidate:workstation
+      - name: Audit all image layers
+        run: docker image save candidate:${{ matrix.component }} | python3 ${{ matrix.component }}/tests/audit-image.py
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish verified candidate
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          COMMIT: ${{ github.sha }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          docker tag candidate:${{ matrix.component }} "$IMAGE:sha-$COMMIT"
+          docker push "$IMAGE:sha-$COMMIT"
+          if [ "$REF_TYPE" = tag ]; then
+            docker tag candidate:${{ matrix.component }} "$IMAGE:$REF_NAME"
+            docker push "$IMAGE:$REF_NAME"
+          else
+            docker tag candidate:${{ matrix.component }} "$IMAGE:latest"
+            docker push "$IMAGE:latest"
+          fi

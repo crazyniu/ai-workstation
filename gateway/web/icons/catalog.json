@@ -1,0 +1,314 @@
+[
+  {
+    "id": "clash",
+    "name": "Clash",
+    "category": "网关内置",
+    "path": "/icons/clash.svg"
+  },
+  {
+    "id": "adguard",
+    "name": "AdGuard Home",
+    "category": "网关内置",
+    "path": "/icons/adguard.svg"
+  },
+  {
+    "id": "tailscale",
+    "name": "Tailscale",
+    "category": "网关内置",
+    "path": "/icons/tailscale.svg"
+  },
+  {
+    "id": "settings",
+    "name": "设置",
+    "category": "网关内置",
+    "path": "/icons/settings.svg"
+  },
+  {
+    "id": "dns",
+    "name": "DNS 与访问",
+    "category": "网关内置",
+    "path": "/icons/dns.svg"
+  },
+  {
+    "id": "backup",
+    "name": "备份与恢复",
+    "category": "网关内置",
+    "path": "/icons/backup.svg"
+  },
+  {
+    "id": "update",
+    "name": "服务升级",
+    "category": "网关内置",
+    "path": "/icons/update.svg"
+  },
+  {
+    "id": "appearance",
+    "name": "个性化设置",
+    "category": "网关内置",
+    "path": "/icons/appearance.svg"
+  },
+  {
+    "id": "link",
+    "name": "链接",
+    "category": "通用",
+    "path": "/icons/link.svg"
+  },
+  {
+    "id": "server",
+    "name": "服务器",
+    "category": "通用",
+    "path": "/icons/server.svg"
+  },
+  {
+    "id": "folder",
+    "name": "文件夹",
+    "category": "通用",
+    "path": "/icons/folder.svg"
+  },
+  {
+    "id": "globe",
+    "name": "网站",
+    "category": "通用",
+    "path": "/icons/globe.svg"
+  },
+  {
+    "id": "docker",
+    "name": "Docker",
+    "category": "服务与容器",
+    "path": "/icons/docker.svg"
+  },
+  {
+    "id": "github",
+    "name": "GitHub",
+    "category": "开发工具",
+    "path": "/icons/github.svg"
+  },
+  {
+    "id": "vscode",
+    "name": "Visual Studio Code",
+    "category": "开发工具",
+    "path": "/icons/vscode.svg"
+  },
+  {
+    "id": "chrome",
+    "name": "Google Chrome",
+    "category": "浏览器",
+    "path": "/icons/chrome.svg"
+  },
+  {
+    "id": "firefox",
+    "name": "Firefox",
+    "category": "浏览器",
+    "path": "/icons/firefox.svg"
+  },
+  {
+    "id": "ubuntu",
+    "name": "Ubuntu",
+    "category": "系统与设备",
+    "path": "/icons/ubuntu.svg"
+  },
+  {
+    "id": "windows",
+    "name": "Windows",
+    "category": "系统与设备",
+    "path": "/icons/windows.svg"
+  },
+  {
+    "id": "apple",
+    "name": "Apple",
+    "category": "系统与设备",
+    "path": "/icons/apple.svg"
+  },
+  {
+    "id": "nas",
+    "name": "NAS",
+    "category": "系统与设备",
+    "path": "/icons/nas.svg"
+  },
+  {
+    "id": "homeassistant",
+    "name": "Home Assistant",
+    "category": "服务与容器",
+    "path": "/icons/homeassistant.svg"
+  },
+  {
+    "id": "jellyfin",
+    "name": "Jellyfin",
+    "category": "影音与相册",
+    "path": "/icons/jellyfin.svg"
+  },
+  {
+    "id": "plex",
+    "name": "Plex",
+    "category": "影音与相册",
+    "path": "/icons/plex.svg"
+  },
+  {
+    "id": "nextcloud",
+    "name": "Nextcloud",
+    "category": "文件与同步",
+    "path": "/icons/nextcloud.svg"
+  },
+  {
+    "id": "portainer",
+    "name": "Portainer",
+    "category": "服务与容器",
+    "path": "/icons/portainer.svg"
+  },
+  {
+    "id": "syncthing",
+    "name": "Syncthing",
+    "category": "文件与同步",
+    "path": "/icons/syncthing.svg"
+  },
+  {
+    "id": "immich",
+    "name": "Immich",
+    "category": "影音与相册",
+    "path": "/icons/immich.svg"
+  },
+  {
+    "id": "qbittorrent",
+    "name": "qBittorrent",
+    "category": "下载工具",
+    "path": "/icons/qbittorrent.svg"
+  },
+  {
+    "id": "aria2",
+    "name": "Aria2",
+    "category": "下载工具",
+    "path": "/icons/aria2.svg"
+  },
+  {
+    "id": "terminal",
+    "name": "终端",
+    "category": "开发工具",
+    "path": "/icons/terminal.svg"
+  },
+  {
+    "id": "files",
+    "name": "文件管理",
+    "category": "文件与同步",
+    "path": "/icons/files.svg"
+  },
+  {
+    "id": "openwrt",
+    "name": "OpenWrt",
+    "category": "网络与安全",
+    "path": "/icons/openwrt.svg"
+  },
+  {
+    "id": "nginx",
+    "name": "Nginx",
+    "category": "服务与容器",
+    "path": "/icons/nginx.svg"
+  },
+  {
+    "id": "redis",
+    "name": "Redis",
+    "category": "服务与容器",
+    "path": "/icons/redis.svg"
+  },
+  {
+    "id": "postgres",
+    "name": "PostgreSQL",
+    "category": "服务与容器",
+    "path": "/icons/postgres.svg"
+  },
+  {
+    "id": "grafana",
+    "name": "Grafana",
+    "category": "监控与管理",
+    "path": "/icons/grafana.svg"
+  },
+  {
+    "id": "uptime",
+    "name": "Uptime Kuma",
+    "category": "监控与管理",
+    "path": "/icons/uptime.svg"
+  },
+  {
+    "id": "vaultwarden",
+    "name": "Vaultwarden",
+    "category": "网络与安全",
+    "path": "/icons/vaultwarden.svg"
+  },
+  {
+    "id": "wireguard",
+    "name": "WireGuard",
+    "category": "网络与安全",
+    "path": "/icons/wireguard.svg"
+  },
+  {
+    "id": "mosquitto",
+    "name": "Mosquitto",
+    "category": "服务与容器",
+    "path": "/icons/mosquitto.svg"
+  },
+  {
+    "id": "transmission",
+    "name": "Transmission",
+    "category": "下载工具",
+    "path": "/icons/transmission.svg"
+  },
+  {
+    "id": "gitea",
+    "name": "Gitea",
+    "category": "开发工具",
+    "path": "/icons/gitea.svg"
+  },
+  {
+    "id": "speedtest",
+    "name": "网络测速",
+    "category": "网络与安全",
+    "path": "/icons/speedtest.svg"
+  },
+  {
+    "id": "photos",
+    "name": "照片",
+    "category": "影音与相册",
+    "path": "/icons/photos.svg"
+  },
+  {
+    "id": "music",
+    "name": "音乐",
+    "category": "影音与相册",
+    "path": "/icons/music.svg"
+  },
+  {
+    "id": "hermes",
+    "name": "Hermes",
+    "category": "AI 与工作台",
+    "path": "/icons/hermes.svg"
+  },
+  {
+    "id": "workbuddy",
+    "name": "WorkBuddy",
+    "category": "AI 与工作台",
+    "path": "/icons/workbuddy.svg"
+  },
+  {
+    "id": "alist",
+    "name": "AList",
+    "category": "文件与同步",
+    "path": "/icons/alist.svg"
+  },
+  {
+    "id": "filebrowser",
+    "name": "File Browser",
+    "category": "文件与同步",
+    "path": "/icons/filebrowser.svg"
+  },
+  {
+    "id": "proxmox",
+    "name": "Proxmox",
+    "category": "系统与设备",
+    "path": "/icons/proxmox.svg"
+  },
+  {
+    "id": "n8n",
+    "name": "n8n",
+    "category": "AI 与工作台",
+    "path": "/icons/n8n.svg"
+  }
+]
