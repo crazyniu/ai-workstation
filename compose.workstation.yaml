@@ -1,0 +1,37 @@
+# Independent workstation on host A; gateway must be reachable on this LAN.
+# No dependency on a local gateway container or Docker network from host B.
+name: ai-workstation-workstation
+services:
+  workstation:
+    image: ${WORKSTATION_IMAGE:-ghcr.io/crazyniu/ai-workstation:latest}
+    platform: linux/amd64
+    hostname: ai-workstation
+    restart: unless-stopped
+    shm_size: 512mb
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./workstation/security/seccomp-chrome.json
+    environment:
+      DEV_PASSWORD: ${WORKSTATION_PASSWORD:-admin}
+      VNC_PASSWORD: ${VNC_PASSWORD:-admin}
+      ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-}
+      # OS region only; these do not select a proxy node or change public egress.
+      WORKSTATION_COUNTRY: ${WORKSTATION_COUNTRY:-SG}
+      WORKSTATION_LANGUAGE: ${WORKSTATION_LANGUAGE:-en}
+      WORKSTATION_TIMEZONE: ${WORKSTATION_TIMEZONE:-Asia/Singapore}
+      HTTP_PROXY: http://${GATEWAY_ADDRESS:-192.168.1.250}:7890
+      HTTPS_PROXY: http://${GATEWAY_ADDRESS:-192.168.1.250}:7890
+      NO_PROXY: ${WORKSTATION_NO_PROXY:-localhost,127.0.0.1,home.arpa,.home.arpa,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12}
+    dns: ["${GATEWAY_ADDRESS:-192.168.1.250}"]
+    networks:
+      workstation_lan:
+        ipv4_address: ${WORKSTATION_ADDRESS:-192.168.1.251}
+networks:
+  workstation_lan:
+    driver: macvlan
+    driver_opts:
+      parent: ${LAN_INTERFACE:-eth0}
+    ipam:
+      config:
+        - subnet: ${LAN_SUBNET:-192.168.1.0/24}
+          gateway: ${GATEWAY_ADDRESS:-192.168.1.250}

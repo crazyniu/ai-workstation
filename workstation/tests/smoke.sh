@@ -59,6 +59,28 @@ wait_desktop() {
     return 1
 }
 wait_desktop
+docker exec "$name" test -x /usr/local/bin/reset-claude-user
+# Exercise the installed command against a dedicated temporary HOME only.
+# No real account state is removed by startup or acceptance.
+docker exec -i --user 1100:1100 "$name" python3 - <<'PYRESET'
+import json,os,pathlib,subprocess,tempfile
+with tempfile.TemporaryDirectory(prefix='claude-reset-smoke-') as folder:
+    home=pathlib.Path(folder)
+    config=home/'.claude'
+    config.mkdir()
+    account=home/'.claude.json'
+    account.write_text(json.dumps({'userID':'fixture-user','mcpServers':{'keep':{}}}))
+    credentials=config/'.credentials.json'
+    credentials.write_text(json.dumps({'claudeAiOauth':{'accessToken':'fixture-only'},'mcpOAuth':{'keep':{}}}))
+    environment={k:v for k,v in os.environ.items() if not k.startswith('ANTHROPIC_') and not k.startswith('CLAUDE_CODE_OAUTH_') and k!='CLAUDE_CONFIG_DIR'}
+    command=['reset-claude-user','--home',str(home)]
+    subprocess.run(command,env=environment,check=True,stdout=subprocess.DEVNULL)
+    assert 'userID' in json.loads(account.read_text()),'Preview changed account'
+    subprocess.run(command+['--apply'],env=environment,check=True,stdout=subprocess.DEVNULL)
+    assert json.loads(account.read_text())=={'mcpServers':{'keep':{}}}
+    assert json.loads(credentials.read_text())=={'mcpOAuth':{'keep':{}}}
+print('PASS: installed Claude reset command previews safely and preserves MCP configuration/credentials.')
+PYRESET
 docker exec -i "$name" python3 - < "$repo/tests/auth-smoke.py"
 
 dev_exec() {

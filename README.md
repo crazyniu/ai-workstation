@@ -5,6 +5,8 @@
 
 面向家庭网络与远程开发的双容器环境：一个带桌面式 Web 后台的网关，一个可通过 SSH / VNC 使用的 Linux 开发工作站。
 
+工作站默认新加坡英文，可配置国家、语言和时区。两个角色既可同机运行，也可分别部署在宿主机 A/B；独立部署入口、网络前提和初始化参数见 [AI 安装指南](AI-INSTALL.md)。
+
 ## 让 AI 帮你安装
 
 点击下面代码块右上角的复制按钮，发送给能操作你主机的 AI 助手。也可以直接发送本仓库链接并说明“请按仓库的 AI-INSTALL.md 帮我安装”；仓库提供 [AI 安装指引](AI-INSTALL.md) 和 [Agent 入口](AGENTS.md)。
@@ -15,6 +17,7 @@
 
 目标是在 Linux amd64 / NAS Docker 主机上部署两个服务：
 Clash 网关默认 192.168.1.250，Claude 开发工作站默认 192.168.1.251。
+先确定网关和工作站是否位于同一宿主机；分开时分别盘点 A/B。
 先检查 Docker、Compose、LAN 网卡、路由、地址占用以及已有容器和数据。
 地址和网卡必须依据现场核实；缺少关键参数时向我询问，不能猜测。
 
@@ -22,6 +25,8 @@ Clash 网关默认 192.168.1.250，Claude 开发工作站默认 192.168.1.251。
 发现已有部署时先说明现状和方案，不删除或重建已有容器，不改动其他服务。
 首次安装使用仓库 deploy.sh；密码通过私有 .env 配置，不回显，不提交 Git。
 不擅自迁移 Docker 存储、修改主路由器或向公网开放端口。
+工作站默认 WORKSTATION_COUNTRY=SG、WORKSTATION_LANGUAGE=en、
+WORKSTATION_TIMEZONE=Asia/Singapore；按 AI-INSTALL.md 配置和验收。
 
 完成后验证容器状态、实际地址、Mounts、网关网页/DNS/代理、工作站 SSH/VNC，
 核对 Python 和工具版本；需要账号登录的服务交由我登录后再验证。
@@ -41,7 +46,7 @@ Clash 网关默认 192.168.1.250，Claude 开发工作站默认 192.168.1.251。
 
 - 桌面链接支持自动获取站点 favicon，也可手动选图标；提供壁纸、主题、排序与账户设置。
 - 网关统一管理代理配置、DNS、子网访问、组件升级与备份恢复。
-- 工作站的桌面和 CLI 默认经网关代理访问外网，局域网地址绕过显式代理。
+- LAN 部署中，工作站的桌面和 CLI 默认经网关代理访问外网，局域网地址绕过显式代理；bridge 部署使用配置的私有代理端点，代理留空时沿用宿主机正常出口。
 - 配置、HOME 和账号身份全部保存在各自容器内部。公开镜像包含程序和默认模板，个人订阅、身份和业务数据由用户自行配置。
 
 ## 每个容器的软件
@@ -75,6 +80,8 @@ Clash 网关默认 192.168.1.250，Claude 开发工作站默认 192.168.1.251。
 
 ## 首次部署
 
+下面示例为同机 LAN 部署。分开部署时先按 [AI 安装指南](AI-INSTALL.md#0-先确定角色宿主机和网络拓扑) 选择宿主机 A/B 的独立入口；不同网段的工作站使用 bridge 与可达的私有代理端点。
+
 需要接入局域网的 **Linux amd64 主机**、Docker Engine、**Docker Compose 2.33.1 或更新版本**、macvlan 支持和 `/dev/net/tun`。提前为两个容器保留未占用的 LAN 地址。Docker Desktop 默认虚拟网络不适用于这套地址方案。
 
 ```sh
@@ -89,6 +96,59 @@ chmod 600 .env
 [`.env.example`](.env.example) 列出全部参数。`LAN_INTERFACE` 必须是实际 LAN 网卡；需要访问 NAS 宿主时填写 `HOST_ADDRESS`。网关使用 control bridge 到达宿主，再为工作站转发该地址的访问。
 
 `deploy.sh` 只用于首次创建：项目已有运行中或已停止的容器时会拒绝执行，避免重新创建容器覆盖内部数据。日常重启使用 `docker compose restart`。
+
+### 按宿主机选择部署入口
+
+工作站 251 可以位于宿主机 A，网关 250 可以位于宿主机 B。每台机器分别保存仓库和私有 `.env`，独立设置本机网卡、网络、密码与镜像版本。
+
+| 部署方式 | 首次创建命令 | Compose 文件 |
+| --- | --- | --- |
+| 同一宿主机、同一 LAN | `./deploy.sh` | `compose.yaml` |
+| 宿主机 B：独立网关 | `./deploy.sh gateway` | `compose.gateway.yaml` |
+| 宿主机 A：同一 LAN 的工作站 | `./deploy.sh workstation` | `compose.workstation.yaml` |
+| 宿主机 A：跨网段或 VPN 的工作站 | `./deploy.sh workstation-bridge` | `workstation/compose.yaml` |
+
+分开部署时先验收 B 的网关，再部署 A 的工作站。同一 LAN 的两个角色使用各自宿主机的 `LAN_INTERFACE`，通过实际 LAN 地址通信。跨网段时，在 A 的 `.env` 中将 `WORKSTATION_HTTP_PROXY` 和 `WORKSTATION_HTTPS_PROXY` 指向已确认可达的网关私有代理端点；该模式保留 A 的正常路由，DNS、UDP 与整机出口按实际网络单独配置。bridge 的 SSH/VNC 默认绑定 A 的 `127.0.0.1`，通过到 A 的 SSH 隧道访问。
+
+后续操作使用本次实际选定的 Compose 文件，例如在宿主机 A 的同 LAN 工作站部署目录中：
+
+```sh
+docker compose --env-file .env -f compose.workstation.yaml ps
+docker compose --env-file .env -f compose.workstation.yaml restart workstation
+```
+
+网关部署使用 `compose.gateway.yaml`；bridge 工作站使用 `workstation/compose.yaml`。独立入口通过网络连接远端网关，无需在 A 上同时运行 gateway 容器。各拓扑的前提与检查步骤见 [AI 安装指南](AI-INSTALL.md#0-先确定角色宿主机和网络拓扑)。
+
+### 工作站国家、语言和时区
+
+初始化默认使用新加坡英文，私有 `.env` 中对应参数为：
+
+```dotenv
+WORKSTATION_COUNTRY=SG
+WORKSTATION_LANGUAGE=en
+WORKSTATION_TIMEZONE=Asia/Singapore
+```
+
+国家使用大写两位代码，语言使用小写语言代码，两者组合为 `en_SG.UTF-8`；时区独立使用 IANA 名称。例如台湾繁体中文为 `TW / zh / Asia/Taipei`，美国英文（纽约）为 `US / en / America/New_York`。初始化按需生成镜像支持的 locale，并将配置应用到 SSH 登录和 XFCE 会话。
+
+已有容器可通过内部 `/etc/workstation/region.json` 覆盖地区配置，再重启同一容器；提供的字段优先于容器环境变量。修改 `.env` 后重启不会更新已有容器的环境变量定义。配置文件写法、参数校验和验收命令见 [AI 安装指南](AI-INSTALL.md#21-工作站国家语言和时区初始化)。地区设置控制容器内部语言、格式和时间，公网出口由网关和代理配置决定。
+
+地区初始化功能要求所选镜像包含 `/etc/workstation/region.py`。当前源码的验证与公开镜像发布状态见 [验证记录](workstation/VALIDATION.md)；部署前核对实际镜像版本。
+
+### 重置 Claude 用户信息
+
+工作站镜像安装 `reset-claude-user` 命令，在 251 的普通用户 `dev` 终端运行：
+
+```sh
+reset-claude-user          # 预览清理项目，不修改文件
+reset-claude-user --apply  # 关闭 Claude 后，执行本地身份与历史清理
+```
+
+清理 Claude Code 登录凭据、用户/设备标识、会话、输入历史、日志及旧配置备份；保留当前 MCP 配置、MCP OAuth 凭据、插件、技能、通用代理设置及实际项目文件。只修改选定 HOME 中的 Claude 数据及独立的认证变量声明，不清理浏览器登录、远端会话或共享 Shell 历史。执行时检查 Claude 进程及继承的认证环境变量，发现仍在使用的身份时拒绝清理。清理按需手动执行，容器启动不会自动重置账号。
+
+命令随包含本次脚本的新镜像提供。完整范围、从宿主机执行的命令及验证方法见 [AI 安装指南](AI-INSTALL.md#22-手动重置-claude-code-用户信息)。
+
+### LAN 访问入口
 
 | 入口 | 初始账号 / 密码 |
 | --- | --- |
@@ -129,7 +189,7 @@ python3 -m venv .venv
 . .venv/bin/activate
 python3 -m pip install PyYAML
 python3 -m unittest discover -s gateway/tests -v
-python3 -m unittest discover -s tests -p 'test_deploy.py' -v
+python3 -m unittest discover -s tests -p 'test_*.py' -v
 for test in workstation/tests/test-*.py; do python3 "$test"; done
 
 python3 gateway/scripts/fetch-components.py amd64
@@ -145,11 +205,17 @@ docker image save workstation-local:test | python3 workstation/tests/audit-image
 
 容器验证需要 Linux Docker 环境。GitHub Actions 会构建两个干净镜像，运行启动、内部存储和镜像层检查；主分支验证通过后发布 `latest` 与 `sha-<完整提交号>` 标签。使用固定 SHA 标签可选择已验证的版本。实时进度见 [Actions](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml)。
 
+默认分支通过 PR 和 `Required checks` 合并门槛保护，要求分支保持最新、审查讨论已解决，并禁止强推和删除。代码 PR 验证两个镜像；纯文档 PR 执行轻量检查并报告同一个必过结果。规则说明见 [贡献指南](CONTRIBUTING.md#默认分支保护)，版本化定义见 [main Ruleset](.github/rulesets/main.json)。
+
 | 路径 | 内容 |
 | --- | --- |
 | [`gateway/`](gateway/) | Web 后台、网关运行时、组件锁定文件和测试 |
 | [`workstation/`](workstation/) | 桌面环境、工具安装、启动配置和测试 |
 | [`compose.yaml`](compose.yaml) | 双容器网络与运行参数 |
+| [`compose.gateway.yaml`](compose.gateway.yaml) | 宿主机 B 的独立网关部署 |
+| [`compose.workstation.yaml`](compose.workstation.yaml) | 宿主机 A 的同 LAN 工作站部署 |
+| [`workstation/compose.yaml`](workstation/compose.yaml) | 跨网段私有代理或独立 bridge 工作站部署 |
+| [`AI-INSTALL.md`](AI-INSTALL.md) | 面向 AI 的拓扑选择、初始化、迁移和验收指南 |
 | [`tests/`](tests/) | 部署入口保护测试 |
 | [`docs/`](docs/) | 项目展示素材与来源说明 |
 

@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 """Initialize persistent user state and runtime-only credentials, then start services."""
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -22,6 +23,10 @@ def main():
     root_password = secret('ROOT_PASSWORD')
     if not 1 <= len(vnc_password.encode('ascii')) <= 8:
         raise ValueError('VNC password must be 1–8 ASCII bytes for Mac Screen Sharing')
+    # Apply region to system/PAM configuration and every supervised child.
+    # Fail before touching user state if a requested locale/timezone is invalid.
+    region = subprocess.check_output(['python3', '/etc/workstation/region.py'], text=True)
+    os.environ.update(json.loads(region))
     home = Path('/home/dev')
     if home.is_symlink():
         raise ValueError('/home/dev must be a real directory')

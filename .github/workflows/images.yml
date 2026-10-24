@@ -18,22 +18,8 @@ on:
       - 'CODE_OF_CONDUCT.md'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/PULL_REQUEST_TEMPLATE.md'
+  # Every PR reports Required checks, including documentation-only changes.
   pull_request:
-    paths-ignore:
-      - 'README.md'
-      - 'AI-INSTALL.md'
-      - 'AGENTS.md'
-      - 'gateway/README.md'
-      - 'workstation/README.md'
-      - 'workstation/VALIDATION.md'
-      - 'docs/**'
-      - 'LICENSE'
-      - 'NOTICE'
-      - 'CONTRIBUTING.md'
-      - 'SECURITY.md'
-      - 'CODE_OF_CONDUCT.md'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.github/PULL_REQUEST_TEMPLATE.md'
   workflow_dispatch:
 permissions:
   contents: read
@@ -41,7 +27,27 @@ concurrency:
   group: images-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  changes:
+    name: Change scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      images: ${{ steps.scope.outputs.images }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify change classification
+        run: python3 -m unittest discover -s tests -p 'test_ci_changes.py' -v
+      - name: Determine build scope
+        id: scope
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/ci-changes.py
   images:
+    needs: changes
+    if: needs.changes.outputs.images == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -120,3 +126,25 @@ jobs:
             docker tag candidate:${{ matrix.component }} "$IMAGE:latest"
             docker push "$IMAGE:latest"
           fi
+  required-checks:
+    name: Required checks
+    if: always()
+    needs: [changes, images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require successful applicable checks
+        env:
+          SCOPE_RESULT: ${{ needs.changes.result }}
+          BUILD_IMAGES: ${{ needs.changes.outputs.images }}
+          IMAGES_RESULT: ${{ needs.images.result }}
+        run: |
+          case "$SCOPE_RESULT/$BUILD_IMAGES/$IMAGES_RESULT" in
+            success/true/success|success/false/skipped)
+              echo 'All applicable checks passed.'
+              ;;
+            *)
+              echo "Required checks failed: scope=$SCOPE_RESULT images=$IMAGES_RESULT" >&2
+              exit 1
+              ;;
+          esac
