@@ -27,7 +27,7 @@ docker image save workstation-local:test | python3 workstation/tests/audit-image
 - PASS：工作站 Python 回归 39 项、部署入口保护回归 7 项，共 46 项；四份部署 Compose 的 `config --quiet` 及 Shell 语法检查通过。
 - PASS：独立 gateway/workstation Compose 的服务设置与同机版本对应，移除了工作站对本地 gateway 的依赖，无业务挂载。
 - PASS：在独立的 Linux amd64 临时容器内运行新地区初始化程序，实际生成默认 `en_SG.UTF-8`，登录用户得到新加坡英文与时区。内部 `region.json` 切换到 `en_US.UTF-8` / `America/New_York` 后，重启同一临时容器，配置与 HOME 测试数据保留，`Mounts=[]`。无效的时区文件被拒绝，原 locale 配置保持。测试容器已清理。
-- NOT RUN：本次完整新镜像构建、完整桌面/SSH/VNC smoke 和镜像层审计；已为 `internal-storage.sh` 加入真实 XFCE 环境及地区变更重启断言，待新镜像运行。
+- PASS：后续 [PR #4 CI](https://github.com/crazyniu/ai-workstation/actions/runs/40058036946) 完成完整新镜像构建、桌面/SSH/VNC smoke、内部存储与地区变更重启验收及镜像层审计。
 - NOT RUN：两台独立宿主机之间的 LAN/VPN/代理真实部署验收。Compose 配置检查与单机临时容器验证不能替代跨设备连通性验收。
 
 本节为当前源码的验证边界；不代表该功能已包含在下面记录的历史公开镜像或当前 `latest` 中。
@@ -38,7 +38,7 @@ docker image save workstation-local:test | python3 workstation/tests/audit-image
 - PASS：本地完整 Python 回归 57 项中 56 项通过，Linux `/proc` 进程检测 1 项因本机 macOS 跳过；随后在 Linux amd64 独立临时容器以普通用户运行新增的 11 项重置测试全部通过，包括真实 Claude 进程检测。
 - PASS：临时容器中的 `/usr/local/bin/reset-claude-user` 实际预览保持身份字段，执行后删除身份字段并保留 MCP 配置和 MCP OAuth 凭据。新版 `smoke.sh` 已加入同一隔离 HOME 检查；真实部署没有执行账号清理。
 - PASS：Shell 语法、文档本地链接及差异格式检查。重置测试使用临时 HOME，不读取真实用户凭据。
-- NOT RUN：包含重置安装步骤的完整新镜像构建与全流程 smoke，由更新后的 PR CI 运行；不据临时容器的脚本验证宣称新镜像已发布。
+- PASS：后续 [PR #4 CI](https://github.com/crazyniu/ai-workstation/actions/runs/40058036946) 完成包含重置安装步骤的完整新镜像构建与全流程 smoke；镜像发布状态以对应主分支发布流水线为准。
 
 ## 2026-10-24 Unity Personal 与 MCP
 
@@ -49,7 +49,7 @@ docker image save workstation-local:test | python3 workstation/tests/audit-image
 - PASS：工作站 Python 回归 53 项与仓库部署/CI 分类回归 11 项；其中 Linux `/proc` 进程检测 1 项在 macOS 跳过。新增测试覆盖追加 Unity MCP、保留既有身份与同名覆盖、重复安装和配置权限；Shell/JavaScript 语法及差异格式通过。
 - 修复首次 PR CI 的版本误判：官方 uv 输出包含平台元数据，版本检查现接受 `uv 0.13.5 (x86_64-unknown-linux-gnu)`，同时拒绝不同版本；增加失败时的实际版本输出。已验证带/不带元数据及相邻错误版本四种情况。
 - NOT RUN：Unity 账号登录、Personal 免费许可证激活、项目导入及真实场景读写尚未验证。需要用户登录自己的 Unity 账号；MCP 服务端 Connected 不等于编辑器桥接已连接。
-- NOT RUN：包含本次默认 Unity MCP 的完整公共镜像构建、smoke、重启与镜像层审计，由本次 PR CI 继续验证；已有工作站未重建或重启。Editor/Hub 为独立可选安装，不包含在默认公共镜像中。
+- PASS：[PR #5 最新 CI](https://github.com/crazyniu/ai-workstation/actions/runs/40072479711) 的四项检查全部通过：双镜像构建、工作站完整 smoke、Unity MCP 48 工具枚举、沙箱浏览器、SSH/VNC 认证、HOME/SSH 身份/地区变更重启持久性，以及工作站全部 18 层镜像审计。GitHub 随后自动合并至 `main`；已有工作站未重建或重启。Editor/Hub 为独立可选安装，不包含在默认公共镜像中。
 
 ## 已验证的公开发布
 
