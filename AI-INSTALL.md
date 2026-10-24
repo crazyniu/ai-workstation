@@ -68,7 +68,7 @@ ls -l /dev/net/tun
 | NAS / 宿主访问 | 需要时填写 `HOST_ADDRESS`，随后验证实际访问路径 |
 | 业务数据 | 各自容器内部；不增加宿主目录绑定、命名数据卷或隐式匿名业务卷 |
 | 工作站 HOME | `/home/dev`；配置、项目、登录身份及 SSH 主机密钥留在容器内部 |
-| 工作站国家 / 语言 / 时区 | `WORKSTATION_COUNTRY=US`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=America/Los_Angeles`；初始化为美国英文（洛杉矶） `en_US.UTF-8` |
+| 工作站国家 / 语言 / 时区 | `WORKSTATION_COUNTRY=SG`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=Asia/Singapore`；初始化为新加坡英文 `en_SG.UTF-8` |
 
 上述地址只有在现场网络匹配且地址空闲时才使用。LAN 模式采用其他网段时，一并调整 `LAN_SUBNET`、`LAN_PREFIX`、`LAN_ROUTER`、角色地址和必要的 `WORKSTATION_NO_PROXY`，不要只替换一个 IP。分开部署时各宿主机使用自己的实际网络参数；工作站 bridge 模式的网关地址通过可达私有代理端点配置。保留 Compose 所需的设备与安全设置，不用 `privileged`、宿主网络或 Docker socket 代替正常配置。
 
@@ -87,10 +87,10 @@ Docker 的 `data-root` 属于宿主存储设置。**默认不迁移 Docker 数�
 这些参数仅控制 **251 容器内部** 的地区格式、界面语言和时区；宿主机地区与公网出口由各自配置决定。国家使用大写两位 ISO 代码，语言使用小写两位或三位 glibc 语言代码；初始化将两者组合成 `语言_国家.UTF-8` 并按需生成 locale，时区使用有效 IANA 名称。国家与时区并非一一对应，修改地区时明确填写全部三项。
 
 ```dotenv
-# 默认：美国（洛杉矶）、英文
-WORKSTATION_COUNTRY=US
+# 默认：新加坡、英文
+WORKSTATION_COUNTRY=SG
 WORKSTATION_LANGUAGE=en
-WORKSTATION_TIMEZONE=America/Los_Angeles
+WORKSTATION_TIMEZONE=Asia/Singapore
 
 # 例如台湾繁体中文：TW / zh / Asia/Taipei
 # 例如美国英文（纽约）：US / en / America/New_York
@@ -106,7 +106,7 @@ docker compose --env-file .env -f "$workstation_compose" exec -T --user 0 workst
 import json
 from pathlib import Path
 path = Path('/etc/workstation/region.json')
-path.write_text(json.dumps({'country': 'US', 'language': 'en', 'timezone': 'America/Los_Angeles'}) + '\n')
+path.write_text(json.dumps({'country': 'SG', 'language': 'en', 'timezone': 'Asia/Singapore'}) + '\n')
 path.chmod(0o600)
 PY
 docker compose --env-file .env -f "$workstation_compose" restart workstation
@@ -182,7 +182,7 @@ deployment_role=all  # 按第 0 节选择 all / gateway / workstation / workstat
 | DNS | 客户端明确向网关查询 `home.arpa`，结果为本次网关 IP；再查询外部域名。确认需要使用本地域名的客户端实际采用该 DNS，而不是被加密 DNS 绕过。 |
 | 代理与出口 | 用户导入配置并选择节点后，从工作站或测试客户端经实际代理发起 HTTPS 请求，检查成功响应和所用出口；按需要核对直连 / 代理分流。干净镜像默认直连，不能据此宣称个人代理已就绪。 |
 | SSH 与桌面 | 使用工作站普通用户 `dev` 实际登录 SSH；用 VNC 客户端连接桌面，确认画面、输入和终端可用。启动 Claude / Codex 的真实桌面入口，确认没有立即退出或连接错误。 |
-| 工作站地区与语言 | 普通用户登录后检查 `locale`、`/etc/timezone` 和 `date`，核对 XFCE 会话与桌面菜单语言。默认应为 `en_US.UTF-8` / `en_US:en` / `America/Los_Angeles`。重启同一容器后再次确认自定义值生效，HOME、MCP 与登录身份保持。 |
+| 工作站地区与语言 | 普通用户登录后检查 `locale`、`/etc/timezone` 和 `date`，核对 XFCE 会话与桌面菜单语言。默认应为 `en_SG.UTF-8` / `en_SG:en` / `Asia/Singapore`。重启同一容器后再次确认自定义值生效，HOME、MCP 与登录身份保持。 |
 | Unity（按需） | 默认镜像提供开源 Unity MCP，编辑器和 Hub 使用 [固定版本安装入口](workstation/unity/README.md) 添加到现有工作站。用户在 Hub 完成 Unity Personal 免费许可证激活后，验证项目桥接包、Claude MCP 连接及真实场景操作；工具枚举不能替代编辑器操作。保留已有账号和其他 MCP。 |
 | Tailscale | 用户授权后检查账号连接、子网批准状态，并从另一台已授权设备实际验证所需方向的访问；本机状态显示 connected 不替代 peer 测试。 |
 | NAS / 宿主 | 配置了 `HOST_ADDRESS` 时，从业务实际访问方测试需要的 NAS 页面或服务，核对路径。没有此需求则标为不适用。 |

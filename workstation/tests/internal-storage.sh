@@ -79,7 +79,7 @@ print('PASS: XFCE and system region:',locale,language,timezone)
 PYREGION
     docker exec "$name" runuser -l dev -c 'test "$LANG" = "$1" && test "$LANGUAGE" = "$2" && test "$TZ" = "$3"' sh "$1" "$2" "$3"
 }
-assert_region en_US.UTF-8 en_US:en America/Los_Angeles
+assert_region en_SG.UTF-8 en_SG:en Asia/Singapore
 docker exec -i --user 1100:1100 "$name" python3 - <<'PYPROXY'
 import pathlib,subprocess
 pid=subprocess.check_output(['pgrep','-u','1100','-x','xfce4-session'],text=True).splitlines()[0]

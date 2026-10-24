@@ -16,12 +16,19 @@ docker image save workstation-local:test | python3 workstation/tests/audit-image
 | 检查 | 覆盖范围 |
 | --- | --- |
 | `smoke.sh` | 普通用户权限、桌面进程及启动器、SSH/VNC 真实认证、工具版本、本地 MCP 握手、Chrome 沙箱、重启持久性及 HOME 软链接隔离。此夹具使用临时测试卷。 |
-| `internal-storage.sh` | 镜像没有 `Config.Volumes`、容器 `Mounts=[]`、运行时密码认证、HOME/CLI 配置/GitHub CLI 设置/SSH 主机密钥在重启后保留、普通用户桌面代理环境，以及默认美国英文／洛杉矶时区和内部文件修改地区后的重启验证。此夹具没有业务挂载。 |
+| `internal-storage.sh` | 镜像没有 `Config.Volumes`、容器 `Mounts=[]`、运行时密码认证、HOME/CLI 配置/GitHub CLI 设置/SSH 主机密钥在重启后保留、普通用户桌面代理环境，以及默认新加坡英文／新加坡时区和内部文件修改地区后的重启验证。此夹具没有业务挂载。 |
 | `audit-image.py` | 扫描 manifest 声明的全部镜像层，检查常见私人状态、认证文件、主机私钥、烘焙密码和代理环境。缺少或无法读取的层导致失败；检查结合构建允许清单使用。 |
 | Python 回归测试 | 镜像审计、SSH/VNC 认证夹具、桌面 CLI 启动包装逻辑及地区配置校验/生成/优先级/失败边界。 |
 | `desktop-recovery.py` | 由两个容器夹具调用：检查真实终端的标题栏边距、面板常显；暂停会话管理器并终止窗口管理器／面板，验证独立恢复、应用保持打开及无重复实例。内部存储夹具在重启后执行。 |
 
 `tests/cli-startup.py` 是独立的真实 PTY 首次启动检查，仅在无个人登录状态的临时容器中，以普通用户执行。它观察 Codex / Claude 首次界面与持续存活，检测连接错误，不提交任何登录或模型请求。该检查需要合适的外网出口，不放入断网的 `internal-storage.sh` 夹具。
+
+## 2026-10-24 默认地区恢复为新加坡英文
+
+- Dockerfile 的镜像环境、预生成 locale、系统时区、三个 Compose 入口、`.env.example` 和地区初始化回退值统一为 `SG` / `en_SG.UTF-8` / `Asia/Singapore`。已有内部 `region.json` 仍优先，其他国家与语言配置继续支持。
+- PASS：工作站 Python 测试与根目录部署测试；地区测试核对新加坡全年 UTC+8、登录配置和内部文件覆盖。
+- Linux 镜像验收由本次 PR 和主分支 Actions 运行：`internal-storage.sh` 首次启动检查新加坡默认值，再修改内部地区并重启，核对登录、桌面、HOME 与身份持久性。以相应 Actions 运行结果及发布摘要为准。
+- 下方洛杉矶记录保留为历史验收记录，当前默认值以本节与安装说明为准。
 
 ## 2026-10-24 桌面恢复与洛杉矶默认地区
 
