@@ -1,6 +1,7 @@
 #!/bin/sh
 # Export an already-built clean image; never export the running container.
 set -eu
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 image=${GATEWAY_IMAGE:-gateway-local:1.0.0}
 out=${1:-./dist}
 arch=$(docker image inspect --format '{{.Architecture}}' "$image")
@@ -14,6 +15,8 @@ staging=$(mktemp -d "$out/.export-XXXXXX")
 trap 'rm -rf "$staging"' EXIT HUP INT TERM
 # Keep save and gzip separate so a failed docker save cannot produce a success.
 docker image save --output "$staging/image.tar" "$image"
+# Audit the exact saved archive, including lower layers, before distributing it.
+python3 "$root/tests/audit-image.py" < "$staging/image.tar"
 gzip -c "$staging/image.tar" > "$staging/$name"
 (
   cd "$staging"
