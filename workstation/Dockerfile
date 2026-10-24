@@ -42,6 +42,7 @@ RUN source /opt/workstation/versions.env \
     && rm -rf /var/lib/apt/lists/*
 COPY mcp /opt/workstation/mcp
 COPY scripts /opt/workstation/scripts
+COPY unity /opt/workstation/unity
 RUN --mount=type=bind,from=tool-download-cache,target=/mnt/tool-download-cache \
     WORKSTATION_DOWNLOAD_CACHE=/mnt/tool-download-cache bash /opt/workstation/scripts/install-tools.sh
 COPY desktop/home-template/ /opt/workstation/home-template/

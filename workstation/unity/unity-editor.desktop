@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Unity Editor
+Comment=Unity Personal development environment
+Exec=/usr/local/bin/unity-editor -force-glcore
+Icon=unityhub
+Terminal=false
+StartupNotify=true
+Categories=Development;

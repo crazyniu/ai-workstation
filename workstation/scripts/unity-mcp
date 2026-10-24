@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+[ "$(id -u)" -ne 0 ] || { echo 'Run Unity MCP as the desktop user.' >&2; exit 1; }
+export UNITY_MCP_TELEMETRY_ENABLED=false
+exec /usr/bin/setpriv --no-new-privs /opt/workstation/unity-mcp/bin/mcp-for-unity --transport stdio "$@"

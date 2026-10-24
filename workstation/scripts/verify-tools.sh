@@ -3,6 +3,9 @@
 set -euo pipefail
 [[ $(id -u) -ne 0 ]] || { echo 'Run this check as dev.' >&2; exit 1; }
 source /opt/workstation/versions.env
+source /opt/workstation/unity/versions.env
+[[ $(uv --version) == "uv $UV_VERSION" ]]
+[[ $(/opt/workstation/unity-mcp/bin/python -c 'from importlib.metadata import version; print(version("mcpforunityserver"))') == "$UNITY_MCP_VERSION" ]]
 [[ $(node --version) == "v$NODE_VERSION" ]]
 codex --version | grep -F "$CODEX_VERSION"
 claude --version | grep -F "$CLAUDE_VERSION"

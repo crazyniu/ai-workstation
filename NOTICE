@@ -17,6 +17,10 @@ Workstation
 Pinned application versions and artifact checksums: workstation/versions.env.
 Tool installation sources: workstation/scripts/install-tools.sh and Dockerfile.
 MCP dependency versions and package licenses: workstation/mcp/package-lock.json.
+Unity MCP source revision, uv, optional Editor and Hub checksums:
+workstation/unity/versions.env. Python dependency pins and artifact hashes:
+workstation/unity/requirements.lock. The installed Unity bridge retains its
+upstream MIT license at /opt/workstation/unity/UPSTREAM-LICENSE.
 Claude identity reset rules: liseami/CCBaga (MIT), commit
 bdfb90ceadfc5fae6772ffff597bddecb0b73cc3, cleaner_config.rs and cleaner_targets.rs.
 The Linux adaptation retains the upstream license in
@@ -32,6 +36,9 @@ Upstream projects and terms:
 - Google Chrome: https://www.google.com/chrome/terms/
 - Microsoft Visual Studio Code: https://code.visualstudio.com/license
 - Godot: https://godotengine.org/license/
+- Unity Editor and Hub (optional): https://unity.com/legal
+- MCP for Unity (MIT): https://github.com/CoplayDev/unity-mcp/blob/v10.3.0/LICENSE
+- uv (MIT OR Apache-2.0): https://github.com/astral-sh/uv
 - OpenAI Codex: https://github.com/openai/codex
 - Claude Code: https://github.com/anthropics/claude-code
 - GitHub CLI: https://github.com/cli/cli

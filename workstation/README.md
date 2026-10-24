@@ -2,7 +2,7 @@
 
 此目录是统一仓库中的工作站构建上下文，网关、正式 Compose 和 GHCR 发布由仓库根目录统一管理。支持 `linux/amd64`。可复现的验证步骤及发布记录见 [验证记录](VALIDATION.md)。
 
-包含 Ubuntu、新加坡英文及新加坡时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot 和 GitHub 五项 MCP 配置。国家、语言和时区可在初始化时配置。基础镜像固定到官方 amd64 manifest digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Ubuntu 系统软件随 APT 仓库更新。
+包含 Ubuntu、新加坡英文及新加坡时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot、Unity 和 GitHub 六项 MCP 配置。提供 Unity Personal 编辑器与 Hub 的可选安装入口。国家、语言和时区可在初始化时配置。基础镜像固定到官方 amd64 manifest digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Ubuntu 系统软件随 APT 仓库更新。
 
 ## 已安装的软件
 
@@ -33,9 +33,16 @@ Chrome、VS Code、AI CLI、Godot 和 Node.js 的固定版本以 [`versions.env`
 | Playwright | 本地 `@playwright/mcp` `0.0.83` | 使用容器内 Chrome 进行浏览器操作 |
 | Chrome DevTools | 本地 `chrome-devtools-mcp` `1.12.0` | Chrome 调试与浏览器检查 |
 | Godot | 本地 `@coding-solo/godot-mcp` `0.1.1` | 调用容器内 Godot 工具 |
+| Unity | 本地 `mcpforunityserver` `10.3.0`，MIT | 控制 Unity 场景、对象、脚本、资源和测试；需已激活的编辑器及项目桥接包 |
 | GitHub | 远程 `https://api.githubcopilot.com/mcp/` | GitHub 操作，需个人授权 |
 
-本地 MCP 通过 `/usr/local/bin/workstation-mcp` 启动，依赖锁定在 [`mcp/package-lock.json`](mcp/package-lock.json)，其中 MCP SDK 为 `1.32.1`。配置生成方式见 [`scripts/configure-mcp.py`](scripts/configure-mcp.py)。
+Node.js MCP 通过 `/usr/local/bin/workstation-mcp` 启动，依赖锁定在 [`mcp/package-lock.json`](mcp/package-lock.json)，其中 MCP SDK 为 `1.32.1`。Unity MCP 使用 `/usr/local/bin/unity-mcp` 和独立 Python 环境，完整依赖及 SHA256 锁定在 [`unity/requirements.lock`](unity/requirements.lock)。配置生成方式见 [`scripts/configure-mcp.py`](scripts/configure-mcp.py)。
+
+### Unity Personal 免费版
+
+默认公共镜像包含开源 Unity MCP、`uv` 和固定版本的 Unity 编辑器桥接包。Unity Editor `6000.3.27f1`（6.3 LTS）与 Unity Hub `3.22.4` 通过 [`scripts/install-unity.sh`](scripts/install-unity.sh) 按需安装到现有容器，不重建或替换工作站。安装包下载约 4.57 GB，编辑器解压约 8.77 GB，需预留至少 15 GB 空间。
+
+编辑器安装后，在 Unity Hub 使用自己的账号激活 **Unity Personal 免费许可证**，再在项目中添加已安装的 MCP 桥接包。安装过程不购买 Pro、订阅 AI 服务或预置个人许可证。完整安装、Claude/Codex 接入、已有 HOME 兼容和验收步骤见 [Unity 使用说明](unity/README.md)。
 
 ### Python 环境
 

@@ -73,8 +73,9 @@ WORKSTATION_TIMEZONE=Asia/Singapore；按 AI-INSTALL.md 配置和验收。
 | AI CLI | Codex `0.164.0`、Claude Code `2.1.309` |
 | 开发运行时 | Python 3（Ubuntu 软件包，`3.14` 系列）、Node.js `24.22.1`、npm / npx、GCC |
 | 开发与进程管理 | Git、GitHub CLI、curl、Supervisor；Ubuntu 系统 Python `3.14` 用于系统服务 |
-| 本地 MCP | Context7 `4.4.4`、Playwright `0.0.83`、Chrome DevTools `1.12.0`、Godot MCP `0.1.1` |
+| 本地 MCP | Context7 `4.4.4`、Playwright `0.0.83`、Chrome DevTools `1.12.0`、Godot MCP `0.1.1`、Unity MCP `10.3.0` |
 | 远程 MCP | GitHub MCP 连接配置，使用个人账号授权 |
+| 可选 Unity 环境 | Unity Editor `6000.3.27f1`（6.3 LTS）、Hub `3.22.4`；使用 Unity Personal 免费许可证，安装方式见 [Unity 说明](workstation/unity/README.md) |
 
 工作站通过 `python3` 使用 Ubuntu 提供的 Python `3.14` 系列，补丁版本随系统软件包更新。MCP 配置同时提供给 Codex 和 Claude，浏览器工具使用容器内的 Chrome。详细清单与使用方式见 [工作站说明](workstation/README.md)。
 
