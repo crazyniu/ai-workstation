@@ -5,6 +5,8 @@ services:
     hostname: ai-workstation
     restart: unless-stopped
     shm_size: 512mb
+    # Routing belongs to Docker/the gateway; apps cannot alter it or send raw frames.
+    cap_drop: [NET_ADMIN, NET_RAW]
     security_opt:
       - no-new-privileges:true
       - seccomp=./security/seccomp-chrome.json
