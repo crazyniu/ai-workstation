@@ -15,10 +15,10 @@ services:
       DEV_PASSWORD: ${WORKSTATION_PASSWORD:-admin}
       VNC_PASSWORD: ${VNC_PASSWORD:-admin}
       ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-}
-      # Country + language select the glibc UTF-8 locale (default: en_SG.UTF-8).
-      WORKSTATION_COUNTRY: ${WORKSTATION_COUNTRY:-SG}
+      # Country + language select the glibc UTF-8 locale (default: en_US.UTF-8).
+      WORKSTATION_COUNTRY: ${WORKSTATION_COUNTRY:-US}
       WORKSTATION_LANGUAGE: ${WORKSTATION_LANGUAGE:-en}
-      WORKSTATION_TIMEZONE: ${WORKSTATION_TIMEZONE:-Asia/Singapore}
+      WORKSTATION_TIMEZONE: ${WORKSTATION_TIMEZONE:-America/Los_Angeles}
       # Bridge mode can reach a gateway on another host/network via an explicit
       # private proxy endpoint. Empty values use the host's ordinary egress.
       HTTP_PROXY: ${WORKSTATION_HTTP_PROXY:-}

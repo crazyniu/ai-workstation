@@ -78,7 +78,7 @@ print('PASS: XFCE and system region:',locale,language,timezone)
 PYREGION
     docker exec "$name" runuser -l dev -c 'test "$LANG" = "$1" && test "$LANGUAGE" = "$2" && test "$TZ" = "$3"' sh "$1" "$2" "$3"
 }
-assert_region en_SG.UTF-8 en_SG:en Asia/Singapore
+assert_region en_US.UTF-8 en_US:en America/Los_Angeles
 docker exec -i --user 1100:1100 "$name" python3 - <<'PYPROXY'
 import pathlib,subprocess
 pid=subprocess.check_output(['pgrep','-u','1100','-x','xfce4-session'],text=True).splitlines()[0]
@@ -111,6 +111,7 @@ docker restart "$name" >/dev/null
 assert_no_mounts
 wait_desktop
 assert_region zh_TW.UTF-8 zh_TW:zh Asia/Taipei
+docker exec -i --user 1100:1100 "$name" python3 - < "$repo/tests/desktop-recovery.py"
 docker exec -i "$name" python3 - < "$repo/tests/auth-smoke.py"
 dev_exec sh -c 'test "$(cat /home/dev/Projects/internal-storage-smoke.txt)" = container-owned-persistence && grep -q internal-storage-preserve-settings /home/dev/.codex/config.toml'
 [[ $(dev_exec gh config get git_protocol) == ssh ]]

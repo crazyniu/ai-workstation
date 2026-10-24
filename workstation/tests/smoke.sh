@@ -48,7 +48,7 @@ docker run -d --name "$name" --hostname workstation-smoke --network none --shm-s
 wait_desktop() {
     local attempt
     for ((attempt=1; attempt<=60; attempt++)); do
-        if docker exec "$name" sh -c 'test -S /tmp/.X11-unix/X1 && pgrep -u 1100 -x xfce4-session >/dev/null && pgrep -u 1100 -x xfdesktop >/dev/null && pgrep -u 1100 -x xfce4-panel >/dev/null' >/dev/null 2>&1; then
+        if docker exec "$name" python3 /etc/workstation/healthcheck.py >/dev/null 2>&1; then
             return
         fi
         [[ $(docker inspect -f '{{.State.Running}}' "$name") == true ]] || break
@@ -59,6 +59,7 @@ wait_desktop() {
     return 1
 }
 wait_desktop
+docker exec -i --user 1100:1100 "$name" python3 - < "$repo/tests/desktop-recovery.py"
 docker exec "$name" test -x /usr/local/bin/reset-claude-user
 # Exercise the installed command against a dedicated temporary HOME only.
 # No real account state is removed by startup or acceptance.

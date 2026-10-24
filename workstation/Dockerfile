@@ -9,8 +9,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 LABEL org.opencontainers.image.title="AI Workstation" \
       org.opencontainers.image.description="Private, reproducible amd64 XFCE development workstation" \
       org.opencontainers.image.source="https://github.com/crazyniu/ai-workstation"
-ENV WORKSTATION_COUNTRY=SG WORKSTATION_LANGUAGE=en WORKSTATION_TIMEZONE=Asia/Singapore \
-    TZ=Asia/Singapore LANG=en_SG.UTF-8 LC_ALL=en_SG.UTF-8 LANGUAGE=en_SG:en \
+ENV WORKSTATION_COUNTRY=US WORKSTATION_LANGUAGE=en WORKSTATION_TIMEZONE=America/Los_Angeles \
+    TZ=America/Los_Angeles LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 LANGUAGE=en_US:en \
     CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1 CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS=1
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
        tigervnc-standalone-server tigervnc-tools x11-utils x11-xserver-utils \
        arc-theme papirus-icon-theme fonts-inter fonts-noto-cjk fonts-dejavu-core \
        libgl1-mesa-dri libgl1 libegl1 mesa-utils xdg-utils \
-    && locale-gen en_SG.UTF-8 && ln -snf /usr/share/zoneinfo/Asia/Singapore /etc/localtime \
-    && echo Asia/Singapore > /etc/timezone \
+    && locale-gen en_US.UTF-8 && ln -snf /usr/share/zoneinfo/America/Los_Angeles /etc/localtime \
+    && echo America/Los_Angeles > /etc/timezone \
     && useradd --uid 1100 --user-group --create-home --shell /bin/bash dev \
     && passwd --lock root && passwd --lock dev && chmod 700 /root \
     && rm -f /etc/ssh/ssh_host_* \

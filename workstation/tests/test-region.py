@@ -1,11 +1,13 @@
 """Region selection, safe initialization and deployment contracts."""
 import importlib.util
+from datetime import datetime, timedelta
 import json
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
 from unittest.mock import Mock
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('region', ROOT / 'workstation/runtime/region.py')
@@ -23,27 +25,27 @@ class RegionTests(unittest.TestCase):
             (self.root / path).mkdir(parents=True)
         for name in ('en_SG', 'zh_TW', 'en_US'):
             (self.root / 'usr/share/i18n/locales' / name).touch()
-        for name in ('Asia/Singapore', 'Asia/Taipei', 'America/New_York'):
+        for name in ('Asia/Singapore', 'Asia/Taipei', 'America/New_York', 'America/Los_Angeles'):
             (self.root / 'usr/share/zoneinfo' / name).write_bytes(b'TZif-fixture')
         (self.root / 'usr/share/zoneinfo/zone.tab').write_text('not a compiled timezone')
-        self.run = Mock(return_value=subprocess.CompletedProcess([], 0, 'C\nen_SG.utf8\n'))
+        self.run = Mock(return_value=subprocess.CompletedProcess([], 0, 'C\nen_US.utf8\n'))
 
     def tearDown(self):
         self.temp.cleanup()
 
-    def test_default_singapore_english_reaches_login_config(self):
+    def test_default_los_angeles_english_reaches_login_config(self):
         (self.root / 'etc/environment').write_text('KEEP=existing\nLANG=old\nTZ=old\n')
         selected = REGION.configure_region(self.root, {}, self.run)
-        self.assertEqual(selected, {'LANG': 'en_SG.UTF-8', 'LC_ALL': 'en_SG.UTF-8',
-                                    'LANGUAGE': 'en_SG:en', 'TZ': 'Asia/Singapore'})
+        self.assertEqual(selected, {'LANG': 'en_US.UTF-8', 'LC_ALL': 'en_US.UTF-8',
+                                    'LANGUAGE': 'en_US:en', 'TZ': 'America/Los_Angeles'})
         self.run.assert_called_once()
         self.assertIn('KEEP=existing\n', (self.root / 'etc/environment').read_text())
         self.assertNotIn('=old', (self.root / 'etc/environment').read_text())
-        self.assertIn('LANGUAGE=en_SG:en', (self.root / 'etc/default/locale').read_text())
-        self.assertIn('export LANG=en_SG.UTF-8',
+        self.assertIn('LANGUAGE=en_US:en', (self.root / 'etc/default/locale').read_text())
+        self.assertIn('export LANG=en_US.UTF-8',
                       (self.root / 'etc/profile.d/workstation-region.sh').read_text())
         self.assertEqual((self.root / 'etc/localtime').readlink(),
-                         Path('/usr/share/zoneinfo/Asia/Singapore'))
+                         Path('/usr/share/zoneinfo/America/Los_Angeles'))
 
     def test_custom_locale_is_generated_without_inheriting_invalid_locale(self):
         selected = REGION.configure_region(self.root, {'WORKSTATION_COUNTRY': 'TW',
@@ -54,6 +56,11 @@ class RegionTests(unittest.TestCase):
         self.assertEqual(command, ['localedef', '-i', 'zh_TW', '-f', 'UTF-8', 'zh_TW.UTF-8'])
         self.assertEqual(self.run.call_args.kwargs['env']['LC_ALL'], 'C.UTF-8')
         self.assertEqual((self.root / 'etc/timezone').read_text(), 'Asia/Taipei\n')
+
+    def test_los_angeles_uses_the_seasonal_pacific_offset(self):
+        zone = ZoneInfo(REGION.DEFAULTS['timezone'])
+        self.assertEqual(datetime(2026, 1, 15, tzinfo=zone).utcoffset(), timedelta(hours=-8))
+        self.assertEqual(datetime(2026, 7, 15, tzinfo=zone).utcoffset(), timedelta(hours=-7))
 
     def test_internal_file_overrides_environment_and_survives_repeated_init(self):
         config = self.root / 'etc/workstation/region.json'
