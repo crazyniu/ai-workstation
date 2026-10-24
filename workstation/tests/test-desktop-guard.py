@@ -75,14 +75,25 @@ class DesktopGuardTests(unittest.TestCase):
             connection = Mock()
             connection.__enter__ = Mock(return_value=connection)
             connection.__exit__ = Mock(return_value=False)
-            connection.recv.side_effect = [b'SSH-2.0-fixture', b'RFB 003.008\n']
-            states = 'xfce4-session S\nxfdesktop Sl\nxfce4-panel Sl\n' + wm
+            connection.recv.return_value = b'SSH-2.0-fixture'
+            states = 'Xtigervnc S\nxfce4-session S\nxfdesktop Sl\nxfce4-panel Sl\n' + wm
             with self.subTest(wm=wm), \
                  patch('socket.create_connection', return_value=connection), \
                  patch('pathlib.Path.exists', return_value=True), \
-                 patch('subprocess.check_output', return_value=states):
+                 patch('subprocess.check_output', side_effect=['LISTEN 0 5 0.0.0.0:5901 *:*\n', states]):
                 with self.assertRaisesRegex(AssertionError, 'xfwm4 is not running'):
                     runpy.run_path(str(ROOT / 'runtime/healthcheck.py'))
+
+    def test_healthcheck_rejects_a_missing_vnc_listener_without_attempting_vnc_login(self):
+        connection = Mock()
+        connection.__enter__ = Mock(return_value=connection)
+        connection.__exit__ = Mock(return_value=False)
+        connection.recv.return_value = b'SSH-2.0-fixture'
+        with patch('socket.create_connection', return_value=connection) as connect, \
+             patch('subprocess.check_output', return_value=''):
+            with self.assertRaisesRegex(AssertionError, 'VNC is not listening'):
+                runpy.run_path(str(ROOT / 'runtime/healthcheck.py'))
+        connect.assert_called_once_with(('127.0.0.1', 22), timeout=2)
 
 
 if __name__ == '__main__':

@@ -113,6 +113,10 @@ assert_no_mounts
 wait_desktop
 assert_region zh_TW.UTF-8 zh_TW:zh Asia/Taipei
 docker exec -i --user 1100:1100 "$name" python3 - < "$repo/tests/desktop-recovery.py"
+# Repeated readiness probes must not blacklist the following real VNC login.
+for ((attempt=1; attempt<=10; attempt++)); do
+    docker exec "$name" python3 /etc/workstation/healthcheck.py
+done
 docker exec -i "$name" python3 - < "$repo/tests/auth-smoke.py"
 dev_exec sh -c 'test "$(cat /home/dev/Projects/internal-storage-smoke.txt)" = container-owned-persistence && grep -q internal-storage-preserve-settings /home/dev/.codex/config.toml'
 [[ $(dev_exec gh config get git_protocol) == ssh ]]
