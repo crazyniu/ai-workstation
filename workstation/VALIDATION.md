@@ -47,6 +47,7 @@ docker image save workstation-local:test | python3 workstation/tests/audit-image
 - PASS：Claude `mcp get unity` 显示 Connected；独立 MCP SDK 完成 stdio 握手，枚举 48 个工具、18 项资源。现有五个 MCP 及其他 Claude 设置逐项比较保持一致；Codex 也追加 Unity MCP。
 - PASS：通过 macOS 屏幕共享打开实际桌面启动器，按用户明确授权接受首次 Unity 软件条款并进入 Hub 登录流程。准备了独立空白项目及本地桥接包引用。
 - PASS：工作站 Python 回归 53 项与仓库部署/CI 分类回归 11 项；其中 Linux `/proc` 进程检测 1 项在 macOS 跳过。新增测试覆盖追加 Unity MCP、保留既有身份与同名覆盖、重复安装和配置权限；Shell/JavaScript 语法及差异格式通过。
+- 修复首次 PR CI 的版本误判：官方 uv 输出包含平台元数据，版本检查现接受 `uv 0.13.5 (x86_64-unknown-linux-gnu)`，同时拒绝不同版本；增加失败时的实际版本输出。已验证带/不带元数据及相邻错误版本四种情况。
 - NOT RUN：Unity 账号登录、Personal 免费许可证激活、项目导入及真实场景读写尚未验证。需要用户登录自己的 Unity 账号；MCP 服务端 Connected 不等于编辑器桥接已连接。
 - NOT RUN：包含本次默认 Unity MCP 的完整公共镜像构建、smoke、重启与镜像层审计，由本次 PR CI 继续验证；已有工作站未重建或重启。Editor/Hub 为独立可选安装，不包含在默认公共镜像中。
 
