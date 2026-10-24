@@ -1,5 +1,7 @@
 import socket
 import subprocess
+import ssl
+import urllib.request
 from pathlib import Path
 with socket.create_connection(('127.0.0.1', 22), timeout=2) as connection:
     assert connection.recv(64).startswith(b'SSH-')
@@ -12,3 +14,9 @@ running = {name for name, state in (line.rsplit(None, 1) for line in states.spli
            if not state.startswith('Z')}
 for process in ('Xtigervnc', 'xfce4-session', 'xfwm4', 'xfdesktop', 'xfce4-panel'):
     assert process in running, process + ' is not running'
+
+# Read only the HTTPS page; health probes never initiate VNC authentication.
+opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+    urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
+with opener.open('https://127.0.0.1:6080/vnc.html', timeout=2) as response:
+    assert response.status == 200

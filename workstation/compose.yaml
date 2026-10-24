@@ -13,9 +13,12 @@ services:
     ports:
       - "127.0.0.1:${SSH_PORT:-2222}:22"
       - "127.0.0.1:${VNC_PORT:-5901}:5901"
+      - "127.0.0.1:${NOVNC_PORT:-6080}:6080"
     environment:
       DEV_PASSWORD: ${WORKSTATION_PASSWORD:-admin}
       VNC_PASSWORD: ${VNC_PASSWORD:-admin}
+      VNC_AUTH: ${VNC_AUTH:-password}
+      NOVNC_ALLOWED_ORIGINS: ${NOVNC_ALLOWED_ORIGINS:-}
       ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-}
       # Country + language select the glibc UTF-8 locale (default: en_SG.UTF-8).
       WORKSTATION_COUNTRY: ${WORKSTATION_COUNTRY:-SG}

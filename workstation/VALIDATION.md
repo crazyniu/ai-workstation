@@ -94,3 +94,10 @@ sha256:5fd1edc6d5309d5939da83a2c52111a90a8d4e4b88d5d8b6eb4ff7eb5f75559f
 - 本地 MCP 握手和工具枚举不等于外部文档查询、GitHub 账号访问、实际 Godot 项目性能或 VS Code 项目工作流已经通过。
 
 个人部署的 IP 切换、数据迁移清单、磁盘路径、截图与原始日志不作为公共项目的发布记录提交。
+
+## noVNC 网页桌面验收
+
+- `web-desktop.py` 通过真实 HTTPS/WebSocket/RFB 连接检查页面、来源限制和认证方式；跨站或缺少 Origin 的 WebSocket 应拒绝。
+- `internal-storage.sh` 在默认密码模式下运行网页握手验收，继续保留已有 SSH/VNC 正确与错误密码测试。
+- `web-desktop.sh` 创建无业务挂载的隔离容器，不提供 VNC 密码，验证显式免密码模式；重启后复查网页桌面和 TLS 证书身份。
+- 本地 Python 与部署测试、Shell 语法检查通过。真实 Linux 容器、镜像隐私审计与发布结果以相应 Actions 为准；浏览器图形界面和中文剪贴板另在实际部署中验收。

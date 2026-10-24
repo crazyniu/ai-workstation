@@ -1,0 +1,45 @@
+#!/usr/bin/python3
+"""Serve noVNC over HTTPS as the desktop user; keep TLS identity container-local."""
+import ipaddress
+import os
+from pathlib import Path
+import socket
+import subprocess
+
+os.umask(0o077)
+home = Path.home()
+tls = home / '.config/novnc/tls'
+tls.mkdir(parents=True, exist_ok=True, mode=0o700)
+key, cert = tls / 'server.key', tls / 'server.crt'
+# Include current container addresses and hostname in the local certificate.
+names = {'DNS:localhost', 'IP:127.0.0.1'}
+hostname = socket.gethostname()
+if all(c.isalnum() or c in '.-' for c in hostname):
+    names.add('DNS:' + hostname)
+for address in subprocess.check_output(['hostname', '-I'], text=True).split():
+    names.add('IP:' + str(ipaddress.ip_address(address)))
+if not key.exists() or not cert.exists():
+    # A self-signed certificate provides HTTPS for browser secure-context APIs.
+    # Users can replace these files with a certificate they already trust.
+    subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-sha256',
+                    '-nodes', '-days', '3650', '-subj', '/CN=Workstation Desktop',
+                    '-addext', 'subjectAltName=' + ','.join(sorted(names)),
+                    '-keyout', str(key), '-out', str(cert)],
+                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    key.chmod(0o600)
+    cert.chmod(0o644)
+bind = os.environ.get('NOVNC_BIND', '0.0.0.0')
+port = os.environ.get('NOVNC_PORT', '6080')
+target = os.environ.get('NOVNC_VNC_TARGET', '127.0.0.1:5901')
+origins = []
+for name in sorted(names):
+    host = name.split(':', 1)[1]
+    if ':' in host:
+        host = '[' + host + ']'
+    origins.append('https://' + host + ':' + port)
+# Reject cross-site WebSocket connections, especially in password-free mode.
+allowed = os.environ.get('NOVNC_ALLOWED_ORIGINS') or ' '.join(origins)
+os.execvp('websockify', ['websockify', '--web=/opt/workstation/novnc',
+                        '--cert=' + str(cert), '--key=' + str(key), '--ssl-only',
+                        '--auth-plugin=ExpectOrigin', '--auth-source=' + allowed,
+                        bind + ':' + port, target])

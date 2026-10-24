@@ -53,6 +53,10 @@ RUN install -d /usr/local/libexec/workstation-glycin \
     && chmod 755 /opt/workstation/home-template/Desktop/*.desktop \
     && chmod 644 /opt/workstation/versions.env /opt/workstation/home-template/.claude.json /opt/workstation/home-template/.codex/config.toml \
     && install -o 1100 -g 1100 -m 644 /opt/workstation/home-template/.profile /home/dev/.profile
+COPY web-desktop/ /opt/workstation/web-desktop/
+RUN apt-get update && apt-get install -y --no-install-recommends websockify openssl xclip \
+    && rm -rf /var/lib/apt/lists/* \
+    && bash /opt/workstation/web-desktop/install.sh
 COPY runtime/ /etc/workstation/
 COPY licenses/ /opt/workstation/licenses/
 RUN install -m 755 /etc/workstation/entrypoint.py /usr/local/bin/workstation-entrypoint \
@@ -61,6 +65,6 @@ RUN install -m 755 /etc/workstation/entrypoint.py /usr/local/bin/workstation-ent
     && install -m 755 /etc/workstation/start-vnc /usr/local/bin/workstation-vnc \
     && install -m 644 /etc/workstation/sshd_config /etc/ssh/sshd_config \
     && install -m 644 /etc/workstation/supervisord.conf /etc/supervisor/supervisord.conf
-EXPOSE 22 5901
+EXPOSE 22 5901 6080
 HEALTHCHECK --interval=30s --start-period=40s --timeout=5s CMD ["python3", "/etc/workstation/healthcheck.py"]
 ENTRYPOINT ["/usr/local/bin/workstation-entrypoint"]

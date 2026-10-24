@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 export HOME=/home/dev
+case "${VNC_AUTH:-password}" in
+    password) set -- -SecurityTypes VncAuth -PasswordFile "$HOME/.config/tigervnc/passwd" ;;
+    none) set -- -SecurityTypes None ;;
+    *) echo 'VNC_AUTH must be password or none' >&2; exit 1 ;;
+esac
 exec setpriv --no-new-privs Xtigervnc :1 -geometry "${VNC_GEOMETRY:-1600x900}" -depth 24 \
-    -SecurityTypes VncAuth -PasswordFile /home/dev/.config/tigervnc/passwd \
+    "$@" \
     -AlwaysShared -rfbport 5901 -interface 0.0.0.0 -nolisten tcp -desktop 'AI Workstation'
