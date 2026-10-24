@@ -1,5 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <channel name="xfce4-panel" version="1.0">
+  <property name="configver" type="int" value="2" />
   <property name="plugins" type="empty">
     <property name="plugin-31" type="string" value="applicationsmenu">
       <property name="show-button-title" type="bool" value="false" />

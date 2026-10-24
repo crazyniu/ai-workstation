@@ -6,7 +6,7 @@ The root `compose.yaml` connects them for a Linux amd64 LAN deployment.
 on separate hosts on the same LAN. For routed/private-proxy access, the
 workstation bridge example is `workstation/compose.yaml`. Read AI-INSTALL.md to
 select the actual topology; do not assume both roles share a Docker host.
-The workstation defaults to Singapore/English and supports country, language
+The workstation defaults to US/English (Los Angeles) and supports country, language
 and timezone initialization through WORKSTATION_* settings or internal
 `/etc/workstation/region.json`.
 
