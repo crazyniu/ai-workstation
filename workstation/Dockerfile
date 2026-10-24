@@ -55,6 +55,7 @@ RUN install -d /usr/local/libexec/workstation-glycin \
 COPY runtime/ /etc/workstation/
 COPY licenses/ /opt/workstation/licenses/
 RUN install -m 755 /etc/workstation/entrypoint.py /usr/local/bin/workstation-entrypoint \
+    && install -m 755 /opt/workstation/scripts/reset-claude-user.py /usr/local/bin/reset-claude-user \
     && install -m 755 /etc/workstation/start-desktop /usr/local/bin/workstation-desktop \
     && install -m 755 /etc/workstation/start-vnc /usr/local/bin/workstation-vnc \
     && install -m 644 /etc/workstation/sshd_config /etc/ssh/sshd_config \

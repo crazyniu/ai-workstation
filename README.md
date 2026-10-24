@@ -135,6 +135,19 @@ WORKSTATION_TIMEZONE=Asia/Singapore
 
 地区初始化功能要求所选镜像包含 `/etc/workstation/region.py`。当前源码的验证与公开镜像发布状态见 [验证记录](workstation/VALIDATION.md)；部署前核对实际镜像版本。
 
+### 重置 Claude 用户信息
+
+工作站镜像安装 `reset-claude-user` 命令，在 251 的普通用户 `dev` 终端运行：
+
+```sh
+reset-claude-user          # 预览清理项目，不修改文件
+reset-claude-user --apply  # 关闭 Claude 后，执行本地身份与历史清理
+```
+
+清理 Claude Code 登录凭据、用户/设备标识、会话、输入历史、日志及旧配置备份；保留当前 MCP 配置、MCP OAuth 凭据、插件、技能、通用代理设置及实际项目文件。只修改选定 HOME 中的 Claude 数据及独立的认证变量声明，不清理浏览器登录、远端会话或共享 Shell 历史。执行时检查 Claude 进程及继承的认证环境变量，发现仍在使用的身份时拒绝清理。清理按需手动执行，容器启动不会自动重置账号。
+
+命令随包含本次脚本的新镜像提供。完整范围、从宿主机执行的命令及验证方法见 [AI 安装指南](AI-INSTALL.md#22-手动重置-claude-code-用户信息)。
+
 ### LAN 访问入口
 
 | 入口 | 初始账号 / 密码 |

@@ -32,6 +32,14 @@ docker image save workstation-local:test | python3 workstation/tests/audit-image
 
 本节为当前源码的验证边界；不代表该功能已包含在下面记录的历史公开镜像或当前 `latest` 中。
 
+## 2026-10-24 Claude 身份重置源码验证（未发布）
+
+- 新增 `reset-claude-user` 镜像安装步骤、用户与 AI 使用说明及 CCBaga MIT 来源声明。命令默认预览，启动流程不调用清理。
+- PASS：本地完整 Python 回归 57 项中 56 项通过，Linux `/proc` 进程检测 1 项因本机 macOS 跳过；随后在 Linux amd64 独立临时容器以普通用户运行新增的 11 项重置测试全部通过，包括真实 Claude 进程检测。
+- PASS：临时容器中的 `/usr/local/bin/reset-claude-user` 实际预览保持身份字段，执行后删除身份字段并保留 MCP 配置和 MCP OAuth 凭据。新版 `smoke.sh` 已加入同一隔离 HOME 检查；真实部署没有执行账号清理。
+- PASS：Shell 语法、文档本地链接及差异格式检查。重置测试使用临时 HOME，不读取真实用户凭据。
+- NOT RUN：包含重置安装步骤的完整新镜像构建与全流程 smoke，由更新后的 PR CI 运行；不据临时容器的脚本验证宣称新镜像已发布。
+
 ## 已验证的公开发布
 
 [GitHub Actions 运行 39958308949](https://github.com/crazyniu/ai-workstation/actions/runs/39958308949) 于 2026-10-23 对提交 [`948e9d897f6bed47448a8eacdcfeffc9e9fa0ba4`](https://github.com/crazyniu/ai-workstation/commit/948e9d897f6bed47448a8eacdcfeffc9e9fa0ba4) 完成双镜像流水线。工作站的干净构建、`smoke.sh`、`internal-storage.sh` 和全部 16 层镜像审计成功，随后发布到 GHCR。

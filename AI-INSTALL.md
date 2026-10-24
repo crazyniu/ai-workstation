@@ -108,6 +108,30 @@ docker compose --env-file .env -f "$workstation_compose" exec -T workstation \
 
 地区配置在入口启动时生效，现有 SSH/桌面会话应重新连接后验收。直接 `docker exec ... locale` 可能仍显示容器创建时的 ENV，应检查实际登录用户和 XFCE 进程的环境；不要据此重建容器。删除内部 `region.json` 后，在下次正常重启时恢复使用容器运行时参数。
 
+### 2.2 手动重置 Claude Code 用户信息
+
+新镜像包含 `/usr/local/bin/reset-claude-user`，源码为 `workstation/scripts/reset-claude-user.py`。此命令供用户主动更换账号或清理本地身份时使用，安装、启动、重启和升级都不自动调用它；不因安装验收而删除用户的真实身份。
+
+在 251 普通用户 `dev` 的终端执行 `reset-claude-user` 先预览；关闭 Claude 后，显式执行 `reset-claude-user --apply` 才修改文件。从 **工作站宿主机 A** 执行的等价示例：
+
+```sh
+workstation_compose=compose.workstation.yaml  # 替换为该部署实际使用的文件
+docker compose --env-file .env -f "$workstation_compose" exec -T \
+  --user 1100:1100 -e HOME=/home/dev workstation reset-claude-user
+# 用户要求执行清理且 Claude 已关闭时：
+docker compose --env-file .env -f "$workstation_compose" exec -T \
+  --user 1100:1100 -e HOME=/home/dev workstation reset-claude-user --apply
+```
+
+- 清理本地 Code OAuth 登录字段、用户与设备标识、账号缓存、会话/输入历史、调试/遥测/用量、会话文件与已存在的 Claude 配置备份；不生成新的身份恢复副本。
+- 在 `.claude.json` 中保留 MCP 配置，在 `.credentials.json` 中保留 `mcpOAuth` 和插件凭据；插件、技能、通用代理与真实项目目录保持。项目设置中的 MCP 项保留，项目会话/用量项清理。
+- 在 Claude settings 和用户 Shell 启动文件中，仅清理明确的 Code 认证变量及 `apiKeyHelper`。复杂的 Shell 认证赋值会中止计划，需先人工核对；不执行 Shell 配置，不输出凭据值。
+- 默认处理当前用户 HOME 的 `.claude`。使用 `CLAUDE_CONFIG_DIR` 时，该值必须是 HOME 内独立的绝对配置目录；拒绝 HOME 本身、父路径穿越及符号链接目标。
+- 应用前检查目标用户的 Claude 进程和继承的认证环境变量。继承的认证变量需要在其实际来源中处理并重新打开干净会话；不要以反复执行清理代替检查容器的认证配置。清理中 Claude 再次启动时会停止并报告已完成部分。
+- 范围是本机当前 HOME 的 Claude Code 文件；浏览器资料、服务器端会话、共享 Shell 历史和其他用户目录独立处理。不得将本地文件清理说成服务端注销或所有外部身份均已删除。
+
+规则参考 [CCBaga 固定提交的配置清理实现](https://github.com/liseami/CCBaga/blob/bdfb90ceadfc5fae6772ffff597bddecb0b73cc3/src-tauri/src/cleaner_config.rs)，适配 Linux 并保留 MIT 声明。使用临时 HOME 验证清理、预览和 MCP 保留；对真实部署只做用户已要求的操作。旧镜像若未安装命令，先确认镜像版本和迁移方案，保留原数据。
+
 ## 3. 准备私有配置，执行首次部署
 
 仅在确认属于首次部署、没有冲突及需要保留的目标容器后执行。使用干净的仓库副本；已有目录先检查用途，不覆盖其中的 `.env` 或未提交文件。

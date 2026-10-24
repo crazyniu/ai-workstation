@@ -105,6 +105,10 @@ Mac 可以通过 SSH 转发访问示例中仅绑定本机的 VNC：`ssh -L 5901:
 
 镜像完全由公开安装源和静态模板构建，不从现有业务容器提交快照，不包含浏览器资料、模型认证、GitHub 登录、SSH 私钥或现有项目数据。`tests/audit-image.py` 检查每一镜像层中的常见私有资料，`tests/smoke.sh` 在独立临时容器中验证桌面、CLI、MCP、Chrome 沙箱、持久化重启及 HOME 软链接隔离。
 
+### 手动清理 Claude Code 身份
+
+新镜像安装 `/usr/local/bin/reset-claude-user`；以普通用户 `dev` 执行 `reset-claude-user` 预览，关闭 Claude 后执行 `reset-claude-user --apply`。命令清理 Code 本地登录、用户/设备标识、会话、历史和旧配置备份，保留当前 MCP 配置及 OAuth 凭据、插件、技能、通用代理和真实项目文件。脚本不会随容器启动自动执行，也不清理浏览器登录或服务器端会话。范围、进程检查、继承认证变量及自定义配置目录约束见 [AI 安装指南](../AI-INSTALL.md#22-手动重置-claude-code-用户信息)。
+
 
 ## 数据、备份与恢复
 
