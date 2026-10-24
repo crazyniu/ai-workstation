@@ -41,4 +41,6 @@ python3 gateway/runtime/build-info.py
 
 代码或构建相关 PR 必须完成网关与工作站的构建、运行验收及镜像审计；纯文档 PR 运行变更范围检查后报告同一个必过检查，避免等待被路径过滤跳过的任务。测试失败、取消或未正常报告都会阻止通过。合并使用 squash 或 rebase。
 
+仓库已开启 GitHub 自动合并。完成授权开发并创建非草稿 PR 后，立即执行 `gh pr merge <编号> --auto --squash --match-head-commit <当前提交>`，由 GitHub 在必过检查及其他保护条件满足后合并。依赖 PR 按顺序合并，后续分支移到最新 `main` 再验证；提交者持续处理 CI 失败并确认最终合并状态。
+
 仓库当前只有一名维护者，审批票数为 0，保留 PR 和 CI 门槛；加入其他维护者后可提高审批票数并启用最新推送需他人批准。实际服务器规则见 [Protect default branch](https://github.com/crazyniu/ai-workstation/rules/25768868)，版本化配置为 [main.json](.github/rulesets/main.json)；更新规则时同时核对工作流的检查名和 GitHub Actions 来源。

@@ -32,3 +32,13 @@ explicit. Public images must build from source and clean upstream artifacts.
 
 Report what was actually verified, including untested login, client or network
 paths. A build or health check alone does not prove the complete user workflow.
+
+## Pull request delivery
+
+The repository has GitHub auto-merge enabled. For authorized development work,
+enable squash auto-merge immediately after creating a non-draft pull request:
+`gh pr merge <number> --auto --squash --match-head-commit <head-sha>`.
+Resolve prerequisite PRs in dependency order, target the latest `main`, and keep
+all required checks and branch protection in force. Follow CI through completion,
+fix failures, and verify the PR's merged state and final commit. Creating a PR or
+enabling auto-merge alone does not complete delivery.
