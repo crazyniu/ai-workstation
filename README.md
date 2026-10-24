@@ -124,9 +124,11 @@ docker compose --env-file .env -f compose.workstation.yaml restart workstation
 
 工作站同时提供 VNC 和 noVNC 网页入口，访问 `https://工作站地址:6080/` 自动进入同一个 XFCE 桌面。通过左侧剪贴板面板双向传递中文和多行文字。首次启动生成容器内部的 HTTPS 证书，重启沿用；自签名证书首次访问需要在浏览器确认。bridge 入口仅映射宿主 `127.0.0.1:6080`，可通过 SSH 隧道使用。
 
+可信内网需要免证书提示时，显式设置 `NOVNC_TLS=0`，改用 `http://工作站地址:6080/`；配合 `VNC_AUTH=none` 即为免密码 HTTP 桌面。此连接不加密，文字通过 noVNC 左侧剪贴板面板传递；依赖安全上下文的浏览器 API 会受限。默认仍为 `NOVNC_TLS=1` 的 HTTPS。自定义 `NOVNC_ALLOWED_ORIGINS` 必须与实际入口的协议和端口一致。
+
 默认 `VNC_AUTH=password`，网页使用已有 VNC 密码。用户明确选择可信私网免密码时，在新建容器的私有 `.env` 设置 `VNC_AUTH=none`；这同时关闭网页和原生 VNC 的密码认证，SSH 仍使用自己的认证。能访问该端口的设备可以操作桌面，因此不要为免密码入口配置公网映射。网页不保存或嵌入 VNC 密码。
 
-默认仅允许工作站自身 IP、hostname 和 localhost 对应的 HTTPS WebSocket 来源；使用自定义域名、反向代理或不同外部端口时，设置 `NOVNC_ALLOWED_ORIGINS` 为实际 HTTPS 来源，多个值用空格分隔。已有部署先保留内部数据，按实际运行入口配置服务；不要为添加网页桌面直接重建有数据的容器。
+默认仅允许工作站自身 IP、hostname 和 localhost 对应协议的 WebSocket 来源；使用自定义域名、反向代理或不同外部端口时，设置 `NOVNC_ALLOWED_ORIGINS` 为实际入口来源，多个值用空格分隔。已有部署先保留内部数据，按实际运行入口配置服务；不要为添加网页桌面直接重建有数据的容器。
 
 ### 工作站国家、语言和时区
 

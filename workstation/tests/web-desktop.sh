@@ -15,7 +15,7 @@ DEV_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_hex(16))') \
     docker run -d --name "$name" --network none --shm-size 512m \
     --cap-drop NET_ADMIN --cap-drop NET_RAW --security-opt no-new-privileges:true \
     --security-opt "seccomp=$repo/security/seccomp-chrome.json" \
-    -e DEV_PASSWORD -e VNC_AUTH=none "$image" >/dev/null
+    -e DEV_PASSWORD -e VNC_AUTH=none -e NOVNC_TLS=0 "$image" >/dev/null
 wait_ready() {
     local i
     for ((i=0;i<90;i++)); do
@@ -25,10 +25,10 @@ wait_ready() {
     return 1
 }
 wait_ready
-first_cert=$(docker exec "$name" sha256sum /home/dev/.config/novnc/tls/server.crt)
-docker exec -i "$name" python3 - --auth none < "$repo/tests/web-desktop.py"
+docker exec "$name" test ! -e /home/dev/.config/novnc/tls/server.key
+docker exec -i "$name" python3 - --auth none --scheme http < "$repo/tests/web-desktop.py"
 docker restart "$name" >/dev/null
 wait_ready
-[[ $(docker exec "$name" sha256sum /home/dev/.config/novnc/tls/server.crt) == "$first_cert" ]]
-docker exec -i "$name" python3 - --auth none < "$repo/tests/web-desktop.py"
-printf 'PASS: password-free web desktop and TLS identity survive restart.\n'
+docker exec "$name" test ! -e /home/dev/.config/novnc/tls/server.key
+docker exec -i "$name" python3 - --auth none --scheme http < "$repo/tests/web-desktop.py"
+printf 'PASS: private HTTP desktop survives restart without a password or TLS certificate.\n'

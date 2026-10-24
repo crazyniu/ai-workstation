@@ -99,5 +99,7 @@ sha256:5fd1edc6d5309d5939da83a2c52111a90a8d4e4b88d5d8b6eb4ff7eb5f75559f
 
 - `web-desktop.py` 通过真实 HTTPS/WebSocket/RFB 连接检查页面、来源限制和认证方式；跨站或缺少 Origin 的 WebSocket 应拒绝。
 - `internal-storage.sh` 在默认密码模式下运行网页握手验收，继续保留已有 SSH/VNC 正确与错误密码测试。
-- `web-desktop.sh` 创建无业务挂载的隔离容器，不提供 VNC 密码，验证显式免密码模式；重启后复查网页桌面和 TLS 证书身份。
+- `web-desktop.sh` 创建无业务挂载的隔离容器，不提供 VNC 密码，验证显式免密码 HTTP 模式；重启后复查网页桌面，并确认未生成 TLS 私钥。
 - 本地 Python 与部署测试、Shell 语法检查通过。真实 Linux 容器、镜像隐私审计与发布结果以相应 Actions 为准；浏览器图形界面和中文剪贴板另在实际部署中验收。
+
+- 私网 HTTP 选项：`NOVNC_TLS=0` 显式选择未加密入口，默认 HTTPS 保持。`web-desktop.sh` 检查免密码 HTTP 的页面、来源拒绝和真实 RFB 握手，并确认重启后仍可用且没有生成 TLS 私钥；默认 HTTPS 密码模式继续由 `internal-storage.sh` 验证。

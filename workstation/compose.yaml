@@ -18,6 +18,7 @@ services:
       DEV_PASSWORD: ${WORKSTATION_PASSWORD:-admin}
       VNC_PASSWORD: ${VNC_PASSWORD:-admin}
       VNC_AUTH: ${VNC_AUTH:-password}
+      NOVNC_TLS: ${NOVNC_TLS:-1}
       NOVNC_ALLOWED_ORIGINS: ${NOVNC_ALLOWED_ORIGINS:-}
       ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-}
       # Country + language select the glibc UTF-8 locale (default: en_SG.UTF-8).

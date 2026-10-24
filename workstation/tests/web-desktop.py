@@ -12,9 +12,10 @@ import subprocess
 import urllib.request
 
 
-def upgrade(host, origin):
-    sock = ssl._create_unverified_context().wrap_socket(
-        socket.create_connection((host, 6080), timeout=5), server_hostname=host)
+def upgrade(host, origin, scheme='https'):
+    sock = socket.create_connection((host, 6080), timeout=5)
+    if scheme == 'https':
+        sock = ssl._create_unverified_context().wrap_socket(sock, server_hostname=host)
     key = base64.b64encode(os.urandom(16)).decode()
     headers = [f'GET /websockify HTTP/1.1', f'Host: {host}:6080',
                'Upgrade: websocket', 'Connection: Upgrade',
@@ -69,20 +70,20 @@ class Transport:
         return data
 
 
-def check(host, auth):
+def check(host, auth, scheme='https'):
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
         urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
-    with opener.open(f'https://{host}:6080/', timeout=5) as response:
+    with opener.open(f'{scheme}://{host}:6080/', timeout=5) as response:
         assert b'autoconnect=1' in response.read()
-    with opener.open(f'https://{host}:6080/vnc.html', timeout=5) as response:
+    with opener.open(f'{scheme}://{host}:6080/vnc.html', timeout=5) as response:
         assert b'noVNC' in response.read()
     for origin in ('https://unrelated.invalid', None):
-        sock, stream, status = upgrade(host, origin)
+        sock, stream, status = upgrade(host, origin, scheme)
         try:
             assert ' 403 ' in status, status
         finally:
             stream.close(); sock.close()
-    sock, stream, status = upgrade(host, f'https://{host}:6080')
+    sock, stream, status = upgrade(host, f'{scheme}://{host}:6080', scheme)
     try:
         assert ' 101 ' in status, status
         ws = Transport(sock, stream)
@@ -117,12 +118,13 @@ process.stdout.write(Buffer.concat([cipher.update(input.subarray(8)), cipher.fin
         ws.read(length)
     finally:
         stream.close(); sock.close()
-    print('PASS: HTTPS, noVNC page, origin rejection and full RFB handshake; auth=' + auth)
+    print('PASS: ' + scheme.upper() + ', noVNC page, origin rejection and full RFB handshake; auth=' + auth)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--auth', choices=['none', 'password'], default='password')
+    parser.add_argument('--scheme', choices=['http', 'https'], default='https')
     args = parser.parse_args()
-    check(args.host, args.auth)
+    check(args.host, args.auth, args.scheme)

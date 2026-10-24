@@ -108,9 +108,11 @@ Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` �
 
 访问 `https://工作站地址:6080/`，网页自动连接与 VNC 相同的桌面。noVNC `1.7.0` 源码包及 SHA256 固定在 `web-desktop/versions.env`，websockify 来自 Ubuntu 软件源。左侧剪贴板面板支持双向文字传递，中文与多行代码需要结合实际浏览器验收；文字剪贴板不等同于图片或文件传输。
 
-`VNC_AUTH=password` 为默认模式；可信私网下显式设置 `VNC_AUTH=none` 可免去网页与原生 VNC 密码，SSH 认证独立保留。允许访问免密码端口的设备可以控制桌面。`NOVNC_ALLOWED_ORIGINS` 可指定空格分隔的 HTTPS 来源，用于自定义访问域名或反向代理；默认只允许容器自身 hostname/IP 与 localhost 的 6080 端口，其他来源的 WebSocket 被拒绝。
+可信内网需要免证书提示时，显式设置 `NOVNC_TLS=0`，改用 `http://工作站地址:6080/`；配合 `VNC_AUTH=none` 即为免密码 HTTP 桌面。此连接不加密，文字通过 noVNC 左侧剪贴板面板传递；依赖安全上下文的浏览器 API 会受限。默认仍为 `NOVNC_TLS=1` 的 HTTPS。自定义 `NOVNC_ALLOWED_ORIGINS` 必须与实际入口的协议和端口一致。
 
-网页使用 HTTPS；证书及私钥首次启动生成在用户的 `.config/novnc/tls/` 内，重启保持。自签名证书首次连接需要浏览器确认，也可以将 `server.crt` / `server.key` 替换为自己可信的证书。私钥和用户状态不随公共镜像发布。noVNC 静态文件只读，websockify 以普通桌面用户运行。桥接 Compose 的网页端口默认只映射到宿主回环地址。
+`VNC_AUTH=password` 为默认模式；可信私网下显式设置 `VNC_AUTH=none` 可免去网页与原生 VNC 密码，SSH 认证独立保留。允许访问免密码端口的设备可以控制桌面。`NOVNC_ALLOWED_ORIGINS` 可指定空格分隔的入口来源，用于自定义访问域名或反向代理；默认只允许容器自身 hostname/IP 与 localhost 对应协议的 6080 端口，其他来源的 WebSocket 被拒绝。
+
+默认网页使用 HTTPS；证书及私钥首次启动生成在用户的 `.config/novnc/tls/` 内，重启保持。自签名证书首次连接需要浏览器确认，也可以将 `server.crt` / `server.key` 替换为自己可信的证书。HTTP 模式不生成或使用证书。私钥和用户状态不随公共镜像发布。noVNC 静态文件只读，websockify 以普通桌面用户运行。桥接 Compose 的网页端口默认只映射到宿主回环地址。
 
 ### 国家、语言与分开部署（供安装 AI 使用）
 
