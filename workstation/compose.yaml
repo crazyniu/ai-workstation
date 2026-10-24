@@ -1,6 +1,6 @@
 services:
   workstation:
-    image: ghcr.io/crazyniu/ai-workstation:latest
+    image: ${WORKSTATION_IMAGE:-ghcr.io/crazyniu/ai-workstation:latest}
     platform: linux/amd64
     hostname: ai-workstation
     restart: unless-stopped
@@ -15,3 +15,12 @@ services:
       DEV_PASSWORD: ${WORKSTATION_PASSWORD:-admin}
       VNC_PASSWORD: ${VNC_PASSWORD:-admin}
       ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-}
+      # Country + language select the glibc UTF-8 locale (default: en_SG.UTF-8).
+      WORKSTATION_COUNTRY: ${WORKSTATION_COUNTRY:-SG}
+      WORKSTATION_LANGUAGE: ${WORKSTATION_LANGUAGE:-en}
+      WORKSTATION_TIMEZONE: ${WORKSTATION_TIMEZONE:-Asia/Singapore}
+      # Bridge mode can reach a gateway on another host/network via an explicit
+      # private proxy endpoint. Empty values use the host's ordinary egress.
+      HTTP_PROXY: ${WORKSTATION_HTTP_PROXY:-}
+      HTTPS_PROXY: ${WORKSTATION_HTTPS_PROXY:-}
+      NO_PROXY: ${WORKSTATION_NO_PROXY:-localhost,127.0.0.1}

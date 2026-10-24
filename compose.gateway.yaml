@@ -1,0 +1,39 @@
+# Independent gateway on host B. LAN_INTERFACE belongs to host B.
+name: ai-workstation-gateway
+services:
+  gateway:
+    image: ${GATEWAY_IMAGE:-ghcr.io/crazyniu/ai-workstation-gateway:latest}
+    platform: linux/amd64
+    hostname: home-gateway
+    restart: unless-stopped
+    cap_add: [NET_ADMIN]
+    devices: [/dev/net/tun:/dev/net/tun]
+    sysctls:
+      net.ipv4.ip_forward: '1'
+      net.ipv4.conf.all.rp_filter: '0'
+    environment:
+      GATEWAY_MODE: 'true'
+      GATEWAY_LAN_ADDRESS: ${GATEWAY_ADDRESS:-192.168.1.250}/${LAN_PREFIX:-24}
+      GATEWAY_LAN_ROUTER: ${LAN_ROUTER:-192.168.1.1}
+      GATEWAY_ADMIN_PASSWORD: ${WEB_PASSWORD:-admin}
+      GATEWAY_CONTAINER_USER: ${GATEWAY_USER:-admin}
+      GATEWAY_CONTAINER_PASSWORD: ${GATEWAY_PASSWORD:-admin}
+      GATEWAY_HOST_ADDRESS: ${HOST_ADDRESS:-}
+      GATEWAY_BRIDGE_ROUTER: ${CONTROL_ROUTER:-172.30.100.1}
+      GATEWAY_BLOCK_DIRECT_CLIENTS: ${WORKSTATION_ADDRESS:-192.168.1.251}
+    networks:
+      control:
+        ipv4_address: ${CONTROL_ADDRESS:-172.30.100.2}
+      gateway_lan: {}
+networks:
+  control:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${CONTROL_SUBNET:-172.30.100.0/24}
+          gateway: ${CONTROL_ROUTER:-172.30.100.1}
+  gateway_lan:
+    driver: macvlan
+    driver_opts:
+      parent: ${LAN_INTERFACE:-eth0}
+    enable_ipv4: false

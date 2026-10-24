@@ -2,13 +2,13 @@
 
 此目录是统一仓库中的工作站构建上下文，网关、正式 Compose 和 GHCR 发布由仓库根目录统一管理。支持 `linux/amd64`。可复现的验证步骤及发布记录见 [验证记录](VALIDATION.md)。
 
-包含 Ubuntu、繁体中文及台北时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot 和 GitHub 五项 MCP 配置。基础镜像固定到官方 amd64 manifest digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Ubuntu 系统软件随 APT 仓库更新。
+包含 Ubuntu、新加坡英文及新加坡时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot 和 GitHub 五项 MCP 配置。国家、语言和时区可在初始化时配置。基础镜像固定到官方 amd64 manifest digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Ubuntu 系统软件随 APT 仓库更新。
 
 ## 已安装的软件
 
 | 类别 | 软件与版本 | 用途 |
 | --- | --- | --- |
-| 基础系统 | Ubuntu `26.04` | Linux amd64；繁体中文与台北时区 |
+| 基础系统 | Ubuntu `26.04` | Linux amd64；默认新加坡英文与 `Asia/Singapore`，可配置 |
 | 桌面 | XFCE、XFWM、XFCE Panel / Terminal、Thunar | 图形桌面、终端与文件管理 |
 | 远程连接 | TigerVNC、OpenSSH Server | VNC 桌面与 SSH 登录 |
 | 浏览器 | Google Chrome `156.0.8078.47-1` | 桌面浏览器和浏览器 MCP 运行环境 |
@@ -89,7 +89,15 @@ Chrome 使用自身沙箱。启动时须使用 `security/seccomp-chrome.json`、
 
 Mac 可以通过 SSH 转发访问示例中仅绑定本机的 VNC：`ssh -L 5901:127.0.0.1:5901 -p 2222 dev@宿主机`，随后打开 `vnc://127.0.0.1:5901`。正式局域网地址由根 Compose 设置。
 
-网络出口由容器外的网关配置决定，镜像不内置代理地址。台北时区及中文区域配置不会改变公网出口，也不会使容器变成物理电脑。
+### 国家、语言与分开部署（供安装 AI 使用）
+
+在私有 `.env` 或 `docker run -e` 中设置 `WORKSTATION_COUNTRY=SG`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=Asia/Singapore`。默认生成 `en_SG.UTF-8`，同步用于 SSH 登录和 XFCE。其他示例为 `TW / zh / Asia/Taipei`、`US / en / America/New_York`；组合须是镜像 glibc 支持的 locale。无效输入会中止初始化。不要通过额外的 `LANG` / `TZ` 覆盖这套参数。
+
+已有容器可使用内部 `/etc/workstation/region.json` 覆盖部分或全部参数，再重启同一容器：`{"country":"SG","language":"en","timezone":"Asia/Singapore"}`。内部文件优先于运行时环境变量；不会清理 HOME、MCP 或用户身份。此方式要求镜像实际包含 `runtime/region.py` 对应的初始化入口；不能把本次源码当作已经发布的新镜像。完整操作、参数优先级及真实登录验收见 [AI-INSTALL 第 2.1 节](../AI-INSTALL.md#21-工作站国家语言和时区初始化)。
+
+工作站 251 可在宿主机 A、网关 250 在宿主机 B。同一二层 LAN 使用根目录 `./deploy.sh gateway`（B）与 `./deploy.sh workstation`（A），各自设置本机网卡；不同网段使用 `./deploy.sh workstation-bridge`（A），将 `WORKSTATION_HTTP_PROXY` / `WORKSTATION_HTTPS_PROXY` 指向已验证可达的网关私有代理端点。bridge 模式不使用远端 250 作为本地 IPAM 默认网关，也不依赖 B 的 Docker bridge 或 Compose 服务名。拓扑、端口与部署顺序见 [AI 安装指南](../AI-INSTALL.md#0-先确定角色宿主机和网络拓扑)。
+
+网络出口由容器外的网关配置决定，镜像不内置代理地址。地区语言与时区设置独立于公网出口。
 
 需要显式代理时，可在运行时传入 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY`，桌面会话会保留这些环境变量。桌面 Codex / Claude 启动器还会在每次启动时读取容器内部可选的 `/etc/workstation/proxy.env`；该文件仅支持上述代理变量及 `ALL_PROXY` 和对应小写形式，进程已有同名环境变量优先。文件按 `KEY=value` 存放，作为数据读取，不执行 shell。请在私有部署时配置实际出口，不把个人代理凭据提交到镜像或仓库。
 
@@ -102,9 +110,11 @@ Mac 可以通过 SSH 转发访问示例中仅绑定本机的 VNC：`ssh -L 5901:
 
 在仓库根目录操作，确保正在使用原部署的 `.env`、Compose 项目名和 Docker context。`deploy.sh` 只用于首次创建，已有容器会被它拒绝；日常启停用 `docker compose start` / `stop` / `restart`。两个方案均先停止工作站，备份存放在仓库外的私有目录，完成后可以重新启动原容器。
 
+下列命令按同机的根 Compose 编写。独立部署时，在工作站宿主机 A 执行，并为每条 `docker compose` 命令添加 `--env-file .env -f compose.workstation.yaml`（LAN）或 `--env-file .env -f workstation/compose.yaml`（bridge），保持原项目身份。
+
 ### 完整私有快照与原版本恢复
 
-完整回退以私有镜像快照最直接：它保留容器写入层中的 HOME、项目、SSH 主机密钥、`/etc/workstation/proxy.env`、账号库和额外安装的软件，文件 UID/GID 与权限随镜像保留。外部挂载和运行中内存不在镜像快照内；本项目默认 Compose 没有业务挂载。Docker 网络、端口、安全参数和运行时环境属于容器定义，应同时保存。此方案恢复原软件版本，不等同于升级到新的公开镜像。
+完整回退以私有镜像快照最直接：它保留容器写入层中的 HOME、项目、SSH 主机密钥、`/etc/workstation/proxy.env`、`/etc/workstation/region.json`、账号库和额外安装的软件，文件 UID/GID 与权限随镜像保留。外部挂载和运行中内存不在镜像快照内；本项目默认 Compose 没有业务挂载。Docker 网络、端口、安全参数和运行时环境属于容器定义，应同时保存。此方案恢复原软件版本，不等同于升级到新的公开镜像。
 
 ```sh
 set -eu
@@ -168,6 +178,13 @@ set -eu
 docker cp -a "$container":/etc/workstation/proxy.env - > "$workstation_backup/proxy-env.tar"
 ```
 
+若使用了容器内部的地区覆盖 `/etc/workstation/region.json`，同样单独导出；未配置时跳过。该文件的优先级高于新容器的环境变量，迁移时应核对其国家、语言和时区仍符合目标要求：
+
+```sh
+set -eu
+docker cp -a "$container":/etc/workstation/region.json - > "$workstation_backup/region-json.tar"
+```
+
 确认归档完整后，在 `.env` 中选择新的公开镜像及运行时密码。创建新容器但暂不启动，将 tar 流直接放回相同父目录：
 
 ```bash
@@ -177,6 +194,9 @@ tar -tf "$workstation_backup/ssh-keys.tar" > /dev/null
 if [ -f "$workstation_backup/proxy-env.tar" ]; then
   tar -tf "$workstation_backup/proxy-env.tar" > /dev/null
 fi
+if [ -f "$workstation_backup/region-json.tar" ]; then
+  tar -tf "$workstation_backup/region-json.tar" > /dev/null
+fi
 docker compose pull workstation
 docker compose up --no-start --no-deps --force-recreate workstation
 new_container=$(docker compose ps --all --quiet workstation)
@@ -185,6 +205,9 @@ docker cp - "$new_container":/home < "$workstation_backup/home-dev.tar"
 docker cp - "$new_container":/etc/ssh < "$workstation_backup/ssh-keys.tar"
 if [ -f "$workstation_backup/proxy-env.tar" ]; then
   docker cp - "$new_container":/etc/workstation < "$workstation_backup/proxy-env.tar"
+fi
+if [ -f "$workstation_backup/region-json.tar" ]; then
+  docker cp - "$new_container":/etc/workstation < "$workstation_backup/region-json.tar"
 fi
 # tar 流保留数值 UID/GID 与权限；恢复使用归档原值，不启用 cp -a 的目标用户映射。
 # 启动前核对 HOME 根目录、SSH keys 及代理文件的属主和权限与原归档一致：
