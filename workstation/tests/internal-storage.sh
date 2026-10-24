@@ -34,6 +34,7 @@ path.chmod(0o600)
 PY
 # --env-file loads runtime ENV into the test container; it creates no mount.
 docker run -d --name "$name" --hostname workstation-internal-smoke --network none --shm-size 512m \
+    --cap-drop NET_ADMIN --cap-drop NET_RAW \
     --security-opt no-new-privileges:true --security-opt "seccomp=$profile" \
     --env-file "$fixture_dir/runtime.env" -e HTTPS_PROXY=http://127.0.0.1:9 "$image" >/dev/null
 

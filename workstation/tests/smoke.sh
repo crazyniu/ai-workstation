@@ -38,6 +38,7 @@ PY
 docker volume create "$home_volume" >/dev/null
 docker volume create "$keys_volume" >/dev/null
 docker run -d --name "$name" --hostname workstation-smoke --network none --shm-size 512m \
+    --cap-drop NET_ADMIN --cap-drop NET_RAW \
     --security-opt no-new-privileges:true --security-opt "seccomp=$profile" \
     --mount "type=volume,src=$home_volume,dst=/home/dev" \
     --mount "type=volume,src=$keys_volume,dst=/etc/ssh/keys" \
@@ -59,6 +60,28 @@ wait_desktop() {
     return 1
 }
 wait_desktop
+# Validate the root boundary as well as the unprivileged desktop user below.
+docker exec -i "$name" python3 - <<'PYNETWORK'
+from pathlib import Path
+import socket, subprocess
+status = dict(line.split(':', 1) for line in Path('/proc/self/status').read_text().splitlines() if ':' in line)
+for field in ['CapEff', 'CapPrm', 'CapBnd']:
+    assert int(status[field].strip(), 16) & ((1 << 12) | (1 << 13)) == 0, field
+try:
+    raw = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
+except PermissionError:
+    pass
+else:
+    raw.close()
+    raise AssertionError('Root can create a raw packet socket')
+route = ['ip', 'route', 'add', '203.0.113.1/32', 'dev', 'lo']
+result = subprocess.run(route, text=True, capture_output=True)
+if result.returncode == 0:
+    subprocess.run(['ip', 'route', 'del', '203.0.113.1/32', 'dev', 'lo'], check=True)
+    raise AssertionError('Root can change the container route')
+assert 'Operation not permitted' in result.stderr, result.stderr
+print('PASS: even container root cannot alter routes or create raw packet sockets.')
+PYNETWORK
 docker exec -i --user 1100:1100 "$name" python3 - < "$repo/tests/desktop-recovery.py"
 docker exec "$name" test -x /usr/local/bin/reset-claude-user
 # Exercise the installed command against a dedicated temporary HOME only.
