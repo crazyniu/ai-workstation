@@ -1,6 +1,8 @@
 **
 !Dockerfile
 !versions.env
+!web-desktop/
+!web-desktop/**
 !runtime/
 !runtime/**
 !scripts/

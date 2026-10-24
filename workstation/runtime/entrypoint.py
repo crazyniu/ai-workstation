@@ -19,9 +19,12 @@ def main():
     if os.getuid() != 0:
         raise ValueError('The entrypoint needs root to start SSH; applications run as dev')
     dev_password = secret('DEV_PASSWORD', True)
-    vnc_password = secret('VNC_PASSWORD', True)
+    vnc_auth = os.environ.get('VNC_AUTH', 'password')
+    if vnc_auth not in ('password', 'none'):
+        raise ValueError('VNC_AUTH must be password or none')
+    vnc_password = secret('VNC_PASSWORD', vnc_auth == 'password')
     root_password = secret('ROOT_PASSWORD')
-    if not 1 <= len(vnc_password.encode('ascii')) <= 8:
+    if vnc_password and not 1 <= len(vnc_password.encode('ascii')) <= 8:
         raise ValueError('VNC password must be 1–8 ASCII bytes for Mac Screen Sharing')
     # Apply region to system/PAM configuration and every supervised child.
     # Fail before touching user state if a requested locale/timezone is invalid.

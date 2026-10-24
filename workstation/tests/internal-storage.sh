@@ -87,6 +87,7 @@ assert b'HTTPS_PROXY=http://127.0.0.1:9' in pathlib.Path('/proc/'+pid+'/environ'
 print('PASS: runtime proxy reaches the ordinary-user XFCE session.')
 PYPROXY
 docker exec -i "$name" python3 - < "$repo/tests/auth-smoke.py"
+docker exec -i "$name" python3 - < "$repo/tests/web-desktop.py"
 
 docker exec -i --user 1100:1100 -e HOME=/home/dev "$name" python3 - <<'PY'
 import os

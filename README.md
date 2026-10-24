@@ -120,6 +120,14 @@ docker compose --env-file .env -f compose.workstation.yaml restart workstation
 
 网关部署使用 `compose.gateway.yaml`；bridge 工作站使用 `workstation/compose.yaml`。独立入口通过网络连接远端网关，无需在 A 上同时运行 gateway 容器。各拓扑的前提与检查步骤见 [AI 安装指南](AI-INSTALL.md#0-先确定角色宿主机和网络拓扑)。
 
+### 浏览器桌面与复制粘贴
+
+工作站同时提供 VNC 和 noVNC 网页入口，访问 `https://工作站地址:6080/` 自动进入同一个 XFCE 桌面。通过左侧剪贴板面板双向传递中文和多行文字。首次启动生成容器内部的 HTTPS 证书，重启沿用；自签名证书首次访问需要在浏览器确认。bridge 入口仅映射宿主 `127.0.0.1:6080`，可通过 SSH 隧道使用。
+
+默认 `VNC_AUTH=password`，网页使用已有 VNC 密码。用户明确选择可信私网免密码时，在新建容器的私有 `.env` 设置 `VNC_AUTH=none`；这同时关闭网页和原生 VNC 的密码认证，SSH 仍使用自己的认证。能访问该端口的设备可以操作桌面，因此不要为免密码入口配置公网映射。网页不保存或嵌入 VNC 密码。
+
+默认仅允许工作站自身 IP、hostname 和 localhost 对应的 HTTPS WebSocket 来源；使用自定义域名、反向代理或不同外部端口时，设置 `NOVNC_ALLOWED_ORIGINS` 为实际 HTTPS 来源，多个值用空格分隔。已有部署先保留内部数据，按实际运行入口配置服务；不要为添加网页桌面直接重建有数据的容器。
+
 ### 工作站国家、语言和时区
 
 初始化默认使用新加坡英文，私有 `.env` 中对应参数为：
@@ -201,6 +209,7 @@ docker image save gateway-local:test | python3 gateway/tests/audit-image.py
 docker build -t workstation-local:test workstation
 bash workstation/tests/smoke.sh workstation-local:test
 bash workstation/tests/internal-storage.sh workstation-local:test
+bash workstation/tests/web-desktop.sh workstation-local:test
 docker image save workstation-local:test | python3 workstation/tests/audit-image.py
 ```
 

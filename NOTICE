@@ -33,6 +33,11 @@ Upstream projects and terms:
   License: https://docs.python.org/3/license.html
 - XFCE: https://www.xfce.org/about
 - TigerVNC: https://github.com/TigerVNC/tigervnc
+- noVNC 1.7.0 (MPL-2.0): https://github.com/novnc/noVNC/tree/v1.7.0
+  Source artifact SHA256: workstation/web-desktop/versions.env.
+  Upstream license and notices retained in /opt/workstation/novnc/.
+- websockify (LGPL-3.0): https://github.com/novnc/websockify
+  Ubuntu package version and copyright retained in /usr/share/doc/python3-websockify/.
 - Google Chrome: https://www.google.com/chrome/terms/
 - Microsoft Visual Studio Code: https://code.visualstudio.com/license
 - Godot: https://godotengine.org/license/
