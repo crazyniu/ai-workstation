@@ -19,6 +19,7 @@ def servers():
         "playwright": local("playwright", ["--executable-path", "/usr/bin/google-chrome-stable", "--headless", "--isolated", "--sandbox"]),
         "chrome-devtools": local("chrome-devtools", ["--executablePath", "/usr/bin/google-chrome-stable", "--headless", "--isolated", "--no-usage-statistics", "--no-performance-crux"]),
         "godot": local("godot", env={"GODOT_PATH": "/usr/local/bin/godot", "DISPLAY": ":1", "LIBGL_ALWAYS_SOFTWARE": "1"}),
+        "unity": {"command": "/usr/local/bin/unity-mcp", "args": []},
         "github": {"url": "https://api.githubcopilot.com/mcp/"},
     }
 
@@ -35,8 +36,10 @@ def atomic_write(path, text):
         temporary.unlink(missing_ok=True)
 
 
-def configure(home):
+def configure(home, only=None):
     defaults = servers()
+    if only:
+        defaults = {name: defaults[name] for name in only}
     codex = home / ".codex/config.toml"
     original = codex.read_text() if codex.exists() else ""
     parsed = tomllib.loads(original)
@@ -77,5 +80,6 @@ def configure(home):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--home", type=Path, default=Path.home())
+    parser.add_argument("--only", nargs="+", choices=servers(), help="Add only these servers to an existing installation")
     args = parser.parse_args()
-    configure(args.home)
+    configure(args.home, args.only)

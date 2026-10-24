@@ -8,6 +8,8 @@
 !mcp/
 !mcp/package.json
 !mcp/package-lock.json
+!unity/
+!unity/**
 !desktop/
 !desktop/**
 !licenses/

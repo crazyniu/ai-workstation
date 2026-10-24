@@ -40,6 +40,17 @@ docker image save workstation-local:test | python3 workstation/tests/audit-image
 - PASS：Shell 语法、文档本地链接及差异格式检查。重置测试使用临时 HOME，不读取真实用户凭据。
 - NOT RUN：包含重置安装步骤的完整新镜像构建与全流程 smoke，由更新后的 PR CI 运行；不据临时容器的脚本验证宣称新镜像已发布。
 
+## 2026-10-24 Unity Personal 与 MCP
+
+- PASS：固定 Unity Editor `6000.3.27f1` 官方 Linux 安装包，上游发布 API 的 MD5 校验通过，再记录完整文件 SHA256；Hub `3.22.4`、uv `0.13.5` 和 Unity MCP `10.3.0` 均验证固定来源及校验值。
+- PASS：现有 Linux amd64 工作站内安装 Editor、Hub、本地 MCP 服务和项目桥接包；普通用户执行 `unity-editor -version` 返回 `6000.3.27f1`，Hub CLI 正常显示帮助。
+- PASS：Claude `mcp get unity` 显示 Connected；独立 MCP SDK 完成 stdio 握手，枚举 48 个工具、18 项资源。现有五个 MCP 及其他 Claude 设置逐项比较保持一致；Codex 也追加 Unity MCP。
+- PASS：通过 macOS 屏幕共享打开实际桌面启动器，按用户明确授权接受首次 Unity 软件条款并进入 Hub 登录流程。准备了独立空白项目及本地桥接包引用。
+- PASS：工作站 Python 回归 53 项与仓库部署/CI 分类回归 11 项；其中 Linux `/proc` 进程检测 1 项在 macOS 跳过。新增测试覆盖追加 Unity MCP、保留既有身份与同名覆盖、重复安装和配置权限；Shell/JavaScript 语法及差异格式通过。
+- 修复首次 PR CI 的版本误判：官方 uv 输出包含平台元数据，版本检查现接受 `uv 0.13.5 (x86_64-unknown-linux-gnu)`，同时拒绝不同版本；增加失败时的实际版本输出。已验证带/不带元数据及相邻错误版本四种情况。
+- NOT RUN：Unity 账号登录、Personal 免费许可证激活、项目导入及真实场景读写尚未验证。需要用户登录自己的 Unity 账号；MCP 服务端 Connected 不等于编辑器桥接已连接。
+- NOT RUN：包含本次默认 Unity MCP 的完整公共镜像构建、smoke、重启与镜像层审计，由本次 PR CI 继续验证；已有工作站未重建或重启。Editor/Hub 为独立可选安装，不包含在默认公共镜像中。
+
 ## 已验证的公开发布
 
 [GitHub Actions 运行 39958308949](https://github.com/crazyniu/ai-workstation/actions/runs/39958308949) 于 2026-10-23 对提交 [`948e9d897f6bed47448a8eacdcfeffc9e9fa0ba4`](https://github.com/crazyniu/ai-workstation/commit/948e9d897f6bed47448a8eacdcfeffc9e9fa0ba4) 完成双镜像流水线。工作站的干净构建、`smoke.sh`、`internal-storage.sh` 和全部 16 层镜像审计成功，随后发布到 GHCR。

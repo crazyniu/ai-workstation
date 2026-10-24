@@ -68,17 +68,22 @@ if [ "$(id -u)" -eq 0 ]; then
     exit 1
 fi
 base=/opt/workstation/mcp/node_modules
+if [ "${1:-}" = unity ]; then
+    shift
+    exec /usr/local/bin/unity-mcp "$@"
+fi
 case "${1:-}" in
     context7) script="$base/@upstash/context7-mcp/dist/index.js" ;;
     playwright) script="$base/@playwright/mcp/cli.js" ;;
     chrome-devtools) script="$base/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js" ;;
     godot) script="$base/@coding-solo/godot-mcp/build/index.js" ;;
-    *) echo 'Choose context7, playwright, chrome-devtools, or godot.' >&2; exit 2 ;;
+    *) echo 'Choose context7, playwright, chrome-devtools, godot, or unity.' >&2; exit 2 ;;
 esac
 shift
 exec /usr/bin/setpriv --no-new-privs /usr/local/bin/node "$script" "$@"
 SH
 chmod 755 /usr/local/bin/workstation-mcp
+bash "$base/scripts/install-unity-mcp.sh"
 python3 "$base/scripts/configure-mcp.py" --home "$base/home-template"
 chown -R root:root "$base"
 chmod -R go-w "$base"

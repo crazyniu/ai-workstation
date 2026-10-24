@@ -110,7 +110,7 @@ for filename in ['.codex/config.toml','.claude.json']:
     path=home/filename
     assert path.stat().st_uid==1100 and stat.S_IMODE(path.stat().st_mode)==0o600
 servers=tomllib.loads((home/'.codex/config.toml').read_text())['mcp_servers']
-assert set(['context7','playwright','chrome-devtools','godot','github'])<=set(servers)
+assert set(['context7','playwright','chrome-devtools','godot','unity','github'])<=set(servers)
 claude=json.loads((home/'.claude.json').read_text())['mcpServers']
 assert set(servers)<=set(claude)
 assert '--sandbox' in servers['playwright']['args']

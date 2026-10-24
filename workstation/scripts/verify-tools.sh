@@ -3,6 +3,15 @@
 set -euo pipefail
 [[ $(id -u) -ne 0 ]] || { echo 'Run this check as dev.' >&2; exit 1; }
 source /opt/workstation/versions.env
+source /opt/workstation/unity/versions.env
+uv_output=$(uv --version)
+printf '%s\n' "$uv_output"
+# Official binaries can append build metadata, e.g. (x86_64-unknown-linux-gnu).
+[[ $uv_output == "uv $UV_VERSION" || $uv_output == "uv $UV_VERSION ("*")" ]] || {
+    echo "Expected uv $UV_VERSION; got: $uv_output" >&2
+    exit 1
+}
+[[ $(/opt/workstation/unity-mcp/bin/python -c 'from importlib.metadata import version; print(version("mcpforunityserver"))') == "$UNITY_MCP_VERSION" ]]
 [[ $(node --version) == "v$NODE_VERSION" ]]
 codex --version | grep -F "$CODEX_VERSION"
 claude --version | grep -F "$CLAUDE_VERSION"
