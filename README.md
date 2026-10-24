@@ -5,7 +5,7 @@
 
 面向家庭网络与远程开发的双容器环境：一个带桌面式 Web 后台的网关，一个可通过 SSH / VNC 使用的 Linux 开发工作站。
 
-工作站默认美国英文（洛杉矶），可配置国家、语言和时区。两个角色既可同机运行，也可分别部署在宿主机 A/B；独立部署入口、网络前提和初始化参数见 [AI 安装指南](AI-INSTALL.md)。
+工作站默认新加坡英文，可配置国家、语言和时区。两个角色既可同机运行，也可分别部署在宿主机 A/B；独立部署入口、网络前提和初始化参数见 [AI 安装指南](AI-INSTALL.md)。
 
 ## 让 AI 帮你安装
 
@@ -25,8 +25,8 @@ Clash 网关默认 192.168.1.250，Claude 开发工作站默认 192.168.1.251。
 发现已有部署时先说明现状和方案，不删除或重建已有容器，不改动其他服务。
 首次安装使用仓库 deploy.sh；密码通过私有 .env 配置，不回显，不提交 Git。
 不擅自迁移 Docker 存储、修改主路由器或向公网开放端口。
-工作站默认 WORKSTATION_COUNTRY=US、WORKSTATION_LANGUAGE=en、
-WORKSTATION_TIMEZONE=America/Los_Angeles；按 AI-INSTALL.md 配置和验收。
+工作站默认 WORKSTATION_COUNTRY=SG、WORKSTATION_LANGUAGE=en、
+WORKSTATION_TIMEZONE=Asia/Singapore；按 AI-INSTALL.md 配置和验收。
 
 完成后验证容器状态、实际地址、Mounts、网关网页/DNS/代理、工作站 SSH/VNC，
 核对 Python 和工具版本；需要账号登录的服务交由我登录后再验证。
@@ -122,15 +122,15 @@ docker compose --env-file .env -f compose.workstation.yaml restart workstation
 
 ### 工作站国家、语言和时区
 
-初始化默认使用美国英文（洛杉矶），私有 `.env` 中对应参数为：
+初始化默认使用新加坡英文，私有 `.env` 中对应参数为：
 
 ```dotenv
-WORKSTATION_COUNTRY=US
+WORKSTATION_COUNTRY=SG
 WORKSTATION_LANGUAGE=en
-WORKSTATION_TIMEZONE=America/Los_Angeles
+WORKSTATION_TIMEZONE=Asia/Singapore
 ```
 
-国家使用大写两位代码，语言使用小写语言代码，两者组合为 `en_US.UTF-8`；时区独立使用 IANA 名称。例如台湾繁体中文为 `TW / zh / Asia/Taipei`，美国英文（纽约）为 `US / en / America/New_York`。初始化按需生成镜像支持的 locale，并将配置应用到 SSH 登录和 XFCE 会话。
+国家使用大写两位代码，语言使用小写语言代码，两者组合为 `en_SG.UTF-8`；时区独立使用 IANA 名称。例如台湾繁体中文为 `TW / zh / Asia/Taipei`，美国英文（纽约）为 `US / en / America/New_York`。初始化按需生成镜像支持的 locale，并将配置应用到 SSH 登录和 XFCE 会话。
 
 已有容器可通过内部 `/etc/workstation/region.json` 覆盖地区配置，再重启同一容器；提供的字段优先于容器环境变量。修改 `.env` 后重启不会更新已有容器的环境变量定义。配置文件写法、参数校验和验收命令见 [AI 安装指南](AI-INSTALL.md#21-工作站国家语言和时区初始化)。地区设置控制容器内部语言、格式和时间，公网出口由网关和代理配置决定。
 

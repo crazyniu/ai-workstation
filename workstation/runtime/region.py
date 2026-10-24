@@ -12,7 +12,7 @@ import shlex
 import subprocess
 import sys
 
-DEFAULTS = {'country': 'US', 'language': 'en', 'timezone': 'America/Los_Angeles'}
+DEFAULTS = {'country': 'SG', 'language': 'en', 'timezone': 'Asia/Singapore'}
 VARIABLES = {key: 'WORKSTATION_' + key.upper() for key in DEFAULTS}
 
 
