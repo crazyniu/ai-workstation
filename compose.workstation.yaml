@@ -17,6 +17,7 @@ services:
       DEV_PASSWORD: ${WORKSTATION_PASSWORD:-admin}
       VNC_PASSWORD: ${VNC_PASSWORD:-admin}
       VNC_AUTH: ${VNC_AUTH:-password}
+      NOVNC_TLS: ${NOVNC_TLS:-1}
       NOVNC_ALLOWED_ORIGINS: ${NOVNC_ALLOWED_ORIGINS:-}
       ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-}
       # OS region only; these do not select a proxy node or change public egress.

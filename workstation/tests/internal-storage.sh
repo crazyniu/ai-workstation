@@ -88,6 +88,7 @@ print('PASS: runtime proxy reaches the ordinary-user XFCE session.')
 PYPROXY
 docker exec -i "$name" python3 - < "$repo/tests/auth-smoke.py"
 docker exec -i "$name" python3 - < "$repo/tests/web-desktop.py"
+first_cert=$(docker exec "$name" sha256sum /home/dev/.config/novnc/tls/server.crt)
 
 docker exec -i --user 1100:1100 -e HOME=/home/dev "$name" python3 - <<'PY'
 import os
@@ -119,6 +120,8 @@ for ((attempt=1; attempt<=10; attempt++)); do
     docker exec "$name" python3 /etc/workstation/healthcheck.py
 done
 docker exec -i "$name" python3 - < "$repo/tests/auth-smoke.py"
+docker exec -i "$name" python3 - < "$repo/tests/web-desktop.py"
+[[ $(docker exec "$name" sha256sum /home/dev/.config/novnc/tls/server.crt) == "$first_cert" ]]
 dev_exec sh -c 'test "$(cat /home/dev/Projects/internal-storage-smoke.txt)" = container-owned-persistence && grep -q internal-storage-preserve-settings /home/dev/.codex/config.toml'
 [[ $(dev_exec gh config get git_protocol) == ssh ]]
 second_keys=$(docker exec "$name" sh -c 'for key in /etc/ssh/keys/ssh_host_*_key.pub; do ssh-keygen -lf "$key"; done')

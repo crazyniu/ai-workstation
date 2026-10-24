@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Serve noVNC over HTTPS as the desktop user; keep TLS identity container-local."""
+"""Serve noVNC as the desktop user; keep TLS identity container-local."""
 import ipaddress
 import os
 from pathlib import Path
@@ -7,9 +7,15 @@ import socket
 import subprocess
 
 os.umask(0o077)
+tls_mode = os.environ.get('NOVNC_TLS', '1')
+if tls_mode not in ('0', '1'):
+    raise ValueError('NOVNC_TLS must be 1 (HTTPS) or 0 (private HTTP)')
+use_tls = tls_mode == '1'
+scheme = 'https' if use_tls else 'http'
 home = Path.home()
 tls = home / '.config/novnc/tls'
-tls.mkdir(parents=True, exist_ok=True, mode=0o700)
+if use_tls:
+    tls.mkdir(parents=True, exist_ok=True, mode=0o700)
 key, cert = tls / 'server.key', tls / 'server.crt'
 # Include current container addresses and hostname in the local certificate.
 names = {'DNS:localhost', 'IP:127.0.0.1'}
@@ -18,7 +24,7 @@ if all(c.isalnum() or c in '.-' for c in hostname):
     names.add('DNS:' + hostname)
 for address in subprocess.check_output(['hostname', '-I'], text=True).split():
     names.add('IP:' + str(ipaddress.ip_address(address)))
-if not key.exists() or not cert.exists():
+if use_tls and (not key.exists() or not cert.exists()):
     # A self-signed certificate provides HTTPS for browser secure-context APIs.
     # Users can replace these files with a certificate they already trust.
     subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-sha256',
@@ -36,10 +42,10 @@ for name in sorted(names):
     host = name.split(':', 1)[1]
     if ':' in host:
         host = '[' + host + ']'
-    origins.append('https://' + host + ':' + port)
+    origins.append(scheme + '://' + host + ':' + port)
 # Reject cross-site WebSocket connections, especially in password-free mode.
 allowed = os.environ.get('NOVNC_ALLOWED_ORIGINS') or ' '.join(origins)
-os.execvp('websockify', ['websockify', '--web=/opt/workstation/novnc',
-                        '--cert=' + str(cert), '--key=' + str(key), '--ssl-only',
+options = ['--cert=' + str(cert), '--key=' + str(key), '--ssl-only'] if use_tls else []
+os.execvp('websockify', ['websockify', '--web=/opt/workstation/novnc', *options,
                         '--auth-plugin=ExpectOrigin', '--auth-source=' + allowed,
                         bind + ':' + port, target])
