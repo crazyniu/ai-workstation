@@ -41,4 +41,4 @@ python3 gateway/runtime/build-info.py
 
 代码或构建相关 PR 必须完成网关与工作站的构建、运行验收及镜像审计；纯文档 PR 运行变更范围检查后报告同一个必过检查，避免等待被路径过滤跳过的任务。测试失败、取消或未正常报告都会阻止通过。合并使用 squash 或 rebase。
 
-仓库当前只有一名维护者，审批票数为 0，保留 PR 和 CI 门槛；加入其他维护者后可提高审批票数并启用最新推送需他人批准。实际服务器规则见仓库 Settings → Rules → Rulesets；更新规则时同时核对工作流的检查名和 GitHub Actions 来源。
+仓库当前只有一名维护者，审批票数为 0，保留 PR 和 CI 门槛；加入其他维护者后可提高审批票数并启用最新推送需他人批准。实际服务器规则见 [Protect default branch](https://github.com/crazyniu/ai-workstation/rules/25768868)，版本化配置为 [main.json](.github/rulesets/main.json)；更新规则时同时核对工作流的检查名和 GitHub Actions 来源。

@@ -189,7 +189,7 @@ python3 -m venv .venv
 . .venv/bin/activate
 python3 -m pip install PyYAML
 python3 -m unittest discover -s gateway/tests -v
-python3 -m unittest discover -s tests -p 'test_deploy.py' -v
+python3 -m unittest discover -s tests -p 'test_*.py' -v
 for test in workstation/tests/test-*.py; do python3 "$test"; done
 
 python3 gateway/scripts/fetch-components.py amd64
@@ -204,6 +204,8 @@ docker image save workstation-local:test | python3 workstation/tests/audit-image
 ```
 
 容器验证需要 Linux Docker 环境。GitHub Actions 会构建两个干净镜像，运行启动、内部存储和镜像层检查；主分支验证通过后发布 `latest` 与 `sha-<完整提交号>` 标签。使用固定 SHA 标签可选择已验证的版本。实时进度见 [Actions](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml)。
+
+默认分支通过 PR 和 `Required checks` 合并门槛保护，要求分支保持最新、审查讨论已解决，并禁止强推和删除。代码 PR 验证两个镜像；纯文档 PR 执行轻量检查并报告同一个必过结果。规则说明见 [贡献指南](CONTRIBUTING.md#默认分支保护)，版本化定义见 [main Ruleset](.github/rulesets/main.json)。
 
 | 路径 | 内容 |
 | --- | --- |
