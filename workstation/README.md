@@ -98,6 +98,12 @@ Chrome 使用自身沙箱。启动时须使用 `security/seccomp-chrome.json`、
 
 Mac 可以通过 SSH 转发访问示例中仅绑定本机的 VNC：`ssh -L 5901:127.0.0.1:5901 -p 2222 dev@宿主机`，随后打开 `vnc://127.0.0.1:5901`。正式局域网地址由根 Compose 设置。
 
+### Mac Orca 远程执行
+
+Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` 用户执行开发和测试。先查询实际 HOME 并复用已有 managed server；缺失时由 Mac Orca 首次连接自动部署。Orca 运行时和个人技能位于用户 HOME，按部署需要安装，公共镜像不预置 Orca 桌面 GUI 或个人登录。
+
+完整的 Mac 连接步骤、CLI 与编排技能、账号授权、文件和智能体验收，以及重启恢复方式见 [Orca 远程执行说明](../docs/orca-remote.md)。模型实际调用与容器重启后恢复分别验收。
+
 ### 国家、语言与分开部署（供安装 AI 使用）
 
 在私有 `.env` 或 `docker run -e` 中设置 `WORKSTATION_COUNTRY=US`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=America/Los_Angeles`。默认生成 `en_US.UTF-8`，同步用于 SSH 登录和 XFCE。其他示例为 `TW / zh / Asia/Taipei`、`US / en / America/New_York`；组合须是镜像 glibc 支持的 locale。无效输入会中止初始化。不要通过额外的 `LANG` / `TZ` 覆盖这套参数。

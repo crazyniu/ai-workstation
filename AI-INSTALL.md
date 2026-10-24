@@ -193,6 +193,10 @@ nslookup example.com 192.168.1.250
 
 个人服务尚未登录时明确记录 **需用户登录**；无法执行的实际访问标为 **NOT RUN** 并说明缺少的客户端或账号；发现失败记录原因与下一步。容器 healthy、单元测试、镜像构建成功均不能单独作为“安装全部正常”的结论。
 
+### 4.1 Mac Orca 远程执行验收
+
+用户选择 Mac Orca 控制、Linux 工作站执行时，按 [Orca 远程执行说明](docs/orca-remote.md) 检查现有 dev 用户、实际 HOME、SSH、managed server 和配套 CLI。缺失的 managed server 优先由 Mac Orca SSH 连接自动部署，沿用已有服务管理方式。将 Mac 操作、远程账号授权、项目文件读写、智能体真实调用及重启恢复分别记录；个人部署结果和日志留在私有验收目录。
+
 ## 5. 已有环境、升级与数据恢复
 
 **重启同一个容器保留内部数据；删除、`compose down`、强制重建或替换容器会失去原容器可写层。** `docker compose restart` 不会把新的镜像或已修改的 Compose 环境变量应用到已有容器。
