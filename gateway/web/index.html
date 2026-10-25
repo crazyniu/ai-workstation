@@ -126,13 +126,22 @@
         </section>
         <section data-section="account" hidden>
           <div class="page-heading"><h2>账户</h2><p class="muted">管理进入网关桌面使用的密码。</p></div>
+          <h3>密码登录</h3>
+          <form id="login-settings-form" class="account-form">
+            <label class="check"><input type="checkbox" id="login-required" checked>进入网关时需要密码</label>
+            <p id="login-settings-status" class="muted" role="status"></p>
+            <p class="muted">关闭后，能访问网关网页的设备可直接管理网关、Clash 和 AdGuard Home。原密码会保留，重新开启时继续使用。</p>
+            <label>当前密码<input type="password" id="login-settings-password" autocomplete="current-password" required maxlength="256" placeholder="输入当前密码以保存登录设置"></label>
+            <button class="primary" type="submit">保存登录设置</button>
+          </form>
+          <div class="section-divider"></div><h3>修改密码</h3>
           <form id="password-form" class="account-form">
             <label>当前密码<input type="password" id="current-password" autocomplete="current-password" required maxlength="256" placeholder="输入当前密码"></label>
             <label>新密码<input type="password" id="new-password" autocomplete="new-password" required maxlength="256" placeholder="输入新密码"></label>
             <label>确认新密码<input type="password" id="repeat-password" autocomplete="new-password" required maxlength="256" placeholder="再次输入新密码"></label>
             <button class="primary" type="submit">保存密码</button>
           </form>
-          <div class="section-divider"></div><h3>登录状态</h3><p class="muted">退出后，再次进入桌面需要输入密码。</p><button id="logout">退出后台登录</button>
+          <div id="login-session"><div class="section-divider"></div><h3>登录状态</h3><p class="muted">退出后，再次进入桌面需要输入密码。</p><button id="logout">退出后台登录</button></div>
         </section>
         <section data-section="backup" hidden>
           <div class="page-heading"><h2>备份与恢复</h2><p>导出代理、DNS、桌面、订阅和 Tailscale 身份配置。</p></div><p class="muted">备份包含节点凭据和登录身份，请妥善保存；管理员密码不会导出。</p><button class="primary" id="backup">下载备份</button><div class="section-divider"></div><h3>从备份恢复</h3><p class="muted">恢复会替换当前配置及 Tailscale 身份，并短暂重启服务。操作前自动保存原配置。</p>
