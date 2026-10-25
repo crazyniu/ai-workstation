@@ -1,5 +1,7 @@
 # AI 工作站镜像
 
+按需固定某个工作站的公网出口，并隔离它的 DNS、保留网关其他设备的分流：见[独立出口与 DNS](../docs/workstation-egress.md)。此功能默认不开启，已有个人容器按原状保留。
+
 此目录是统一仓库中的工作站构建上下文，网关、正式 Compose 和 GHCR 发布由仓库根目录统一管理。支持 `linux/amd64`。可复现的验证步骤及发布记录见 [验证记录](VALIDATION.md)。
 
 包含 Ubuntu、新加坡英文及新加坡时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot、Unity 和 GitHub 六项 MCP 配置。提供 Unity Personal 编辑器与 Hub 的可选安装入口。国家、语言和时区可在初始化时配置。基础镜像固定到官方 amd64 manifest digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Ubuntu 系统软件随 APT 仓库更新。

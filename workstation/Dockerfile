@@ -60,6 +60,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends websockify open
 COPY runtime/ /etc/workstation/
 COPY licenses/ /opt/workstation/licenses/
 RUN install -m 755 /etc/workstation/entrypoint.py /usr/local/bin/workstation-entrypoint \
+    && install -d /etc/supervisor/conf.d \
+    && install -m 755 /opt/workstation/scripts/configure-exit-dns.py /usr/local/bin/configure-workstation-exit-dns \
     && install -m 755 /opt/workstation/scripts/reset-claude-user.py /usr/local/bin/reset-claude-user \
     && install -m 755 /etc/workstation/start-desktop /usr/local/bin/workstation-desktop \
     && install -m 755 /etc/workstation/start-vnc /usr/local/bin/workstation-vnc \

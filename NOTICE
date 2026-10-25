@@ -25,6 +25,10 @@ Claude identity reset rules: liseami/CCBaga (MIT), commit
 bdfb90ceadfc5fae6772ffff597bddecb0b73cc3, cleaner_config.rs and cleaner_targets.rs.
 The Linux adaptation retains the upstream license in
 workstation/scripts/reset-claude-user.py.
+Optional isolated DNS installation: workstation/scripts/configure-exit-dns.py
+downloads AdGuard Home v0.107.79 (GPL-3.0) from its pinned upstream release,
+checks archive and executable hashes, and retains LICENSE.txt beside the binary.
+Source: https://github.com/AdguardTeam/AdGuardHome/tree/v0.107.79
 
 Upstream projects and terms:
 - Ubuntu and Debian packages: their package copyright files in /usr/share/doc.

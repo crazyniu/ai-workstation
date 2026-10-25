@@ -200,4 +200,5 @@ assert guard.stat().st_uid==0
 assert guard.read_text()=="ROOT_OWNED_GUARD_UNCHANGED\n", "HOME symlink redirected a privileged password write"
 '
 printf 'PASS: dev HOME symlinks cannot redirect privileged bootstrap ownership or password writes.\n'
+bash "$repo/tests/exit-dns-install.sh" "$image"
 printf 'PASS: isolated image smoke completed; no live workstation was modified.\n'
