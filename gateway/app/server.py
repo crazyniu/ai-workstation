@@ -16,7 +16,7 @@ DESKTOP_BUILTINS=('builtin:clash','builtin:adguard','builtin:tailscale','builtin
 
 def validate_desktop(value):
     if not isinstance(value,dict):raise ValueError('桌面设置必须为对象')
-    url=value.get('workstation_url','http://192.168.1.251:6080/')
+    url=value.get('workstation_url','https://192.168.1.251:6080/')
     if not isinstance(url,str) or not 1<=len(url)<=500 or any(c.isspace() or ord(c)<32 for c in url):
         raise ValueError('请输入有效的工作站 HTTP(S) 地址')
     try:
