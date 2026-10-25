@@ -66,13 +66,20 @@ dev_exec() {
 assert_no_mounts
 wait_desktop
 assert_region() {
-    docker exec -i --user 1100:1100 "$name" python3 - "$1" "$2" "$3" <<'PYREGION'
+    docker exec -i --user 1100:1100 "$name" python3 - "$1" "$2" "$3" "${4-$1}" <<'PYREGION'
 import os,pathlib,subprocess,sys
-locale,language,timezone=sys.argv[1:]
+locale,language,timezone,all_categories=sys.argv[1:]
 pid=subprocess.check_output(['pgrep','-u','1100','-x','xfce4-session'],text=True).splitlines()[0]
 session=dict(entry.split(b'=',1) for entry in pathlib.Path('/proc/'+pid+'/environ').read_bytes().split(b'\0') if b'=' in entry)
-for key,value in {'LANG':locale,'LC_ALL':locale,'LANGUAGE':language,'TZ':timezone}.items():
+for key,value in {'LANG':locale,'LC_ALL':all_categories,'LANGUAGE':language,'TZ':timezone}.items():
     assert session.get(key.encode())==value.encode(),key
+if not all_categories:
+    assert session[b'WORKSTATION_COUNTRY']==b'TW'
+    assert session[b'WORKSTATION_LANGUAGE']==b'en'
+    assert session[b'WORKSTATION_TIMEZONE']==b'Asia/Taipei'
+    assert session[b'LC_MESSAGES']==b'en_US.UTF-8'
+    assert session[b'LC_MONETARY']==b'zh_TW.UTF-8'
+    assert session[b'LC_ADDRESS']==b'zh_TW.UTF-8'
 assert pathlib.Path('/etc/timezone').read_text().strip()==timezone
 assert pathlib.Path('/etc/localtime').resolve()==pathlib.Path('/usr/share/zoneinfo/'+timezone).resolve()
 print('PASS: XFCE and system region:',locale,language,timezone)
@@ -107,13 +114,14 @@ first_keys=$(docker exec "$name" sh -c 'for key in /etc/ssh/keys/ssh_host_*_key.
 docker exec -i "$name" python3 - <<'PYREGION'
 import json,pathlib
 path=pathlib.Path('/etc/workstation/region.json')
-path.write_text(json.dumps({'country':'TW','language':'zh','timezone':'Asia/Taipei'})+'\n')
+path.write_text(json.dumps({'country':'TW','language':'en','timezone':'Asia/Taipei'})+'\n')
 path.chmod(0o600)
 PYREGION
 docker restart "$name" >/dev/null
 assert_no_mounts
 wait_desktop
-assert_region zh_TW.UTF-8 zh_TW:zh Asia/Taipei
+assert_region en_US.UTF-8 en_US:en Asia/Taipei ""
+docker exec "$name" runuser -l dev -c 'test "$(locale country_ab2)" = TW && test "$(locale int_curr_symbol)" = "TWD " && test "$LC_MESSAGES" = en_US.UTF-8'
 docker exec -i --user 1100:1100 "$name" python3 - < "$repo/tests/desktop-recovery.py"
 # Repeated readiness probes must not blacklist the following real VNC login.
 for ((attempt=1; attempt<=10; attempt++)); do

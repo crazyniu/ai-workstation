@@ -104,7 +104,7 @@ WORKSTATION_TIMEZONE=Asia/Singapore
 # 例如美国英文（纽约）：US / en / America/New_York
 ```
 
-只使用镜像中 `/usr/share/i18n/locales` 支持的语言/国家组合。无效代码、缺失的 locale 或时区会让初始化明确失败，AI 应修正配置后重试，不回退成另一地区。以 `WORKSTATION_*` 三项为输入，初始化统一设置 `LANG`、`LANGUAGE`、`LC_ALL`、`TZ`、`/etc/default/locale`、PAM 环境、登录 Shell 和桌面会话；不要另设互相矛盾的 `LANG` / `TZ`。此行为要求镜像已包含 `/etc/workstation/region.py`；核对所选镜像的构建/发布版本，不把当前源码改动说成已有 `latest` 镜像功能。
+通常使用镜像中 `/usr/share/i18n/locales` 支持的语言/国家组合。台湾英语 `TW / en / Asia/Taipei` 使用明确的组合：`en_US.UTF-8` 提供英语界面，`zh_TW.UTF-8` 提供台湾日期、货币、地址等地区格式；`LC_ALL` 留空以允许分类设置，`LANGUAGE=en_US:en` 和 `LC_MESSAGES=en_US.UTF-8` 保持英语消息。glibc 没有 `en_TW`，不生成虚构的 locale。其他无效代码、缺失的 locale 或时区会让初始化明确失败。以 `WORKSTATION_*` 三项为输入，初始化统一设置语言、地区分类、`TZ`、`/etc/default/locale`、PAM 环境、登录 Shell 和桌面会话；不要另设互相矛盾的 `LANG` / `TZ`。此行为要求镜像已包含对应版本的 `/etc/workstation/region.py`；核对所选镜像的构建/发布版本，不把当前源码改动说成已有 `latest` 镜像功能。
 
 **已有容器修改地区：** 仅改 `.env` 后执行 `docker compose restart` 不会更新容器定义中的环境变量。对已经包含新初始化程序的容器，可写入它内部的 `/etc/workstation/region.json`，其中提供的字段优先于运行时环境变量，未提供的字段沿用环境变量和默认值。该文件无需业务挂载，重启保留。先确认实际容器使用此初始化入口；现有旧镜像或其他 HOME 布局不能直接套用。以下在 **A 的实际部署目录** 执行，并替换 Compose 文件名：
 
