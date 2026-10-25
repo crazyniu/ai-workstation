@@ -42,7 +42,13 @@ for attempt in $(seq 1 40); do
     sleep 0.25
 done
 source_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$name")
-gateway_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}' "$name")
+# Internal networks intentionally have no default gateway in container metadata.
+# Use the bridge subnet's first address as the fixture's allowed upstream client.
+gateway_ip=$(docker network inspect "$name" | python3 -c '
+import ipaddress,json,sys
+config=json.load(sys.stdin)[0]["IPAM"]["Config"][0]
+print(config.get("Gateway") or ipaddress.ip_network(config["Subnet"]).network_address+1)
+')
 sentinel=$(docker exec "$name" supervisorctl -c /etc/supervisor/supervisord.conf pid sentinel)
 docker exec -i "$name" python3 - "$source_ip" "$gateway_ip" <<'PY'
 import importlib.util,shutil,sys
