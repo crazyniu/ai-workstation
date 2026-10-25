@@ -174,6 +174,12 @@ function drawDesktop(){
 function drawLinks(){const list=$('#link-list');list.replaceChildren();if(!cards.length){list.append(element('p','还没有自定义链接。','muted'));return;}cards.forEach((card,index)=>{const row=element('div',undefined,'service-row'),details=element('div',undefined,'details'),tools=element('div',undefined,'tools');details.append(element('strong',card.name),element('span',card.url));tools.append(button('编辑',()=>openLinkEditor(card)),button('上移',()=>guard(async()=>{if(!index)return;const ids=cards.map(c=>c.id);[ids[index],ids[index-1]]=[ids[index-1],ids[index]];await post('/cards/order',{ids});await loadCards();})),button('下移',()=>guard(async()=>{if(index===cards.length-1)return;const ids=cards.map(c=>c.id);[ids[index],ids[index+1]]=[ids[index+1],ids[index]];await post('/cards/order',{ids});await loadCards();})),button('删除',()=>guard(async()=>{if(!await askConfirm('删除链接“'+card.name+'”？'))return;await api('/cards/'+card.id,{method:'DELETE'});await loadCards();}),'danger'));tools.children[1].disabled=index===0;tools.children[2].disabled=index===cards.length-1;row.append(icon(card.icon||'link',card.url),details,tools);list.append(row);});}
 async function loadCards(){const data=await api('/cards');cards=data.cards;desktopPrefs=data.desktop;drawDesktop();}
 async function loadStatus(){status=await api('/status');$('#home-domain').textContent='http://'+status.domain;}
+function renderLoginSettings(auth){
+  const required=auth.login_required!==false;
+  $('#login-required').checked=required;
+  $('#login-settings-status').textContent=required?'当前已开启密码登录。':'当前已关闭密码登录，打开网页即可进入网关。';
+  $('#login-session').hidden=!required;
+}
 async function authState(){const a=await api('/auth');initialized=a.initialized;$('#auth-title').textContent=initialized?'登录网关':'欢迎使用 Gateway';$('#auth-copy').textContent=initialized?'使用管理员密码进入网关桌面，初始密码为 admin。':'设置管理员密码，开始配置你的网关。';$('#auth-submit').textContent=initialized?'登录':'创建管理员';$('#confirm-field').hidden=initialized;$('#password').autocomplete=initialized?'current-password':'new-password';if(!a.authenticated){cards=[];desktopPrefs={workstation_url:"https://192.168.1.251:6080/",order:[]};drawDesktop();destroySettings();$('#link-dialog').close();navigation++;currentPage=null;savedConfig=null;$('#home-domain').textContent='';if(!$('#auth-dialog').open)$('#auth-dialog').showModal();return false;}$('#auth-dialog').close();$('#auth-message').textContent='';await Promise.all([loadCards(),loadStatus(),loadAppearance()]);return true;}
 async function openSettings(page='overview',{force=false}={}){
   if(!force&&$('#settings-dialog').open&&currentPage===page){showSettingsWindow();return;}
@@ -195,6 +201,7 @@ async function openSettings(page='overview',{force=false}={}){
     if(page==='tailscale')await loadTailscale();
     if(page==='updates'){const task=await loadUpdates();if(task?.status==='running'){await job(task,{request});if(request===navigation)await loadUpdates();}}
     if(page==='desktop'){await loadCards();$('#workstation-url').value=desktopPrefs.workstation_url;}
+    if(page==='account'){const auth=await api('/auth');if(request!==navigation)return;renderLoginSettings(auth);$('#login-settings-password').value='';}
     if(request===navigation)notice('');
   }catch(e){if(request===navigation){currentPage=null;notice(e.message,true);}}
   finally{done();if(settingsLoadingDone===done)settingsLoadingDone=null;}
@@ -252,7 +259,8 @@ $$('[data-ts]').forEach(b=>b.onclick=()=>guard(async()=>{
 $('#check-updates').onclick=()=>guard(async()=>{await job(await post('/updates/check'));await loadUpdates();});
 $('#backup').onclick=()=>guard(async()=>{const r=await api('/backup');const a=element('a');a.href='data:application/gzip;base64,'+r.data;a.download=r.filename;document.body.append(a);a.click();a.remove();notice('备份已下载，请妥善保存。');});
 $('#restore').onclick=()=>guard(async()=>{const file=$('#restore-file').files[0];if(!file||!$('#restore-confirm').checked)throw Error('请选择备份并确认替换配置');if(file.size>24*1024*1024)throw Error('备份超过 24 MB');const bytes=new Uint8Array(await file.arrayBuffer());let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));await job(await post('/restore',{data:btoa(text)}));savedConfig=null;await Promise.all([loadStatus(),loadCards(),loadAppearance()]);$('#restore-file').value='';$('#restore-confirm').checked=false;notice('备份已恢复。');});
-$('#password-form').onsubmit=e=>{e.preventDefault();const password=$('#new-password').value;if(!$('#current-password').value){notice('请输入当前密码。',true);return;}if(!password){notice('请输入新密码。',true);return;}if(password!==$('#repeat-password').value){notice('两次新密码不一致，请重新输入。',true);return;}guard(async()=>{await post('/password',{current_password:$('#current-password').value,password});$('#password-form').reset();notice('密码已保存，下次登录使用新密码。');});};
+$('#login-settings-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/auth/settings',{login_required:$('#login-required').checked,current_password:$('#login-settings-password').value});renderLoginSettings(await api('/auth'));$('#login-settings-password').value='';notice($('#login-required').checked?'密码登录已开启。':'密码登录已关闭，打开网页即可进入网关。');});};
+$('#password-form').onsubmit=e=>{e.preventDefault();const password=$('#new-password').value;if(!$('#current-password').value){notice('请输入当前密码。',true);return;}if(!password){notice('请输入新密码。',true);return;}if(password!==$('#repeat-password').value){notice('两次新密码不一致，请重新输入。',true);return;}guard(async()=>{await post('/password',{current_password:$('#current-password').value,password});$('#password-form').reset();notice('密码已保存。');});};
 $('#logout').onclick=()=>guard(async()=>{if(!await discardChanges())return;await post('/auth/logout');destroySettings();await authState();});
 $('#settings-dialog').addEventListener('cancel',e=>{e.preventDefault();closeSettings();});
 window.addEventListener('beforeunload',e=>{if(configDirty()){e.preventDefault();e.returnValue='';}});

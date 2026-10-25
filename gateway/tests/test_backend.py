@@ -225,6 +225,72 @@ class AuthTests(DataTest):
             self.assertEqual(json.load(response), dict(old, theme='auto', wallpaper='coast'))
         self.assertEqual(state.read(self.dash / 'appearance.json'), old)
 
+    def test_login_required_defaults_on_and_only_explicit_false_disables_it(self):
+        state.initialize_admin()
+        admin=state.read(self.dash/'admin.json')
+        for value in (None,True,0,'false'):
+            state.save(self.dash/'admin.json',{**admin,'login_required':value})
+            with self.request('/api/auth') as response:
+                auth=json.load(response)
+                self.assertTrue(auth['login_required'])
+                self.assertFalse(auth['authenticated'])
+            with self.request('/api/auth/check') as response:self.assertEqual(response.status,401)
+        state.save(self.dash/'admin.json',admin)
+        with self.request('/api/settings') as response:self.assertEqual(response.status,401)
+
+    def test_password_login_can_be_disabled_and_reenabled_without_losing_password(self):
+        with self.request('/api/auth/setup',{'password':'original'}) as response:
+            old_cookie=response.headers['Set-Cookie'].split(';')[0]
+        password_hash=state.read(self.dash/'admin.json')['password']
+        with self.request('/api/auth/settings',{'login_required':False,'current_password':'original'},cookie=old_cookie) as response:
+            self.assertEqual(response.status,200)
+            disabled_cookie=response.headers['Set-Cookie'].split(';')[0]
+        self.assertEqual(state.read(self.dash/'admin.json')['password'],password_hash)
+        state.initialize_admin()
+        with self.request('/api/auth') as response:
+            self.assertEqual(json.load(response),{'initialized':True,'authenticated':True,'login_required':False})
+        for path,status in (('/api/auth/check',204),('/api/settings',200),('/api/proxy/config',200),('/api/cards',200)):
+            with self.request(path) as response:self.assertEqual(response.status,status)
+        with self.request('/api/cards',{'name':'Blocked','url':'https://example.com','icon':'link'},origin='https://elsewhere.invalid') as response:
+            self.assertEqual(response.status,403)
+        with self.request('/api/password',{'current_password':'original','password':'replacement'}) as response:
+            self.assertEqual(response.status,200)
+        self.assertFalse(state.read(self.dash/'admin.json')['login_required'])
+        with self.request('/api/backup') as response:
+            backup=base64.b64decode(json.load(response)['data'])
+        with tarfile.open(fileobj=io.BytesIO(backup),mode='r:gz') as archive:
+            self.assertNotIn('dashboard/admin.json',archive.getnames())
+        with self.request('/api/auth/settings',{'login_required':True,'current_password':'replacement'}) as response:
+            self.assertEqual(response.status,200)
+            enabled_cookie=response.headers['Set-Cookie'].split(';')[0]
+        for cookie in (None,old_cookie,disabled_cookie):
+            with self.request('/api/settings',cookie=cookie) as response:self.assertEqual(response.status,401)
+        with self.request('/api/auth/check',cookie=enabled_cookie) as response:self.assertEqual(response.status,204)
+        with self.request('/api/auth/login',{'password':'replacement'}) as response:self.assertEqual(response.status,200)
+
+    def test_login_settings_require_current_password_boolean_and_same_origin(self):
+        with self.request('/api/auth/setup',{'password':'original'}) as response:
+            cookie=response.headers['Set-Cookie'].split(';')[0]
+        before=(self.dash/'admin.json').read_bytes()
+        for data,auth,origin,status in (
+            ({'login_required':False,'current_password':'original'},None,None,401),
+            ({'login_required':False,'current_password':'original'},cookie,'https://elsewhere.invalid',403),
+            ({'login_required':'false','current_password':'original'},cookie,None,400),
+            ({'login_required':0,'current_password':'original'},cookie,None,400),
+            ({'login_required':False,'current_password':'wrong'},cookie,None,400),
+            ({'login_required':False},cookie,None,400),
+            ({'login_required':False,'current_password':'x'*9000},cookie,None,400)):
+            with self.request('/api/auth/settings',data,cookie=auth,origin=origin) as response:self.assertEqual(response.status,status)
+            self.assertEqual((self.dash/'admin.json').read_bytes(),before)
+
+    def test_disabled_login_still_limits_password_attempts(self):
+        state.save(self.dash/'admin.json',{'password':state.password_hash('original'),'login_required':False})
+        before=(self.dash/'admin.json').read_bytes()
+        for _ in range(10):
+            with self.request('/api/auth/settings',{'login_required':True,'current_password':'wrong'}) as response:self.assertEqual(response.status,400)
+        with self.request('/api/auth/settings',{'login_required':True,'current_password':'original'}) as response:self.assertEqual(response.status,429)
+        self.assertEqual((self.dash/'admin.json').read_bytes(),before)
+
     def test_invalid_and_expired_sessions_rejected(self):
         for cookie in ('gateway_session=broken', 'gateway_session=1.invalid'):
             with self.request('/api/settings', cookie=cookie) as response:

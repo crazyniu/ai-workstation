@@ -214,17 +214,23 @@ class Handler(legacy.Handler):
     def same_origin(self):
         origin=self.headers.get('Origin')
         return not origin or urllib.parse.urlparse(origin).netloc==self.headers.get('Host')
+    def login_required(self):
+        return read(DASH/'admin.json',{}).get('login_required') is not False
+    def access_allowed(self):
+        with LOCK:return not self.login_required() or self.session()
     def authorized(self):
-        if not self.session():self.reply(401,{'error':'请先登录'});return False
+        if not self.access_allowed():self.reply(401,{'error':'请先登录'});return False
         return True
     def do_GET(self):
         try:self.get()
         except Exception as exc:self.reply(400,{'error':str(exc) if isinstance(exc,ValueError) else '暂时无法读取，请检查服务状态'})
     def get(self):
         path=urllib.parse.urlparse(self.path).path
-        if path=='/api/auth':self.reply(200,{'initialized':(DASH/'admin.json').exists(),'authenticated':self.session()});return
+        if path=='/api/auth':
+            with LOCK:value={'initialized':(DASH/'admin.json').exists(),'authenticated':self.access_allowed(),'login_required':self.login_required()}
+            self.reply(200,value);return
         if path=='/api/auth/check':
-            self.send_response(204 if self.session() else 401);self.end_headers();return
+            self.send_response(204 if self.access_allowed() else 401);self.end_headers();return
         if not self.authorized():return
         if path=='/api/favicon':
             query=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
@@ -288,18 +294,26 @@ class Handler(legacy.Handler):
             self.send_response(200);self.send_header('Set-Cookie','gateway_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0');self.end_headers();self.wfile.write(b'{}');return
         if path=='/api/proxy/config':
             super().import_config();return
-        data=self.body()
-        if path=='/api/password':
-            password=validate_password(data.get('password',''))
+        data=self.body(8192) if path in ('/api/password','/api/auth/settings') else self.body()
+        if path in ('/api/password','/api/auth/settings'):
+            if path=='/api/password':password=validate_password(data.get('password',''))
+            elif type(data.get('login_required')) is not bool:raise ValueError('请选择是否启用密码登录')
             current=data.get('current_password','')
-            if not isinstance(current,str):raise ValueError('请输入当前密码')
+            if not isinstance(current,str) or len(current)>256:raise ValueError('请输入当前密码')
             with LOCK:
                 # Re-check under the same lock as rotation to serialize concurrent requests.
                 if not self.authorized():return
+                address=self.headers.get('X-Real-IP',self.client_address[0])
+                attempts=[t for t in FAILURES.get(address,[]) if t>time.time()-300]
+                if len(attempts)>=10:self.reply(429,{'error':'尝试过多，请五分钟后重试'});return
                 admin=read(DASH/'admin.json')
                 if not admin or not password_valid(current,admin['password']):
+                    FAILURES[address]=attempts+[time.time()]
                     self.reply(400,{'error':'当前密码错误'});return
-                save(DASH/'admin.json',{'password':password_hash(password)})
+                FAILURES.pop(address,None)
+                if path=='/api/password':admin['password']=password_hash(password)
+                else:admin['login_required']=data['login_required']
+                save(DASH/'admin.json',admin)
                 atomic(DASH/'session-key',secrets.token_hex(32))
                 self.login_reply()
             return
