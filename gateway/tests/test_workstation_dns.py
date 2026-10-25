@@ -141,6 +141,15 @@ class TransactionTests(unittest.TestCase):
         self.assertNotIn('/clients/update', self.calls)
         self.assertEqual(list((self.root / 'backups').iterdir()), [])
 
+    def test_shared_cidr_client_is_detected_before_mutation(self):
+        self.clients[0]['ids'] = ['192.0.2.0/24']
+        before = copy.deepcopy(self.clients)
+        with self.assertRaisesRegex(ValueError, 'shared or ambiguous'):
+            dns.configure('dns', self.source, self.proxy, 5354, True)
+        self.assertEqual(self.clients, before)
+        dns.probe_resolver.assert_not_called()
+        self.assertNotIn('/clients/add', self.calls)
+
     def test_rollback_refuses_to_overwrite_later_client_edits(self):
         result = dns.configure('dns', self.source, self.proxy, 5354, True)
         self.clients[0]['name'] = 'User edit after deployment'

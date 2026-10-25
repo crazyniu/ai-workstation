@@ -129,7 +129,14 @@ def request(path, data=None, method=None, controller=False):
 
 
 def clients_for(source):
-    matches = [c for c in request('/clients')['clients'] if source in c.get('ids', [])]
+    address = ipaddress.IPv4Address(source)
+    def matches_id(value):
+        try:
+            network = ipaddress.ip_network(value, strict=False)
+        except ValueError:
+            return value == source
+        return network.version == 4 and address in network
+    matches = [c for c in request('/clients')['clients'] if any(matches_id(v) for v in c.get('ids', []))]
     if len(matches) > 1 or any(c.get('ids') != [source] for c in matches):
         raise ValueError('This source belongs to a shared or ambiguous client record')
     return matches[0] if matches else None
