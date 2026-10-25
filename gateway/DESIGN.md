@@ -13,11 +13,13 @@ colors:
   border: "#d9dee5"
   selected: "#edf4ff"
   danger: "#c9343f"
+  success: "#18724a"
   dark-surface: "#222932"
   dark-chrome: "#2b333e"
   dark-text: "#e9eef6"
   dark-muted: "#b1bdcc"
   dark-accent: "#8ab7ff"
+  dark-success: "#8bdbb0"
 typography:
   title:
     fontFamily: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
@@ -31,6 +33,10 @@ typography:
   label:
     fontFamily: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
     fontSize: "12px"
+  toast:
+    fontFamily: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+    fontSize: "13px"
+    lineHeight: 1.6
 rounded:
   control: "7px"
   menu: "9px"
@@ -147,6 +153,8 @@ components:
 四张本地默认壁纸为晴日海岸、山湖晨光、海岸暮色和林间薄雾，海岸为默认。用户可上传图片，选择填充、适应、拉伸、居中或平铺；亮色、暗色、自动主题使用分段选择。自动主题响应系统颜色偏好，设置保存后保持。
 
 ### Motion and accessibility
+
+操作反馈统一使用桌面右上角的全局 Toast，手机放在顶部安全区。Toast 使用内容面、窗口阴影、状态图标和关闭按钮，不改变设置内容的布局；通过顶层 popover 覆盖窗口和原生对话框。成功提示自动收起，错误提示停留更久，鼠标悬停或键盘聚焦时暂停计时。
 
 界面状态使用 120ms ease-out 的背景和边框过渡。`prefers-reduced-motion: reduce` 会停用过渡、动画及平滑滚动。反馈和错误信息保持文本形式；纯图标选择项保留可访问名称。
 

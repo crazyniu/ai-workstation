@@ -95,7 +95,6 @@ function themeEditorTokens(){
   for(const sheet of document.styleSheets){try{for(const rule of sheet.cssRules){const token=tokens[rule.style?.color];if(token)rule.style.color='var('+token+')';}}catch{}}
 }
 themeEditorTokens();
-function notice(message,error=false,target='#message'){const el=$(target);el.textContent=message;el.classList.toggle('error',error);}
 // Each operation owns a lease, so an older request cannot dismiss a newer spinner.
 const loadingRegions=new Map();
 function beginLoading(region){
@@ -117,10 +116,8 @@ function beginLoading(region){
     loadingRegions.delete(region);
   };
 }
-function loadingRegion(target='#message'){
-  if(target==='#auth-message')return $('#auth-form');
-  if(target==='#link-message')return $('#link-dialog .form-content');
-  if(target==='#personalization-message')return $('#personalization-dialog .personalization-content');
+function loadingRegion(target=null){
+  if(target)return $(target);
   return $('#settings-dialog').open?$('#settings-content'):$('.desktop-workspace');
 }
 async function withLoading(region,work){const done=beginLoading(region);try{return await work();}finally{done();}}
@@ -139,14 +136,14 @@ function configDirty(){return savedConfig!==null&&editor.getValue()!==savedConfi
 async function discardChanges(){return !configDirty()||await askConfirm('配置文件尚未应用。离开后将丢弃这些修改，是否继续？');}
 async function closeSettings(){if(!await discardChanges())return;destroySettings();}
 function destroySettings(){finishSettingsLoading();if(settingsWindow){const w=settingsWindow;settingsWindow=null;w.close(true);}$('#settings-dialog').close();navigation++;currentPage=null;savedConfig=null;}
-async function guard(work,target='#message'){
+async function guard(work,target=null){
   if(busy)return;
-  notice('',false,target);const done=beginLoading(loadingRegion(target));
-  busy=true;const controls=$$('button,input,select,textarea').filter(el=>!el.disabled&&!el.closest('#auth-dialog, #confirm-dialog')&&!['close-settings','close-link'].includes(el.id));
+  const done=beginLoading(loadingRegion(target));
+  busy=true;const controls=$$('button,input,select,textarea').filter(el=>!el.disabled&&!el.closest('#auth-dialog, #confirm-dialog, #desktop-toast')&&!['close-settings','close-link'].includes(el.id));
   controls.forEach(el=>el.disabled=true);editor.setDisabled(true);
-  try{await work();}catch(e){notice(e.message,true,target);}finally{busy=false;controls.filter(el=>el.isConnected).forEach(el=>el.disabled=el.dataset.stateDisabled==='true');editor.setDisabled(false);done();$('#refresh-subscription').disabled=!prefs.subscription?.url;}
+  try{await work();}catch(e){toast(e.message,true);}finally{busy=false;controls.filter(el=>el.isConnected).forEach(el=>el.disabled=el.dataset.stateDisabled==='true');editor.setDisabled(false);done();$('#refresh-subscription').disabled=!prefs.subscription?.url;}
 }
-function openLinkEditor(card=null){cancelFaviconPreview();editing=card?.id||null;$('#link-title').textContent=card?'编辑链接':'添加链接';$('#link-name').value=card?.name||'';$('#link-url').value=card?.url||'';$('#link-icon').value=card?(card.icon||'link'):'auto';$('#icon-search').value='';drawIconChoices();$('#link-newtab').checked=card?.open_in_new_tab??true;syncSelects();$('#link-message').textContent='';$('#link-dialog').showModal();previewFavicon(0);}
+function openLinkEditor(card=null){cancelFaviconPreview();editing=card?.id||null;$('#link-title').textContent=card?'编辑链接':'添加链接';$('#link-name').value=card?.name||'';$('#link-url').value=card?.url||'';$('#link-icon').value=card?(card.icon||'link'):'auto';$('#icon-search').value='';drawIconChoices();$('#link-newtab').checked=card?.open_in_new_tab??true;syncSelects();$('#link-dialog').showModal();previewFavicon(0);}
 function desktopItems(){
   const builtins=[{name:'Clash',icon:'clash',url:'/ui/'},{name:'AdGuard Home',icon:'adguard',url:'/adguard/'},{name:'Tailscale',icon:'tailscale',page:'tailscale'},{name:'工作站',icon:'workstation',url:desktopPrefs.workstation_url},{name:'设置',icon:'settings',page:'overview'}].map(item=>({...item,id:'builtin:'+item.icon,fixed:true}));
   const items=[...builtins,...cards],lookup=new Map(items.map(item=>[item.id,item]));
@@ -180,12 +177,12 @@ function renderLoginSettings(auth){
   $('#login-settings-status').textContent=required?'当前已开启密码登录。':'当前已关闭密码登录，打开网页即可进入网关。';
   $('#login-session').hidden=!required;
 }
-async function authState(){const a=await api('/auth');initialized=a.initialized;$('#auth-title').textContent=initialized?'登录网关':'欢迎使用 Gateway';$('#auth-copy').textContent=initialized?'使用管理员密码进入网关桌面，初始密码为 admin。':'设置管理员密码，开始配置你的网关。';$('#auth-submit').textContent=initialized?'登录':'创建管理员';$('#confirm-field').hidden=initialized;$('#password').autocomplete=initialized?'current-password':'new-password';if(!a.authenticated){cards=[];desktopPrefs={workstation_url:"https://192.168.1.251:6080/",order:[]};drawDesktop();destroySettings();$('#link-dialog').close();navigation++;currentPage=null;savedConfig=null;$('#home-domain').textContent='';if(!$('#auth-dialog').open)$('#auth-dialog').showModal();return false;}$('#auth-dialog').close();$('#auth-message').textContent='';await Promise.all([loadCards(),loadStatus(),loadAppearance()]);return true;}
+async function authState(){const a=await api('/auth');initialized=a.initialized;$('#auth-title').textContent=initialized?'登录网关':'欢迎使用 Gateway';$('#auth-copy').textContent=initialized?'使用管理员密码进入网关桌面，初始密码为 admin。':'设置管理员密码，开始配置你的网关。';$('#auth-submit').textContent=initialized?'登录':'创建管理员';$('#confirm-field').hidden=initialized;$('#password').autocomplete=initialized?'current-password':'new-password';if(!a.authenticated){cards=[];desktopPrefs={workstation_url:"https://192.168.1.251:6080/",order:[]};drawDesktop();destroySettings();$('#link-dialog').close();navigation++;currentPage=null;savedConfig=null;$('#home-domain').textContent='';if(!$('#auth-dialog').open)$('#auth-dialog').showModal();return false;}$('#auth-dialog').close();await Promise.all([loadCards(),loadStatus(),loadAppearance()]);return true;}
 async function openSettings(page='overview',{force=false}={}){
   if(!force&&$('#settings-dialog').open&&currentPage===page){showSettingsWindow();return;}
   if(!force&&!await discardChanges())return;
   finishSettingsLoading();const request=++navigation;currentPage=page;if(page!=='proxy')savedConfig=null;
-  showSettingsWindow();$('#settings-dialog').classList.toggle('is-overview',page==='overview');settingsWindow?.window.classList.toggle('is-overview',page==='overview');notice('');$('#settings-content').scrollTop=0;const done=beginLoading($('#settings-content'));settingsLoadingDone=done;
+  showSettingsWindow();$('#settings-dialog').classList.toggle('is-overview',page==='overview');settingsWindow?.window.classList.toggle('is-overview',page==='overview');$('#settings-content').scrollTop=0;const done=beginLoading($('#settings-content'));settingsLoadingDone=done;
   $$('[data-section]').forEach(el=>el.hidden=el.dataset.section!==page);
   $$('[data-page]').forEach(el=>{el.classList.toggle('active',el.dataset.page===page);el.setAttribute('aria-current',el.dataset.page===page?'page':'false');});
   try{
@@ -202,8 +199,7 @@ async function openSettings(page='overview',{force=false}={}){
     if(page==='updates'){const task=await loadUpdates();if(task?.status==='running'){await job(task,{request});if(request===navigation)await loadUpdates();}}
     if(page==='desktop'){await loadCards();$('#workstation-url').value=desktopPrefs.workstation_url;}
     if(page==='account'){const auth=await api('/auth');if(request!==navigation)return;renderLoginSettings(auth);$('#login-settings-password').value='';}
-    if(request===navigation)notice('');
-  }catch(e){if(request===navigation){currentPage=null;notice(e.message,true);}}
+  }catch(e){if(request===navigation){currentPage=null;toast(e.message,true);}}
   finally{done();if(settingsLoadingDone===done)settingsLoadingDone=null;}
 }
 function loadTailscale(){
@@ -239,28 +235,28 @@ setInterval(()=>{
   loadTailscale().catch(e=>{if(currentPage==='tailscale'){const refresh=$('#tailscale-refresh-status');refresh.textContent=e.message+' 状态更新会自动重试。';refresh.classList.add('error');}});
 },4000);
 async function loadUpdates(){const request=navigation,u=await api('/updates');if(request!==navigation||currentPage!=='updates')return;const list=$('#components');list.replaceChildren();for(const [component,manifest] of Object.entries(u.components)){const row=element('div',undefined,'service-row'),details=element('div',undefined,'details');const checked=u.checked[component];details.append(element('strong',names[component]),element('span','当前 '+(manifest.version||'未知')+(checked?.latest?' · 最新 '+checked.latest:checked?.error?' · '+checked.error:'')));const install=button(checked?.available?'升级':'重新安装',()=>guard(async()=>{if(!await askConfirm('升级 '+names[component]+'？对应服务将短暂中断。'))return;await job(await post('/updates/install',{component}));await loadUpdates();}));row.append(icon(component==='mihomo'||component==='panel'?'clash':component),details,install);list.append(row);}$('#upgrade-status').textContent=u.job?(u.job.status==='running'?'':u.job.status==='success'?'上次操作已完成':u.job.error||''):'';$('#refresh-job').hidden=u.job?.status!=='running';$('#refresh-job').onclick=()=>guard(async()=>{await job(u.job);await loadUpdates();});return u.job;}
-async function job(initial,{request=null}={}){let task=initial;while(task.status==='running'){await new Promise(r=>setTimeout(r,1200));if(request!==null&&request!==navigation)return;task=await api('/jobs/'+task.id);}if(request!==null&&request!==navigation)return;if(task.status==='error')throw Error(task.error||'操作失败，请检查服务状态后重试。');notice('操作完成。');return task.result;}
+async function job(initial,{request=null}={}){let task=initial;while(task.status==='running'){await new Promise(r=>setTimeout(r,1200));if(request!==null&&request!==navigation)return;task=await api('/jobs/'+task.id);}if(request!==null&&request!==navigation)return;if(task.status==='error')throw Error(task.error||'操作失败，请检查服务状态后重试。');toast('操作完成。');return task.result;}
 $('#auth-dialog').addEventListener('cancel',e=>e.preventDefault());
-$('#auth-form').onsubmit=async e=>{e.preventDefault();const password=$('#password').value;if(!initialized&&password!==$('#confirm-password').value){notice('两次密码不一致',true,'#auth-message');return;}notice('',false,'#auth-message');const done=beginLoading($('#auth-form'));$('#auth-submit').disabled=true;try{await post(initialized?'/auth/login':'/auth/setup',{password});$('#password').value='';$('#confirm-password').value='';await authState();}catch(e){notice(e.message,true,'#auth-message');}finally{done();$('#auth-submit').disabled=false;}};
+$('#auth-form').onsubmit=async e=>{e.preventDefault();const password=$('#password').value;if(!initialized&&password!==$('#confirm-password').value){toast('两次密码不一致',true);return;}const done=beginLoading($('#auth-form'));$('#auth-submit').disabled=true;try{await post(initialized?'/auth/login':'/auth/setup',{password});$('#password').value='';$('#confirm-password').value='';await authState();}catch(e){toast(e.message,true);}finally{done();$('#auth-submit').disabled=false;}};
 $('#open-settings').onclick=()=>openSettings();$('#close-settings').onclick=closeSettings;$$('[data-page]').forEach(b=>b.onclick=()=>openSettings(b.dataset.page));$('#add').onclick=()=>openLinkEditor();$('#add-from-settings').onclick=()=>openLinkEditor();$('#close-link').onclick=()=>$('#link-dialog').close();
-$('#link-form').onsubmit=e=>{e.preventDefault();guard(async()=>{const value={name:$('#link-name').value,url:$('#link-url').value,icon:$('#link-icon').value,tag:'链接',open_in_new_tab:$('#link-newtab').checked};await api(editing?'/cards/'+editing:'/cards',{method:editing?'PATCH':'POST',body:JSON.stringify(value)});$('#link-dialog').close();await loadCards();},'#link-message');};
-$('#workstation-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/settings/workstation',{url:$('#workstation-url').value.trim()});await loadCards();notice('工作站入口已保存。');toast('工作站入口已保存');});};
-$('#upload-config').onclick=()=>$('#config-file').click();$('#config-file').onchange=async()=>{const file=$('#config-file').files[0];if(!file)return;try{if(file.size>2*1024*1024||!file.size||! /\.ya?ml$/i.test(file.name))throw Error('选择 2 MB 以内的 YAML 文件');editor.setValue(await file.text());if($('#config-filename'))$('#config-filename').textContent=file.name+' · 等待应用';notice('文件已载入，点击保存并应用后生效。');}catch(e){notice(e.message,true);}$('#config-file').value='';};
-$('#save-config').onclick=()=>guard(async()=>{$('#save-config').disabled=true;try{const result=await post('/proxy/config',{filename:'config.yaml',content:editor.getValue(),revision});const saved=await api('/proxy/config');revision=saved.revision;savedConfig=saved.content;editor.setValue(saved.content);if($('#config-filename'))$('#config-filename').textContent='config.yaml · 当前正在使用';notice(result.message||'配置已应用。');await loadStatus();}finally{$('#save-config').disabled=false;}});
-$('#subscription-form').onsubmit=e=>{e.preventDefault();guard(async()=>{if(!await discardChanges())return;await post('/subscription',{url:$('#subscription-url').value,interval_hours:Number($('#subscription-interval').value)});await openSettings('proxy',{force:true});await loadStatus();notice('订阅已导入。');});};$('#refresh-subscription').onclick=()=>guard(async()=>{if(!await discardChanges())return;await post('/subscription/refresh');await openSettings('proxy',{force:true});notice('订阅已刷新。');});
-$('#domain-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/settings/domain',{domain:$('#domain').value});await loadStatus();await openSettings('dns',{force:true});notice('域名已保存。');});};
+$('#link-form').onsubmit=e=>{e.preventDefault();guard(async()=>{const value={name:$('#link-name').value,url:$('#link-url').value,icon:$('#link-icon').value,tag:'链接',open_in_new_tab:$('#link-newtab').checked};await api(editing?'/cards/'+editing:'/cards',{method:editing?'PATCH':'POST',body:JSON.stringify(value)});$('#link-dialog').close();await loadCards();toast(editing?'链接已更新。':'链接已添加。');},'#link-dialog .form-content');};
+$('#workstation-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/settings/workstation',{url:$('#workstation-url').value.trim()});await loadCards();toast('工作站入口已保存。');});};
+$('#upload-config').onclick=()=>$('#config-file').click();$('#config-file').onchange=async()=>{const file=$('#config-file').files[0];if(!file)return;try{if(file.size>2*1024*1024||!file.size||! /\.ya?ml$/i.test(file.name))throw Error('选择 2 MB 以内的 YAML 文件');editor.setValue(await file.text());if($('#config-filename'))$('#config-filename').textContent=file.name+' · 等待应用';toast('文件已载入，点击保存并应用后生效。');}catch(e){toast(e.message,true);}$('#config-file').value='';};
+$('#save-config').onclick=()=>guard(async()=>{$('#save-config').disabled=true;try{const result=await post('/proxy/config',{filename:'config.yaml',content:editor.getValue(),revision});const saved=await api('/proxy/config');revision=saved.revision;savedConfig=saved.content;editor.setValue(saved.content);if($('#config-filename'))$('#config-filename').textContent='config.yaml · 当前正在使用';toast(result.message||'配置已应用。');await loadStatus();}finally{$('#save-config').disabled=false;}});
+$('#subscription-form').onsubmit=e=>{e.preventDefault();guard(async()=>{if(!await discardChanges())return;await post('/subscription',{url:$('#subscription-url').value,interval_hours:Number($('#subscription-interval').value)});await openSettings('proxy',{force:true});await loadStatus();toast('订阅已导入。');});};$('#refresh-subscription').onclick=()=>guard(async()=>{if(!await discardChanges())return;await post('/subscription/refresh');await openSettings('proxy',{force:true});toast('订阅已刷新。');});
+$('#domain-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/settings/domain',{domain:$('#domain').value});await loadStatus();await openSettings('dns',{force:true});toast('域名已保存。');});};
 $$('[data-ts]').forEach(b=>b.onclick=()=>guard(async()=>{
   const action=b.dataset.ts;
   if(['disconnect','logout'].includes(action)&&!await askConfirm(action==='logout'?'退出 Tailscale 账号会中断远程访问，之后需要重新授权。是否继续？':'断开 Tailscale 会中断远程访问，登录身份会保留。是否继续？'))return;
   if(tailscaleRequest)await tailscaleRequest.catch(()=>{});
   const r=await post('/tailscale/action',{action});if(r.id)await job(r);await loadTailscale();
-  notice(action==='logout'?'已退出 Tailscale 账号。':action==='disconnect'?'已断开连接。':'');
+  toast(action==='logout'?'已退出 Tailscale 账号。':action==='disconnect'?'已断开连接。':'');
 }));
 $('#check-updates').onclick=()=>guard(async()=>{await job(await post('/updates/check'));await loadUpdates();});
-$('#backup').onclick=()=>guard(async()=>{const r=await api('/backup');const a=element('a');a.href='data:application/gzip;base64,'+r.data;a.download=r.filename;document.body.append(a);a.click();a.remove();notice('备份已下载，请妥善保存。');});
-$('#restore').onclick=()=>guard(async()=>{const file=$('#restore-file').files[0];if(!file||!$('#restore-confirm').checked)throw Error('请选择备份并确认替换配置');if(file.size>24*1024*1024)throw Error('备份超过 24 MB');const bytes=new Uint8Array(await file.arrayBuffer());let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));await job(await post('/restore',{data:btoa(text)}));savedConfig=null;await Promise.all([loadStatus(),loadCards(),loadAppearance()]);$('#restore-file').value='';$('#restore-confirm').checked=false;notice('备份已恢复。');});
-$('#login-settings-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/auth/settings',{login_required:$('#login-required').checked,current_password:$('#login-settings-password').value});renderLoginSettings(await api('/auth'));$('#login-settings-password').value='';notice($('#login-required').checked?'密码登录已开启。':'密码登录已关闭，打开网页即可进入网关。');});};
-$('#password-form').onsubmit=e=>{e.preventDefault();const password=$('#new-password').value;if(!$('#current-password').value){notice('请输入当前密码。',true);return;}if(!password){notice('请输入新密码。',true);return;}if(password!==$('#repeat-password').value){notice('两次新密码不一致，请重新输入。',true);return;}guard(async()=>{await post('/password',{current_password:$('#current-password').value,password});$('#password-form').reset();notice('密码已保存。');});};
+$('#backup').onclick=()=>guard(async()=>{const r=await api('/backup');const a=element('a');a.href='data:application/gzip;base64,'+r.data;a.download=r.filename;document.body.append(a);a.click();a.remove();toast('备份已下载，请妥善保存。');});
+$('#restore').onclick=()=>guard(async()=>{const file=$('#restore-file').files[0];if(!file||!$('#restore-confirm').checked)throw Error('请选择备份并确认替换配置');if(file.size>24*1024*1024)throw Error('备份超过 24 MB');const bytes=new Uint8Array(await file.arrayBuffer());let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));await job(await post('/restore',{data:btoa(text)}));savedConfig=null;await Promise.all([loadStatus(),loadCards(),loadAppearance()]);$('#restore-file').value='';$('#restore-confirm').checked=false;toast('备份已恢复。');});
+$('#login-settings-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/auth/settings',{login_required:$('#login-required').checked,current_password:$('#login-settings-password').value});renderLoginSettings(await api('/auth'));$('#login-settings-password').value='';toast($('#login-required').checked?'密码登录已开启。':'密码登录已关闭，打开网页即可进入网关。');});};
+$('#password-form').onsubmit=e=>{e.preventDefault();const password=$('#new-password').value;if(!$('#current-password').value){toast('请输入当前密码。',true);return;}if(!password){toast('请输入新密码。',true);return;}if(password!==$('#repeat-password').value){toast('两次新密码不一致，请重新输入。',true);return;}guard(async()=>{await post('/password',{current_password:$('#current-password').value,password});$('#password-form').reset();toast('密码已保存。');});};
 $('#logout').onclick=()=>guard(async()=>{if(!await discardChanges())return;await post('/auth/logout');destroySettings();await authState();});
 $('#settings-dialog').addEventListener('cancel',e=>{e.preventDefault();closeSettings();});
 window.addEventListener('beforeunload',e=>{if(configDirty()){e.preventDefault();e.returnValue='';}});
@@ -283,8 +279,44 @@ function askConfirm(copy,title='确认操作'){
     dialog.showModal();$('#confirm-cancel').focus();
   });
 }
-let toastTimer;
-function toast(message,error=false){let el=$('#desktop-toast');if(!el){el=element('div',undefined,'desktop-toast');el.id='desktop-toast';el.setAttribute('role','status');document.body.append(el);}el.textContent=message;el.classList.toggle('error',error);el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,3600);}
+let toastTimer=null,toastRemaining=0,toastStarted=0;
+function dismissToast(){
+  clearTimeout(toastTimer);toastTimer=null;
+  const el=$('#desktop-toast');
+  if(el.matches(':popover-open'))el.hidePopover();
+  el.hidden=true;
+}
+function syncToastLayer(){
+  const el=$('#desktop-toast');if(el.hidden)return;
+  const parent=document.activeElement?.closest('dialog:modal')||$$('dialog:modal').at(-1)||document.body;
+  if(el.parentElement!==parent){if(el.matches(':popover-open'))el.hidePopover();parent.append(el);}
+  if(el.showPopover&&!el.matches(':popover-open'))el.showPopover();
+}
+function resumeToast(){
+  clearTimeout(toastTimer);toastTimer=null;
+  const el=$('#desktop-toast');
+  if(el.hidden||el.matches(':hover')||el.contains(document.activeElement))return;
+  toastStarted=performance.now();toastTimer=setTimeout(dismissToast,toastRemaining);
+}
+function pauseToast(){
+  if(toastTimer===null)return;
+  clearTimeout(toastTimer);toastTimer=null;
+  toastRemaining=Math.max(0,toastRemaining-(performance.now()-toastStarted));
+}
+function toast(message,error=false){
+  if(!message)return;
+  const el=$('#desktop-toast'),text=$('#toast-message');
+  el.classList.toggle('error',error);text.setAttribute('role',error?'alert':'status');text.setAttribute('aria-live',error?'assertive':'polite');
+  el.hidden=false;syncToastLayer();text.textContent=message;
+  toastRemaining=Math.max(error?8000:4200,Math.min(12000,message.length*160));resumeToast();
+}
+function setupToast(){
+  const el=$('#desktop-toast');$('#toast-close').onclick=dismissToast;
+  el.addEventListener('mouseenter',pauseToast);el.addEventListener('mouseleave',resumeToast);
+  el.addEventListener('focusin',pauseToast);el.addEventListener('focusout',()=>queueMicrotask(resumeToast));
+  el.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();dismissToast();}});
+  new MutationObserver(records=>{if(records.some(record=>record.target instanceof HTMLDialogElement))syncToastLayer();}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['open']});
+}
 async function deleteCard(card){if(!await askConfirm('删除链接“'+card.name+'”？此操作仅移除桌面入口。','删除桌面链接'))return;await api('/cards/'+card.id,{method:'DELETE'});await loadCards();toast('链接已删除');}
 function hideContext(){const menu=$('#desktop-context-menu');if(menu)menu.hidden=true;}
 function showContext(x,y,item=null,origin=null){
@@ -313,9 +345,18 @@ function wallpaperStyles(el,value){el.style.backgroundImage='url("'+wallpaperSou
 function applyAppearance(value){appearance={fit:'cover',image:'',wallpaper:'coast',theme:'auto',...value};applyTheme(appearance.theme);document.body.style.setProperty('--wallpaper-image','url("'+wallpaperSource(appearance)+'")');document.body.style.backgroundSize=value.fit==='stretch'?'100% 100%':['center','tile'].includes(value.fit)?'auto':value.fit;document.body.style.backgroundPosition='center';document.body.style.backgroundRepeat=value.fit==='tile'?'repeat':'no-repeat';}
 async function loadAppearance(){applyAppearance(await api('/appearance'));}
 function finishWallpaperRead(){wallpaperRead++;wallpaperLoadingDone?.();wallpaperLoadingDone=null;$('#wallpaper-apply').disabled=busy;$('#wallpaper-file').value='';}
-function openPersonalization(){finishWallpaperRead();$('#wallpaper-apply').disabled=busy;pendingAppearance={...appearance};wallpaperStyles($('#wallpaper-preview'),pendingAppearance);$$('[name=wallpaper-fit]').forEach(el=>el.checked=el.value===appearance.fit);$$('[name=appearance-theme]').forEach(el=>el.checked=el.value===appearance.theme);drawWallpapers();$('#personalization-message').textContent='';$('#personalization-dialog').showModal();}
+function openPersonalization(){finishWallpaperRead();$('#wallpaper-apply').disabled=busy;pendingAppearance={...appearance};wallpaperStyles($('#wallpaper-preview'),pendingAppearance);$$('[name=wallpaper-fit]').forEach(el=>el.checked=el.value===appearance.fit);$$('[name=appearance-theme]').forEach(el=>el.checked=el.value===appearance.theme);drawWallpapers();$('#personalization-dialog').showModal();}
 function setupDesktop(){
-  $$('form').forEach(form=>form.noValidate=true);
+  $$('form').forEach(form=>{
+    form.noValidate=true;
+    form.addEventListener('submit',e=>{
+      const field=[...form.elements].find(control=>control.willValidate&&!control.validity.valid);
+      if(!field)return;
+      e.preventDefault();e.stopImmediatePropagation();field.focus();
+      const label=field.getAttribute('aria-label')||field.labels?.[0]?.textContent.trim()||'此项';
+      toast(field.validity.valueMissing?'请填写'+label+'。':field.validity.typeMismatch?'请输入有效的'+label+'。':field.validationMessage,true);
+    },true);
+  });
   setupSelects();setupIconPicker();
   document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('#desktop-context-menu').hidden){hideContext();return;}if(settingsWindow&&!document.querySelector('dialog:modal')){e.preventDefault();closeSettings();}});
   document.addEventListener('pointerdown',e=>{if(!e.target.closest('#desktop-context-menu'))hideContext();if(!e.target.closest('.custom-select')){$$('.select-options').forEach(el=>el.hidden=true);$$('.select-trigger').forEach(el=>el.setAttribute('aria-expanded','false'));}});
@@ -335,20 +376,20 @@ function setupDesktop(){
   $('#wallpaper-reset').onclick=()=>{finishWallpaperRead();pendingAppearance.image='';pendingAppearance.wallpaper='coast';wallpaperStyles($('#wallpaper-preview'),pendingAppearance);drawWallpapers();};
   $('#wallpaper-file').onchange=async()=>{
     const file=$('#wallpaper-file').files[0];if(!file)return;
-    finishWallpaperRead();const request=wallpaperRead,draft=pendingAppearance,done=beginLoading(loadingRegion('#personalization-message'));wallpaperLoadingDone=done;
+    finishWallpaperRead();const request=wallpaperRead,draft=pendingAppearance,done=beginLoading(loadingRegion('#personalization-dialog .personalization-content'));wallpaperLoadingDone=done;
     const isCurrent=()=>request===wallpaperRead&&pendingAppearance===draft&&$('#personalization-dialog').open;
-    $('#wallpaper-apply').disabled=true;notice('',false,'#personalization-message');
+    $('#wallpaper-apply').disabled=true;
     try{
       if(file.size>3*1024*1024||!['image/png','image/jpeg','image/webp'].includes(file.type))throw Error('请选择 3 MB 以内的 PNG、JPEG 或 WebP 图片');
       const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('图片读取失败'));reader.readAsDataURL(file);});
       await new Promise((resolve,reject)=>{const image=new Image();image.onload=resolve;image.onerror=()=>reject(Error('图片无法打开，请重新选择'));image.src=data;});
       if(!isCurrent())return;draft.image=data;wallpaperStyles($('#wallpaper-preview'),draft);drawWallpapers();
-    }catch(e){if(isCurrent())notice(e.message,true,'#personalization-message');}
+    }catch(e){if(isCurrent())toast(e.message,true);}
     finally{done();if(wallpaperLoadingDone===done)wallpaperLoadingDone=null;if(isCurrent()){$('#wallpaper-apply').disabled=busy;$('#wallpaper-file').value='';}}
   };
-  $('#wallpaper-apply').onclick=()=>guard(async()=>{const saved=await post('/appearance',pendingAppearance);applyAppearance(saved);$('#personalization-dialog').close();toast('个性化设置已保存');},'#personalization-message');
+  $('#wallpaper-apply').onclick=()=>guard(async()=>{const saved=await post('/appearance',pendingAppearance);applyAppearance(saved);$('#personalization-dialog').close();toast('个性化设置已保存');},'#personalization-dialog .personalization-content');
   $('#restore-file').addEventListener('change',()=>$('#restore-filename').textContent=$('#restore-file').files[0]?.name||'尚未选择文件');
   window.addEventListener('resize',()=>{hideContext();if(!settingsWindow)return;const mobile=innerWidth<=700;if(mobile)settingsWindow.maximize();});
 }
 
-setupDesktop();drawDesktop();withLoading($('.desktop-workspace'),async()=>{await loadCatalogs();await authState();}).catch(e=>{if(!$('#auth-dialog').open)$('#auth-dialog').showModal();notice(e.message,true,'#auth-message');});
+setupToast();setupDesktop();drawDesktop();withLoading($('.desktop-workspace'),async()=>{await loadCatalogs();await authState();}).catch(e=>{if(!$('#auth-dialog').open)$('#auth-dialog').showModal();toast(e.message,true);});
