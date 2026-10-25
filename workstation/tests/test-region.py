@@ -37,7 +37,9 @@ class RegionTests(unittest.TestCase):
         (self.root / 'etc/environment').write_text('KEEP=existing\nLANG=old\nTZ=old\n')
         selected = REGION.configure_region(self.root, {}, self.run)
         self.assertEqual(selected, {'LANG': 'en_SG.UTF-8', 'LC_ALL': 'en_SG.UTF-8',
-                                    'LANGUAGE': 'en_SG:en', 'TZ': 'Asia/Singapore'})
+                                    'LANGUAGE': 'en_SG:en', 'TZ': 'Asia/Singapore',
+                                    'WORKSTATION_COUNTRY': 'SG', 'WORKSTATION_LANGUAGE': 'en',
+                                    'WORKSTATION_TIMEZONE': 'Asia/Singapore'})
         self.run.assert_called_once()
         self.assertIn('KEEP=existing\n', (self.root / 'etc/environment').read_text())
         self.assertNotIn('=old', (self.root / 'etc/environment').read_text())
@@ -61,6 +63,31 @@ class RegionTests(unittest.TestCase):
         zone = ZoneInfo(REGION.DEFAULTS['timezone'])
         self.assertEqual(datetime(2026, 1, 15, tzinfo=zone).utcoffset(), timedelta(hours=8))
         self.assertEqual(datetime(2026, 7, 15, tzinfo=zone).utcoffset(), timedelta(hours=8))
+
+    def test_taiwan_english_uses_real_locales_and_resets_when_changed_back(self):
+        config = self.root / 'etc/workstation/region.json'
+        config.write_text(json.dumps({'country': 'TW', 'language': 'en', 'timezone': 'Asia/Taipei'}))
+        selected = REGION.configure_region(self.root, {}, self.run)
+        self.assertEqual(selected['LANG'], 'en_US.UTF-8')
+        self.assertEqual(selected['LANGUAGE'], 'en_US:en')
+        self.assertEqual(selected['LC_MESSAGES'], 'en_US.UTF-8')
+        self.assertEqual(selected['LC_ALL'], '')
+        self.assertEqual(selected['LC_MONETARY'], 'zh_TW.UTF-8')
+        self.assertEqual(selected['LC_ADDRESS'], 'zh_TW.UTF-8')
+        self.assertEqual(selected['TZ'], 'Asia/Taipei')
+        self.assertEqual(selected['WORKSTATION_COUNTRY'], 'TW')
+        self.assertNotIn('WORKSTATION_', (self.root / 'etc/default/locale').read_text())
+        self.assertIn('WORKSTATION_COUNTRY=TW', (self.root / 'etc/environment').read_text())
+        generated = [call.args[0] for call in self.run.call_args_list[1:]]
+        self.assertEqual(generated, [
+            ['localedef', '-i', 'en_US', '-f', 'UTF-8', 'en_US.UTF-8'],
+            ['localedef', '-i', 'zh_TW', '-f', 'UTF-8', 'zh_TW.UTF-8']])
+        config.write_text('{}')
+        REGION.configure_region(self.root, {}, self.run)
+        self.assertNotIn('zh_TW', (self.root / 'etc/environment').read_text())
+        self.assertNotIn('LC_MONETARY=', (self.root / 'etc/default/locale').read_text())
+        self.assertIn('unset LC_NUMERIC',
+                      (self.root / 'etc/profile.d/workstation-region.sh').read_text())
 
     def test_internal_file_overrides_environment_and_survives_repeated_init(self):
         config = self.root / 'etc/workstation/region.json'

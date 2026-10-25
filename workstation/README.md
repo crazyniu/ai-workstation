@@ -116,7 +116,7 @@ Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` �
 
 ### 国家、语言与分开部署（供安装 AI 使用）
 
-在私有 `.env` 或 `docker run -e` 中设置 `WORKSTATION_COUNTRY=SG`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=Asia/Singapore`。默认生成 `en_SG.UTF-8`，同步用于 SSH 登录和 XFCE。其他示例为 `TW / zh / Asia/Taipei`、`US / en / America/New_York`；组合须是镜像 glibc 支持的 locale。无效输入会中止初始化。不要通过额外的 `LANG` / `TZ` 覆盖这套参数。
+在私有 `.env` 或 `docker run -e` 中设置 `WORKSTATION_COUNTRY=SG`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=Asia/Singapore`。默认生成 `en_SG.UTF-8`，同步用于 SSH 登录和 XFCE。其他示例为 `TW / zh / Asia/Taipei`、`US / en / America/New_York`。台湾英语 `TW / en / Asia/Taipei` 使用 `en_US.UTF-8` 英语消息与 `zh_TW.UTF-8` 台湾地区格式，清空 `LC_ALL` 以让分类设置生效；glibc 无 `en_TW`。其他组合须是镜像 glibc 支持的 locale，无效输入会中止初始化。不要通过额外的 `LANG` / `TZ` 覆盖这套参数。
 
 新加坡采用 IANA 时区 `Asia/Singapore`，全年为 UTC+8。
 
