@@ -279,6 +279,8 @@ class AuthTests(DataTest):
             self.assertEqual(response.status, 401)
         with self.request('/api/auth/setup', {'password': 'strong-password-123'}) as response:
             cookie = response.headers['Set-Cookie'].split(';')[0]
+        with self.request('/api/cards', cookie=cookie) as response:
+            self.assertEqual(json.load(response)['desktop']['workstation_url'], 'https://192.168.1.251:6080/')
         ids = list(reversed(server.DESKTOP_BUILTINS))
         with self.request('/api/cards/order', {'ids': ids}, cookie=cookie) as response:
             self.assertEqual(response.status, 200)
