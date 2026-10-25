@@ -1,6 +1,7 @@
 'use strict';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 let initialized=false,cards=[],revision=null,editing=null,busy=false,status={},prefs={};
+let desktopPrefs={workstation_url:'http://192.168.1.251:6080/',order:[]},draggingIcon=null;
 let currentPage=null,navigation=0,savedConfig=null,settingsWindow=null;
 let tailscaleRequest=null,tailscaleNavigation=0,settingsLoadingDone=null,wallpaperRead=0,wallpaperLoadingDone=null;
 let faviconPreviewRequest=0,faviconPreviewTimer=null,faviconActive=0;
@@ -146,22 +147,34 @@ async function guard(work,target='#message'){
   try{await work();}catch(e){notice(e.message,true,target);}finally{busy=false;controls.filter(el=>el.isConnected).forEach(el=>el.disabled=el.dataset.stateDisabled==='true');editor.setDisabled(false);done();$('#refresh-subscription').disabled=!prefs.subscription?.url;}
 }
 function openLinkEditor(card=null){cancelFaviconPreview();editing=card?.id||null;$('#link-title').textContent=card?'编辑链接':'添加链接';$('#link-name').value=card?.name||'';$('#link-url').value=card?.url||'';$('#link-icon').value=card?(card.icon||'link'):'auto';$('#icon-search').value='';drawIconChoices();$('#link-newtab').checked=card?.open_in_new_tab??true;syncSelects();$('#link-message').textContent='';$('#link-dialog').showModal();previewFavicon(0);}
+function desktopItems(){
+  const builtins=[{name:'Clash',icon:'clash',url:'/ui/'},{name:'AdGuard Home',icon:'adguard',url:'/adguard/'},{name:'Tailscale',icon:'tailscale',page:'tailscale'},{name:'工作站',icon:'workstation',url:desktopPrefs.workstation_url},{name:'设置',icon:'settings',page:'overview'}].map(item=>({...item,id:'builtin:'+item.icon,fixed:true}));
+  const items=[...builtins,...cards],lookup=new Map(items.map(item=>[item.id,item]));
+  return [...new Set([...desktopPrefs.order,...lookup.keys()])].map(id=>lookup.get(id)).filter(Boolean);
+}
+function clearIconDrag(){draggingIcon=null;$$('.desktop-item').forEach(el=>el.classList.remove('dragging','drop-before','drop-after'));}
+async function saveDesktopOrder(ids){await post('/cards/order',{ids});await loadCards();toast('桌面顺序已保存');}
 function drawDesktop(){
   const desktop=$('#desktop');desktop.replaceChildren();
-  const builtins=[{name:'Clash',icon:'clash',url:'/ui/'},{name:'AdGuard Home',icon:'adguard',url:'/adguard/'},{name:'Tailscale',icon:'tailscale',page:'tailscale'},{name:'设置',icon:'settings',page:'overview'}];
-  for(const item of [...builtins,...cards]){
+  for(const item of desktopItems()){
     const el=item.page?element('button'):element('a');el.className='desktop-item';el.dataset.id=item.id||item.icon;el._desktopItem=item;el.append(icon(item.icon||'link',item.url),element('span',item.name));
-    if(item.page)el.onclick=()=>openSettings(item.page);else{el.href=item.url;if(item.open_in_new_tab||builtins.includes(item)){el.target='_blank';el.rel='noopener noreferrer';}}
+    if(item.page)el.onclick=()=>openSettings(item.page);else{el.href=item.url;if(item.open_in_new_tab||item.fixed){el.target='_blank';el.rel='noopener noreferrer';}}
     el.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();showContext(e.clientX,e.clientY,item,el);});
     el.addEventListener('keydown',e=>{if(e.key==='ContextMenu'||(e.shiftKey&&e.key==='F10')){e.preventDefault();const r=el.getBoundingClientRect();showContext(r.right,r.top,item,el);}});
-    if(item.id){el.draggable=true;el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',item.id);e.dataTransfer.effectAllowed='move';el.classList.add('dragging');});el.addEventListener('dragend',()=>el.classList.remove('dragging'));el.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';});el.addEventListener('drop',e=>{e.preventDefault();const from=e.dataTransfer.getData('text/plain');if(!cards.some(c=>c.id===from)||from===item.id)return;const ids=cards.map(c=>c.id).filter(id=>id!==from);ids.splice(ids.indexOf(item.id),0,from);guard(async()=>{await post('/cards/order',{ids});await loadCards();toast('桌面顺序已保存');});});}
+    el.draggable=true;
+    el.addEventListener('dragstart',e=>{if(busy){e.preventDefault();return;}draggingIcon=item.id;e.dataTransfer.setData('application/x-gateway-desktop',item.id);e.dataTransfer.effectAllowed='move';el.classList.add('dragging');});
+    el.addEventListener('dragend',clearIconDrag);
+    el.addEventListener('dragover',e=>{if(!draggingIcon||draggingIcon===item.id)return;e.preventDefault();e.dataTransfer.dropEffect='move';const after=e.clientY>el.getBoundingClientRect().top+el.offsetHeight/2;el.classList.toggle('drop-before',!after);el.classList.toggle('drop-after',after);});
+    el.addEventListener('dragleave',()=>el.classList.remove('drop-before','drop-after'));
+    el.addEventListener('drop',e=>{e.preventDefault();const from=draggingIcon,after=e.clientY>el.getBoundingClientRect().top+el.offsetHeight/2;clearIconDrag();if(!from||from===item.id)return;const ids=desktopItems().map(c=>c.id).filter(id=>id!==from);ids.splice(ids.indexOf(item.id)+(after?1:0),0,from);guard(()=>saveDesktopOrder(ids));});
+    el.addEventListener('keydown',e=>{if(!e.altKey||!['ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const ids=desktopItems().map(c=>c.id),i=ids.indexOf(item.id),next=i+(e.key==='ArrowUp'?-1:1);if(next<0||next>=ids.length)return;[ids[i],ids[next]]=[ids[next],ids[i]];guard(async()=>{await saveDesktopOrder(ids);[...desktop.children].find(child=>child.dataset.id===item.id)?.focus();});});
     desktop.append(el);
   }drawLinks();
 }
 function drawLinks(){const list=$('#link-list');list.replaceChildren();if(!cards.length){list.append(element('p','还没有自定义链接。','muted'));return;}cards.forEach((card,index)=>{const row=element('div',undefined,'service-row'),details=element('div',undefined,'details'),tools=element('div',undefined,'tools');details.append(element('strong',card.name),element('span',card.url));tools.append(button('编辑',()=>openLinkEditor(card)),button('上移',()=>guard(async()=>{if(!index)return;const ids=cards.map(c=>c.id);[ids[index],ids[index-1]]=[ids[index-1],ids[index]];await post('/cards/order',{ids});await loadCards();})),button('下移',()=>guard(async()=>{if(index===cards.length-1)return;const ids=cards.map(c=>c.id);[ids[index],ids[index+1]]=[ids[index+1],ids[index]];await post('/cards/order',{ids});await loadCards();})),button('删除',()=>guard(async()=>{if(!await askConfirm('删除链接“'+card.name+'”？'))return;await api('/cards/'+card.id,{method:'DELETE'});await loadCards();}),'danger'));tools.children[1].disabled=index===0;tools.children[2].disabled=index===cards.length-1;row.append(icon(card.icon||'link',card.url),details,tools);list.append(row);});}
-async function loadCards(){cards=(await api('/cards')).cards;drawDesktop();}
+async function loadCards(){const data=await api('/cards');cards=data.cards;desktopPrefs=data.desktop;drawDesktop();}
 async function loadStatus(){status=await api('/status');$('#home-domain').textContent='http://'+status.domain;}
-async function authState(){const a=await api('/auth');initialized=a.initialized;$('#auth-title').textContent=initialized?'登录网关':'欢迎使用 Gateway';$('#auth-copy').textContent=initialized?'使用管理员密码进入网关桌面，初始密码为 admin。':'设置管理员密码，开始配置你的网关。';$('#auth-submit').textContent=initialized?'登录':'创建管理员';$('#confirm-field').hidden=initialized;$('#password').autocomplete=initialized?'current-password':'new-password';if(!a.authenticated){cards=[];drawDesktop();destroySettings();$('#link-dialog').close();navigation++;currentPage=null;savedConfig=null;$('#home-domain').textContent='';if(!$('#auth-dialog').open)$('#auth-dialog').showModal();return false;}$('#auth-dialog').close();$('#auth-message').textContent='';await Promise.all([loadCards(),loadStatus(),loadAppearance()]);return true;}
+async function authState(){const a=await api('/auth');initialized=a.initialized;$('#auth-title').textContent=initialized?'登录网关':'欢迎使用 Gateway';$('#auth-copy').textContent=initialized?'使用管理员密码进入网关桌面，初始密码为 admin。':'设置管理员密码，开始配置你的网关。';$('#auth-submit').textContent=initialized?'登录':'创建管理员';$('#confirm-field').hidden=initialized;$('#password').autocomplete=initialized?'current-password':'new-password';if(!a.authenticated){cards=[];desktopPrefs={workstation_url:"http://192.168.1.251:6080/",order:[]};drawDesktop();destroySettings();$('#link-dialog').close();navigation++;currentPage=null;savedConfig=null;$('#home-domain').textContent='';if(!$('#auth-dialog').open)$('#auth-dialog').showModal();return false;}$('#auth-dialog').close();$('#auth-message').textContent='';await Promise.all([loadCards(),loadStatus(),loadAppearance()]);return true;}
 async function openSettings(page='overview',{force=false}={}){
   if(!force&&$('#settings-dialog').open&&currentPage===page){showSettingsWindow();return;}
   if(!force&&!await discardChanges())return;
@@ -181,7 +194,7 @@ async function openSettings(page='overview',{force=false}={}){
     if(page==='dns'){$('#domain').value=prefs.domain;$('#domain-address').textContent='当前地址：'+status.address+' · http://'+prefs.domain;}
     if(page==='tailscale')await loadTailscale();
     if(page==='updates'){const task=await loadUpdates();if(task?.status==='running'){await job(task,{request});if(request===navigation)await loadUpdates();}}
-    if(page==='desktop')await loadCards();
+    if(page==='desktop'){await loadCards();$('#workstation-url').value=desktopPrefs.workstation_url;}
     if(request===navigation)notice('');
   }catch(e){if(request===navigation){currentPage=null;notice(e.message,true);}}
   finally{done();if(settingsLoadingDone===done)settingsLoadingDone=null;}
@@ -224,6 +237,7 @@ $('#auth-dialog').addEventListener('cancel',e=>e.preventDefault());
 $('#auth-form').onsubmit=async e=>{e.preventDefault();const password=$('#password').value;if(!initialized&&password!==$('#confirm-password').value){notice('两次密码不一致',true,'#auth-message');return;}notice('',false,'#auth-message');const done=beginLoading($('#auth-form'));$('#auth-submit').disabled=true;try{await post(initialized?'/auth/login':'/auth/setup',{password});$('#password').value='';$('#confirm-password').value='';await authState();}catch(e){notice(e.message,true,'#auth-message');}finally{done();$('#auth-submit').disabled=false;}};
 $('#open-settings').onclick=()=>openSettings();$('#close-settings').onclick=closeSettings;$$('[data-page]').forEach(b=>b.onclick=()=>openSettings(b.dataset.page));$('#add').onclick=()=>openLinkEditor();$('#add-from-settings').onclick=()=>openLinkEditor();$('#close-link').onclick=()=>$('#link-dialog').close();
 $('#link-form').onsubmit=e=>{e.preventDefault();guard(async()=>{const value={name:$('#link-name').value,url:$('#link-url').value,icon:$('#link-icon').value,tag:'链接',open_in_new_tab:$('#link-newtab').checked};await api(editing?'/cards/'+editing:'/cards',{method:editing?'PATCH':'POST',body:JSON.stringify(value)});$('#link-dialog').close();await loadCards();},'#link-message');};
+$('#workstation-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/settings/workstation',{url:$('#workstation-url').value.trim()});await loadCards();notice('工作站入口已保存。');toast('工作站入口已保存');});};
 $('#upload-config').onclick=()=>$('#config-file').click();$('#config-file').onchange=async()=>{const file=$('#config-file').files[0];if(!file)return;try{if(file.size>2*1024*1024||!file.size||! /\.ya?ml$/i.test(file.name))throw Error('选择 2 MB 以内的 YAML 文件');editor.setValue(await file.text());if($('#config-filename'))$('#config-filename').textContent=file.name+' · 等待应用';notice('文件已载入，点击保存并应用后生效。');}catch(e){notice(e.message,true);}$('#config-file').value='';};
 $('#save-config').onclick=()=>guard(async()=>{$('#save-config').disabled=true;try{const result=await post('/proxy/config',{filename:'config.yaml',content:editor.getValue(),revision});const saved=await api('/proxy/config');revision=saved.revision;savedConfig=saved.content;editor.setValue(saved.content);if($('#config-filename'))$('#config-filename').textContent='config.yaml · 当前正在使用';notice(result.message||'配置已应用。');await loadStatus();}finally{$('#save-config').disabled=false;}});
 $('#subscription-form').onsubmit=e=>{e.preventDefault();guard(async()=>{if(!await discardChanges())return;await post('/subscription',{url:$('#subscription-url').value,interval_hours:Number($('#subscription-interval').value)});await openSettings('proxy',{force:true});await loadStatus();notice('订阅已导入。');});};$('#refresh-subscription').onclick=()=>guard(async()=>{if(!await discardChanges())return;await post('/subscription/refresh');await openSettings('proxy',{force:true});notice('订阅已刷新。');});
@@ -270,8 +284,8 @@ function showContext(x,y,item=null,origin=null){
   const menu=$('#desktop-context-menu');menu.replaceChildren();
   const add=(label,symbol,action,danger=false,url='')=>{const b=button('',()=>{hideContext();Promise.resolve(action()).catch(e=>toast(e.message,true));},danger?'danger':'');b.setAttribute('role','menuitem');b.append(icon(symbol,url),element('span',label));menu.append(b);};
   const line=()=>{const hr=element('div',undefined,'context-divider');hr.setAttribute('role','separator');menu.append(hr);};
-  if(item){add('打开',item.icon||'link',()=>origin.click(),false,item.url);if(item.id){line();add('编辑链接','link',()=>openLinkEditor(item));add('删除链接','trash',()=>guard(()=>deleteCard(item)));}}
-  else{add('添加链接','add',()=>openLinkEditor());add('刷新桌面','refresh',()=>withLoading($('.desktop-workspace'),async()=>{await Promise.all([loadCards(),loadStatus()]);toast('桌面已刷新');}));add('按名称排列','sort',()=>guard(async()=>{await post('/cards/order',{ids:[...cards].sort((a,b)=>a.name.localeCompare(b.name,'zh-CN')).map(c=>c.id)});await loadCards();toast('自定义链接已按名称排列');}));line();add('个性化设置','appearance',()=>openPersonalization());add('控制面板','settings',()=>openSettings());}
+  if(item){add('打开',item.icon||'link',()=>origin.click(),false,item.url);if(!item.fixed){line();add('编辑链接','link',()=>openLinkEditor(item));add('删除链接','trash',()=>guard(()=>deleteCard(item)));}else if(item.id==='builtin:workstation'){line();add('设置入口地址','settings',async()=>{await openSettings('desktop');$('#workstation-url').focus();});}}
+  else{add('添加链接','add',()=>openLinkEditor());add('刷新桌面','refresh',()=>withLoading($('.desktop-workspace'),async()=>{await Promise.all([loadCards(),loadStatus()]);toast('桌面已刷新');}));add('按名称排列','sort',()=>guard(()=>saveDesktopOrder(desktopItems().sort((a,b)=>a.name.localeCompare(b.name,'zh-CN')).map(c=>c.id))));line();add('个性化设置','appearance',()=>openPersonalization());add('控制面板','settings',()=>openSettings());}
   menu.hidden=false;menu.style.left=Math.max(8,Math.min(x,innerWidth-menu.offsetWidth-8))+'px';menu.style.top=Math.max(8,Math.min(y,innerHeight-menu.offsetHeight-8))+'px';menu.querySelector('button')?.focus();
   menu.onkeydown=e=>{const items=[...menu.querySelectorAll('button')],i=items.indexOf(document.activeElement);if(e.key==='Escape'){e.stopPropagation();hideContext();origin?.focus();}else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?items.length-1:(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;items[next].focus();}};
 }

@@ -119,7 +119,10 @@
           <div class="row spread page-heading"><h2>服务升级</h2><button id="check-updates">检查更新</button></div><p class="muted">从官方来源获取稳定版本，校验后逐项升级。升级期间对应服务会短暂中断。</p><div id="components" class="service-list"></div><p id="upgrade-status" class="muted" role="status"></p><button id="refresh-job" hidden>刷新任务</button><div class="section-divider"></div><h3>网关镜像</h3><p class="muted">后台和基础系统随 Docker 镜像更新。更换镜像前先导出容器内部数据，创建新容器后恢复并验证。直接删除或重建会丢失内部数据。</p>
         </section>
         <section data-section="desktop" hidden>
-          <div class="row spread page-heading"><h2>桌面管理</h2><button id="add-from-settings" class="primary">添加链接</button></div><p class="muted">内置入口始终保留。自定义链接可以指向其他设备的 IP、域名或端口。</p><div id="link-list" class="service-list"></div>
+          <div class="row spread page-heading"><h2>桌面管理</h2><button id="add-from-settings" class="primary">添加链接</button></div>
+          <p class="muted">所有桌面图标都可以拖拽排序，顺序会自动保存。也可选中图标后按 Alt + ↑ / ↓ 调整。内置入口始终保留。</p>
+          <form id="workstation-form"><h3>工作站网页桌面</h3><label>入口地址<input id="workstation-url" type="url" required maxlength="500" placeholder="http://192.168.1.251:6080/" autocomplete="off"></label><p class="muted">填写实际工作站的 IP 或域名，可修改协议和端口。桌面上的“工作站”图标始终使用此地址。</p><button class="primary" type="submit">保存入口</button></form>
+          <div class="section-divider"></div><h3>自定义链接</h3><div id="link-list" class="service-list"></div>
         </section>
         <section data-section="account" hidden>
           <div class="page-heading"><h2>账户</h2><p class="muted">管理进入网关桌面使用的密码。</p></div>
