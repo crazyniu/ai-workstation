@@ -71,9 +71,15 @@ import json,socket,struct,subprocess,urllib.error,urllib.request
 pid=subprocess.check_output(['supervisorctl','-c','/etc/supervisor/supervisord.conf','pid','workstation-exit-dns'],text=True).strip()
 uid=next(x for x in Path('/proc/'+pid+'/status').read_text().splitlines() if x.startswith('Uid:'))
 assert uid.split()[1:] == ['65534']*4
-environment=dict(x.split(b'=',1) for x in Path('/proc/'+pid+'/environ').read_bytes().split(b'\0') if b'=' in x)
+# Reading another UID's environment requires CAP_SYS_PTRACE, which this fixture
+# deliberately lacks. Inspect it as the service UID instead.
+subprocess.run(['python3','-c', '''
+from pathlib import Path
+import sys
+environment=dict(x.split(b'=',1) for x in Path('/proc/'+sys.argv[1]+'/environ').read_bytes().split(b'\\0') if b'=' in x)
 for key in [b'HTTP_PROXY',b'HTTPS_PROXY',b'ALL_PROXY',b'http_proxy',b'https_proxy',b'all_proxy']:
     assert not environment.get(key)
+''',pid],user=65534,group=65534,check=True)
 assert Path('/var/lib/workstation-exit-dns/AdGuardHome.yaml').stat().st_mode & 0o777 == 0o600
 opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
 try:opener.open('http://127.0.0.1:3001/control/status',timeout=5)
