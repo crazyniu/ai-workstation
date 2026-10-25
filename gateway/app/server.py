@@ -12,6 +12,30 @@ MAX_BODY=36*1024*1024
 JOBS={}
 FAILURES={}
 JOB_LOCK=threading.Lock()
+DESKTOP_BUILTINS=('builtin:clash','builtin:adguard','builtin:tailscale','builtin:workstation','builtin:settings')
+
+def validate_desktop(value):
+    if not isinstance(value,dict):raise ValueError('桌面设置必须为对象')
+    url=value.get('workstation_url','http://192.168.1.251:6080/')
+    if not isinstance(url,str) or not 1<=len(url)<=500 or any(c.isspace() or ord(c)<32 for c in url):
+        raise ValueError('请输入有效的工作站 HTTP(S) 地址')
+    try:
+        parsed=urllib.parse.urlsplit(url)
+        valid=parsed.scheme in ('http','https') and parsed.hostname and not parsed.username and not parsed.password
+        port=parsed.port
+    except ValueError:valid=False;port=None
+    if not valid or port is not None and not 1<=port<=65535:raise ValueError('请输入有效的工作站 HTTP(S) 地址')
+    order=value.get('order',[])
+    if not isinstance(order,list) or len(order)>1005 or any(not isinstance(i,str) or not i or len(i)>100 for i in order) or len(set(order))!=len(order):
+        raise ValueError('桌面排序无效')
+    return {'workstation_url':url,'order':order}
+
+def desktop_settings(cards):
+    value=validate_desktop(read(DASH/'desktop.json',{}))
+    ids=[*DESKTOP_BUILTINS,*(c['id'] for c in cards)]
+    value['order']=[i for i in value['order'] if i in ids]
+    value['order'] += [i for i in ids if i not in value['order']]
+    return value
 
 def ts(args,timeout=15):
     return command([str(ROOT/'components/current/tailscale/tailscale'),'--socket=/run/tailscale/tailscaled.sock']+args,timeout=timeout,check=False)
@@ -215,7 +239,10 @@ class Handler(legacy.Handler):
             self.send_header('Content-Security-Policy',"default-src 'none'; sandbox")
             self.end_headers();self.wfile.write(body);return
         if path=='/api/appearance':self.reply(200,validate_appearance(read(DASH/'appearance.json',{})));return
-        if path=='/api/cards':self.reply(200,{'cards':legacy.read_cards()});return
+        if path=='/api/cards':
+            with LOCK:
+                cards=legacy.read_cards();value={'cards':cards,'desktop':desktop_settings(cards)}
+            self.reply(200,value);return
         if path=='/api/proxy/config':
             content=CONFIG.read_bytes();self.reply(200,{'filename':'config.yaml','content':content.decode(),'revision':legacy.revision(content)});return
         if path=='/api/status':
@@ -288,10 +315,21 @@ class Handler(legacy.Handler):
         if path=='/api/cards/order':
             ids=data.get('ids',[])
             with LOCK:
-                cards=legacy.read_cards()
-                if not isinstance(ids,list) or len(ids)!=len(cards) or set(ids)!={c['id'] for c in cards}:raise ValueError('排序列表已变化，请刷新')
-                lookup={c['id']:c for c in cards};legacy.write_cards([lookup[i] for i in ids])
+                cards=legacy.read_cards();desktop=desktop_settings(cards);custom={c['id'] for c in cards}
+                if not isinstance(ids,list) or any(not isinstance(i,str) for i in ids) or len(set(ids))!=len(ids):raise ValueError('排序列表已变化，请刷新')
+                if set(ids)==set(desktop['order']):desktop['order']=ids
+                elif set(ids)==custom:
+                    # Older clients and the custom-link controls keep builtins in place.
+                    ordered=iter(ids);desktop['order']=[next(ordered) if i in custom else i for i in desktop['order']]
+                else:raise ValueError('排序列表已变化，请刷新')
+                save(DASH/'desktop.json',desktop)
+                lookup={c['id']:c for c in cards};legacy.write_cards([lookup[i] for i in desktop['order'] if i in lookup])
             self.reply(200,{'ok':True});return
+        if path=='/api/settings/workstation':
+            url=validate_desktop({'workstation_url':data.get('url')})['workstation_url']
+            with LOCK:
+                value=desktop_settings(legacy.read_cards());value['workstation_url']=url;save(DASH/'desktop.json',value)
+            self.reply(200,value);return
         if path=='/api/subscription':
             url=str(data.get('url','')).strip();hours=int(data.get('interval_hours',0))
             if hours not in (0,1,6,12,24):raise ValueError('请选择有效更新间隔')
@@ -383,7 +421,7 @@ class Handler(legacy.Handler):
         with LOCK:super().do_DELETE()
 
 def backup_paths():
-    return ['mihomo/config.yaml','adguard/AdGuardHome.yaml','tailscale/tailscaled.state']+['dashboard/'+n for n in ('cards.json','settings.json','proxy-state.json','appearance.json')]
+    return ['mihomo/config.yaml','adguard/AdGuardHome.yaml','tailscale/tailscaled.state']+['dashboard/'+n for n in ('cards.json','settings.json','proxy-state.json','appearance.json','desktop.json')]
 
 def update_domain(value):
     domain=local_domain(value)
@@ -431,11 +469,12 @@ def restore(payload):
     for key in ('last_attempt','last_updated'):
         if key in subscription and (type(subscription[key]) not in (int,float) or subscription[key]<0):raise ValueError('备份订阅时间无效')
     if 'dashboard/appearance.json' in files:validate_appearance(json.loads(files['dashboard/appearance.json']))
+    if 'dashboard/desktop.json' in files:validate_desktop(json.loads(files['dashboard/desktop.json']))
     if 'dashboard/cards.json' in files:
         cards=json.loads(files['dashboard/cards.json']);ids=set();validator=Handler.__new__(Handler)
         if not isinstance(cards,list) or len(cards)>1000:raise ValueError('备份桌面无效')
         for card in cards:
-            if not isinstance(card,dict) or not isinstance(card.get('id'),str) or not card['id'] or card['id'] in ids:raise ValueError('备份桌面链接无效')
+            if not isinstance(card,dict) or not isinstance(card.get('id'),str) or not card['id'] or card['id'] in ids or card['id'] in DESKTOP_BUILTINS:raise ValueError('备份桌面链接无效')
             validator.validate_card(card);ids.add(card['id'])
     if 'adguard/AdGuardHome.yaml' in files:
         agh=yaml.safe_load(files['adguard/AdGuardHome.yaml'])

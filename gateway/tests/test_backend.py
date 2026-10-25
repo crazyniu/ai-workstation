@@ -243,6 +243,58 @@ class AuthTests(DataTest):
         with self.request('/api/cards/order', {'ids': []}, cookie=cookie) as response:
             self.assertEqual(response.status, 400)
 
+    def test_desktop_mixes_fixed_and_custom_icons_and_preserves_order(self):
+        with self.request('/api/auth/setup', {'password': 'strong-password-123'}) as response:
+            cookie = response.headers['Set-Cookie'].split(';')[0]
+        for name in ('NAS', 'Router'):
+            with self.request('/api/cards', {'name': name, 'url': 'http://192.0.2.249/', 'icon': 'server'}, cookie=cookie) as response:
+                self.assertEqual(response.status, 201)
+        cards = legacy.read_cards()
+        ids = [cards[1]['id'], 'builtin:workstation', cards[0]['id'], 'builtin:settings', 'builtin:clash', 'builtin:adguard', 'builtin:tailscale']
+        with self.request('/api/cards/order', {'ids': ids}, cookie=cookie) as response:
+            self.assertEqual(response.status, 200)
+        with self.request('/api/cards', cookie=cookie) as response:
+            value = json.load(response)
+        self.assertEqual(value['desktop']['order'], ids)
+        self.assertEqual([c['name'] for c in value['cards']], ['Router', 'NAS'])
+        self.assertEqual(state.read(self.dash / 'desktop.json')['order'], ids)
+        for invalid in (ids[:-1], ids + [ids[0]], [*ids[:-1], 'missing'], [[], *ids[1:]]):
+            with self.request('/api/cards/order', {'ids': invalid}, cookie=cookie) as response:
+                self.assertEqual(response.status, 400)
+        self.assertEqual(state.read(self.dash / 'desktop.json')['order'], ids)
+        # The existing custom-link order API leaves the fixed icons in place.
+        with self.request('/api/cards/order', {'ids': [c['id'] for c in cards]}, cookie=cookie) as response:
+            self.assertEqual(response.status, 200)
+        reordered = server.desktop_settings(legacy.read_cards())['order']
+        self.assertEqual(reordered, [cards[0]['id'], ids[1], cards[1]['id'], *ids[3:]])
+        # Deleted cards disappear, new cards append without resetting fixed positions.
+        legacy.write_cards([cards[0], dict(cards[1], id='new-card')])
+        refreshed = server.desktop_settings(legacy.read_cards())['order']
+        self.assertNotIn(cards[1]['id'], refreshed)
+        self.assertEqual(refreshed[-1], 'new-card')
+        self.assertEqual(len(refreshed), 7)
+
+    def test_workstation_entry_requires_login_and_persists_in_backup(self):
+        with self.request('/api/settings/workstation', {'url': 'http://192.0.2.20:6080/'}) as response:
+            self.assertEqual(response.status, 401)
+        with self.request('/api/auth/setup', {'password': 'strong-password-123'}) as response:
+            cookie = response.headers['Set-Cookie'].split(';')[0]
+        ids = list(reversed(server.DESKTOP_BUILTINS))
+        with self.request('/api/cards/order', {'ids': ids}, cookie=cookie) as response:
+            self.assertEqual(response.status, 200)
+        url = 'http://192.0.2.20:6080/'
+        with self.request('/api/settings/workstation', {'url': url}, cookie=cookie) as response:
+            self.assertEqual(response.status, 200)
+        with self.request('/api/cards', cookie=cookie) as response:
+            self.assertEqual(json.load(response)['desktop'], {'workstation_url': url, 'order': ids})
+        for invalid in ('javascript:alert(1)', 'file:///etc/passwd', 'http://a:99999/', 'http://user:secret@host/', 'http://host/\n', None):
+            with self.request('/api/settings/workstation', {'url': invalid}, cookie=cookie) as response:
+                self.assertEqual(response.status, 400)
+        with self.request('/api/backup', cookie=cookie) as response:
+            backup = base64.b64decode(json.load(response)['data'])
+        with tarfile.open(fileobj=io.BytesIO(backup), mode='r:gz') as archive:
+            self.assertEqual(json.load(archive.extractfile('dashboard/desktop.json')), {'workstation_url': url, 'order': ids})
+
     def test_appearance_requires_login_for_read_and_write(self):
         for data in (None, {'fit': 'cover', 'image': PNG_PIXEL}):
             with self.request('/api/appearance', data) as response:

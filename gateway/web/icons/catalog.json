@@ -18,6 +18,12 @@
     "path": "/icons/tailscale.svg"
   },
   {
+    "id": "workstation",
+    "name": "工作站",
+    "category": "网关内置",
+    "path": "/icons/workstation.svg"
+  },
+  {
     "id": "settings",
     "name": "设置",
     "category": "网关内置",

@@ -117,6 +117,8 @@ input[type=radio]:checked { border: 5px solid var(--blue); }
 .desktop-item img { width: 64px; height: 64px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 3px 3px #17394725); }
 .desktop-item span { max-width: 108px; white-space: normal; overflow-wrap: anywhere; text-shadow: 0 1px 4px #173541c2; }
 .desktop-item.dragging { opacity: .4; }
+.desktop-item.drop-before { border-top: 3px solid #fff; background: #ffffff25; }
+.desktop-item.drop-after { border-bottom: 3px solid #fff; background: #ffffff25; }
 .desktop-footer { position: fixed; left: 29px; right: 29px; bottom: 15px; display: flex; justify-content: space-between; gap: 18px; color: #fff; font-size: 11px; line-height: 1.4; text-shadow: 0 1px 4px #153d50; pointer-events: none; opacity: .88; }
 dialog { position: fixed; padding: 0; border: 0; border-radius: 13px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 48px); background: var(--surface); color: var(--text); box-shadow: var(--window-shadow); overflow: auto; }
 dialog::backdrop { background: #173c4c32; backdrop-filter: blur(3px); }
