@@ -3,7 +3,7 @@
 [![Container images](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml/badge.svg)](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-面向家庭网络与远程开发的双容器环境：一个带桌面式 Web 后台的网关，一个可通过 SSH / VNC 使用的 Linux 开发工作站。
+面向家庭网络与远程开发的双容器环境：一个带桌面式 Web 后台的网关，一个可通过浏览器、SSH / VNC 使用的 Linux 开发工作站。
 
 工作站默认新加坡英文，可配置国家、语言和时区。两个角色既可同机运行，也可分别部署在宿主机 A/B；独立部署入口、网络前提和初始化参数见 [AI 安装指南](AI-INSTALL.md)。
 
@@ -37,6 +37,8 @@ WORKSTATION_TIMEZONE=Asia/Singapore；按 AI-INSTALL.md 配置和验收。
 
 *项目展示图；实际界面以运行版本为准。[图片说明](docs/images/README.md)*
 
+当前网关操作反馈的实际界面：[桌面截图](docs/images/gateway-global-toast-desktop.jpg)、[手机尺寸截图](docs/images/gateway-global-toast-mobile.jpg)。
+
 ## 两个服务
 
 | 服务 | 默认地址 | 能力 | 公开镜像 |
@@ -45,6 +47,8 @@ WORKSTATION_TIMEZONE=Asia/Singapore；按 AI-INSTALL.md 配置和验收。
 | Workstation | `192.168.1.251` | XFCE、Chrome、VS Code、Godot、Codex、Claude、GitHub CLI、MCP 工具 | `ghcr.io/crazyniu/ai-workstation` |
 
 - 桌面链接支持自动获取站点 favicon，也可手动选图标；提供壁纸、主题、排序与账户设置。
+- 网关内置工作站网页入口，可修改地址；内置图标与自定义链接统一排序，保存、导入和表单校验通过全局提示反馈。
+- 网关默认使用密码登录，可信私网可在账户设置中关闭；工作站提供 HTTPS noVNC 网页桌面，支持双向文字剪贴板。
 - 网关统一管理代理配置、DNS、子网访问、组件升级与备份恢复。
 - LAN 部署中，工作站的桌面和 CLI 默认经网关代理访问外网，局域网地址绕过显式代理；bridge 部署使用配置的私有代理端点，代理留空时沿用宿主机正常出口。
 - 配置、HOME 和账号身份全部保存在各自容器内部。公开镜像包含程序和默认模板，个人订阅、身份和业务数据由用户自行配置。
@@ -68,7 +72,7 @@ WORKSTATION_TIMEZONE=Asia/Singapore；按 AI-INSTALL.md 配置和验收。
 
 | 类别 | 安装的软件 |
 | --- | --- |
-| 桌面与连接 | Ubuntu `26.04`、XFCE、Thunar 文件管理器、XFCE Terminal、TigerVNC、OpenSSH Server |
+| 桌面与连接 | Ubuntu `26.04`、XFCE、Thunar 文件管理器、XFCE Terminal、TigerVNC、noVNC `1.7.0`、websockify、OpenSSH Server |
 | 浏览器与编辑器 | Google Chrome `156.0.8078.47`、Visual Studio Code `1.143.1`、Godot `4.7.2` |
 | AI CLI | Codex `0.164.0`、Claude Code `2.1.309` |
 | 开发运行时 | Python 3（Ubuntu 软件包，`3.14` 系列）、Node.js `24.22.1`、npm / npx、GCC |
@@ -172,12 +176,14 @@ reset-claude-user --apply  # 关闭 Claude 后，执行本地身份与历史清�
 
 部署前设置自己的密码。VNC 密码接受 1–8 个 ASCII 字符；工作站 root 默认锁定。网关 Web 密码首次初始化后由“设置 → 账户”管理。后续环境变量变更与数据处理见各服务文档。
 
+可信私网可在“设置 → 账户 → 密码登录”关闭“进入网关时需要密码”，输入当前密码后保存。关闭后，能访问网页的设备可直接管理网关、Clash 和 AdGuard Home；SSH 认证独立保留。重新开启仍需当前密码。登录开关和原密码保存在网关内部，重启沿用，均不随网页配置备份导出或恢复。全新容器默认开启密码登录，详见[网关账户说明](gateway/README.md#首次设置与日常使用)。
+
 ## 开始使用
 
 1. 打开网关主页，在代理配置中导入自己的 Clash / Mihomo YAML 并应用，通过 Clash 面板选择节点。
 2. 让客户端使用网关 DNS 后，通过 `http://home.arpa` 访问主页。需要代理整个设备时，同时将该设备的默认网关设为网关容器地址。
 3. 在 Tailscale 设置中登录自己的账号，并按页面提示批准子网路由。
-4. 通过 VNC 打开工作站桌面，或通过 SSH 登录 `dev`。在应用内完成 Codex、Claude、GitHub 等个人账号登录。
+4. 点击网关“工作站”图标或通过 VNC 打开桌面，也可通过 SSH 登录 `dev`。在应用内完成 Codex、Claude、GitHub 等个人账号登录。
 
 ```sh
 docker compose ps
