@@ -37,7 +37,7 @@
       <h1 id="auth-title">欢迎使用 Gateway</h1><p id="auth-copy"></p>
       <label>管理员密码<input type="password" id="password" autocomplete="current-password" required maxlength="256" placeholder="输入管理员密码"></label>
       <label id="confirm-field" hidden>确认密码<input type="password" id="confirm-password" autocomplete="new-password" placeholder="再次输入密码"></label>
-      <p class="feedback" id="auth-message" role="status"></p><button class="primary" type="submit" id="auth-submit">登录</button>
+      <button class="primary" type="submit" id="auth-submit">登录</button>
     </form>
   </dialog>
 
@@ -61,7 +61,7 @@
         <button data-page="backup"><img src="/icons/server.svg" alt=""><span>备份与恢复</span></button>
       </nav>
       <div class="content" id="settings-content">
-        <p id="message" class="feedback" role="status" aria-live="polite"></p>
+
         <section id="settings-overview" data-section="overview">
           <div class="settings-group"><h2>连接与访问</h2><div class="settings-grid">
             <button data-page="proxy"><img src="/icons/clash.svg" alt=""><span>代理配置</span></button>
@@ -155,7 +155,7 @@
   <dialog id="link-dialog" class="small-window" aria-labelledby="link-title">
     <form id="link-form" class="link-form">
       <header class="window-header"><div class="window-controls"><button type="button" class="traffic-close" id="close-link" aria-label="关闭链接编辑"></button></div><h2 id="link-title">添加链接</h2></header>
-      <div class="form-content"><label>名称<input id="link-name" required maxlength="80" placeholder="例如：我的 NAS"></label><label>链接地址<input id="link-url" type="url" required placeholder="http://192.168.10.10:8080" maxlength="500"></label><div class="icon-picker"><div class="icon-picker-heading"><span id="icon-picker-label">图标</span></div><input id="link-icon" type="hidden" value="auto"><button type="button" id="auto-icon" class="auto-icon-choice" aria-pressed="true"><span class="auto-icon-preview" aria-hidden="true"><img id="auto-icon-preview" src="/icons/link.svg" alt="" width="40" height="40"><span class="loading-spinner favicon-spinner"></span></span><span class="auto-icon-copy"><strong>自动获取网站图标</strong><span>根据链接地址获取，也可以选择下方图标</span></span><svg class="auto-icon-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></button><label class="icon-search-label"><span class="visually-hidden">搜索图标</span><input id="icon-search" type="search" placeholder="搜索软件或图标" autocomplete="off"></label><div id="icon-choices" class="icon-choices" role="listbox" aria-labelledby="icon-picker-label"></div><p id="icon-empty" class="muted" hidden>没有找到图标，试试其他名称。</p></div><label class="check"><input id="link-newtab" type="checkbox" checked>在新标签页打开</label><p id="link-message" class="feedback" role="status"></p></div>
+      <div class="form-content"><label>名称<input id="link-name" required maxlength="80" placeholder="例如：我的 NAS"></label><label>链接地址<input id="link-url" type="url" required placeholder="http://192.168.10.10:8080" maxlength="500"></label><div class="icon-picker"><div class="icon-picker-heading"><span id="icon-picker-label">图标</span></div><input id="link-icon" type="hidden" value="auto"><button type="button" id="auto-icon" class="auto-icon-choice" aria-pressed="true"><span class="auto-icon-preview" aria-hidden="true"><img id="auto-icon-preview" src="/icons/link.svg" alt="" width="40" height="40"><span class="loading-spinner favicon-spinner"></span></span><span class="auto-icon-copy"><strong>自动获取网站图标</strong><span>根据链接地址获取，也可以选择下方图标</span></span><svg class="auto-icon-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></button><label class="icon-search-label"><span class="visually-hidden">搜索图标</span><input id="icon-search" type="search" placeholder="搜索软件或图标" autocomplete="off"></label><div id="icon-choices" class="icon-choices" role="listbox" aria-labelledby="icon-picker-label"></div><p id="icon-empty" class="muted" hidden>没有找到图标，试试其他名称。</p></div><label class="check"><input id="link-newtab" type="checkbox" checked>在新标签页打开</label></div>
       <div class="window-actions"><button class="primary" type="submit">保存链接</button></div>
     </form>
   </dialog>
@@ -165,13 +165,17 @@
     <div class="personalization-content"><div class="appearance-heading"><h3>外观模式</h3><fieldset class="theme-options"><legend class="visually-hidden">外观模式</legend><label><input type="radio" name="appearance-theme" value="light"><span>亮色</span></label><label><input type="radio" name="appearance-theme" value="dark"><span>暗色</span></label><label><input type="radio" name="appearance-theme" value="auto" checked><span>跟随系统</span></label></fieldset></div><div class="wallpaper-monitor"><button id="wallpaper-preview" aria-label="更改壁纸"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3M6 16l4-5 3 3 2-2 3 4"/><circle cx="15.5" cy="7.5" r="1"/></svg>更改壁纸</span></button></div><input id="wallpaper-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
       <div class="wallpaper-gallery-heading"><h3>默认壁纸</h3><button class="text-button" type="button" id="wallpaper-upload">上传图片</button></div><div id="wallpaper-gallery" class="wallpaper-gallery" role="group" aria-label="默认壁纸"></div>
       <fieldset class="wallpaper-fit"><legend class="visually-hidden">壁纸显示方式</legend><label><input type="radio" name="wallpaper-fit" value="cover" checked>填充</label><label><input type="radio" name="wallpaper-fit" value="contain">适应</label><label><input type="radio" name="wallpaper-fit" value="stretch">拉伸</label><label><input type="radio" name="wallpaper-fit" value="center">居中</label><label><input type="radio" name="wallpaper-fit" value="tile">平铺</label></fieldset>
-      <button class="text-button" id="wallpaper-reset">恢复默认壁纸</button><p class="feedback" id="personalization-message" role="status"></p>
+      <button class="text-button" id="wallpaper-reset">恢复默认壁纸</button>
     </div>
     <div class="window-actions"><button id="wallpaper-cancel">取消</button><button class="primary" id="wallpaper-apply">应用</button></div>
   </dialog>
   <dialog id="confirm-dialog" class="confirm-window" aria-labelledby="confirm-title"><div class="confirm-content"><h2 id="confirm-title">确认操作</h2><p id="confirm-copy"></p></div><div class="window-actions"><button id="confirm-cancel">取消</button><button class="primary" id="confirm-accept">确定</button></div></dialog>
   <div id="desktop-context-menu" class="context-menu" role="menu" aria-label="桌面菜单" hidden></div>
-  <div id="desktop-toast" class="desktop-toast" role="status" hidden></div>
+  <div id="desktop-toast" class="desktop-toast" popover="manual" hidden>
+    <svg class="toast-icon" viewBox="0 0 24 24" aria-hidden="true"><path class="toast-success" d="m5 12 4 4L19 6"/><g class="toast-error"><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 4h.01"/></g></svg>
+    <p id="toast-message" class="toast-message" role="status" aria-live="polite" aria-atomic="true"></p>
+    <button type="button" id="toast-close" class="toast-close" aria-label="关闭提示"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button>
+  </div>
   <script src="/assets/config-editor.bundle.js"></script>
   <script src="/vendor/winbox/winbox.min.js"></script>
   <script src="/app.js"></script>

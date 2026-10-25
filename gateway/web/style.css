@@ -22,6 +22,7 @@
   --field: #f3f5f7;
   --sidebar: #e9edf1;
   --danger: #c9343f;
+  --success: #18724a;
   --window-shadow: 0 20px 64px #14314240, 0 4px 16px #14314214;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 14px;
@@ -128,7 +129,6 @@ dialog::backdrop { background: #173c4c32; backdrop-filter: blur(3px); }
 .auth p { text-align: center; color: var(--muted); line-height: 1.65; margin: 10px 0 24px; }
 .auth label { font-size: 13px; margin: 18px 0; }
 .auth .primary { width: 100%; margin-top: 6px; min-height: 42px; }
-.auth .feedback { margin-bottom: 12px; }
 .settings-window { width: min(1040px, calc(100vw - 80px)); height: min(740px, calc(100dvh - 100px)); overflow: hidden; background: var(--chrome); }
 .window-header { position: relative; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--chrome); border-bottom: 1px solid var(--line); }
 .window-header h1, .window-header h2 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 14px; font-weight: 600; }
@@ -157,9 +157,6 @@ p { line-height: 1.75; max-width: 72ch; }
 .page-heading p { margin: 0; }
 .row.page-heading h2 { margin: 0; }
 .muted { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-.feedback { color: #18724a; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; margin: 0 0 14px; }
-.feedback:empty { display: none; }
-.feedback.error { color: var(--danger); }
 .row { display: flex; align-items: center; gap: 10px; }
 .row label { flex: 1; margin: 0; min-width: 130px; }
 .row.spread { justify-content: space-between; }
@@ -252,7 +249,6 @@ dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .personalization-content .text-button { margin-top: 20px; }
 .personalization-content :is(#wallpaper-upload, #wallpaper-reset) { min-height: 38px; border-color: var(--border); background: var(--surface); color: var(--text); font-size: 13px; }
 .personalization-content :is(#wallpaper-upload, #wallpaper-reset):hover:not(:disabled) { border-color: var(--blue); background: var(--hover); color: var(--blue); }
-#personalization-message { margin-top: 12px; }
 .confirm-window { width: 430px; }
 .confirm-content { padding: 28px 30px 20px; }
 .confirm-content h2 { font-size: 18px; margin: 0 0 14px; }
@@ -270,8 +266,29 @@ dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .select-options button { display: flex; justify-content: flex-start; width: 100%; padding: 8px 10px; min-height: 34px; border: 0; font-size: 13px; border-radius: 4px; }
 .select-options button[aria-selected=true] { color: var(--blue); background: var(--selected); }
 .select-options button:hover, .select-options button:focus-visible { background: var(--selected); outline: none; }
-.desktop-toast { position: fixed; z-index: 2147483100; bottom: 34px; left: 50%; transform: translateX(-50%); max-width: calc(100vw - 32px); padding: 11px 20px; background: var(--surface); box-shadow: 0 6px 24px #183e4930; border-radius: 8px; color: var(--text); font-size: 13px; line-height: 1.5; }
-.desktop-toast.error { color: var(--danger); }
+.desktop-toast {
+  position: fixed; z-index: 2147483647; inset: 64px 24px auto auto; margin: 0;
+  display: flex; align-items: flex-start; gap: 12px; width: max-content;
+  min-width: 260px; max-width: min(420px, calc(100vw - 48px)); padding: 16px;
+  border: 0; border-radius: 12px; background: var(--surface); color: var(--text);
+  box-shadow: var(--window-shadow); font-family: inherit; font-size: 13px; line-height: 1.6;
+  animation: toast-enter 180ms cubic-bezier(.16,1,.3,1);
+}
+.desktop-toast::backdrop { background: transparent; pointer-events: none; }
+.toast-icon { flex: 0 0 22px; width: 22px; height: 22px; margin-top: 1px; color: var(--success); }
+.toast-icon, .toast-close svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.toast-error, .desktop-toast.error .toast-success { display: none; }
+.desktop-toast.error .toast-error { display: initial; }
+.desktop-toast.error .toast-icon { color: var(--danger); }
+.desktop-toast .toast-message { flex: 1; min-width: 0; margin: 0; color: var(--text); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.toast-close { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; min-height: 32px; margin: -5px -5px -5px 0; padding: 0; border: 0; background: transparent; color: var(--muted); }
+.toast-close:hover { background: var(--hover); color: var(--text); }
+.toast-close svg { width: 18px; height: 18px; }
+@keyframes toast-enter { from { opacity: .6; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@media(max-width: 700px) {
+  .desktop-toast { inset: max(12px, env(safe-area-inset-top)) 12px auto; width: auto; min-width: 0; max-width: none; }
+  .toast-close { flex-basis: 44px; width: 44px; height: 44px; min-height: 44px; margin: -8px -8px -8px 0; }
+}
 .gateway-window.winbox { border-radius: 12px; background: var(--chrome); box-shadow: var(--window-shadow); overflow: visible; }
 .gateway-window .wb-header { height: 48px!important; line-height: 48px; color: var(--text); border-radius: 12px 12px 0 0; background: var(--chrome); }
 .gateway-window .wb-title { font-family: inherit; font-size: 14px; font-weight: 600; }
@@ -413,6 +430,7 @@ dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
   --blue: #8ab7ff;
   --blue-hover: #a7c9ff;
   --danger: #ff9ca4;
+  --success: #8bdbb0;
   --editor: #1b232d;
   --editor-gutter: #242e3a;
   --editor-active: #2b3b50;
@@ -433,7 +451,6 @@ dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 :root[data-theme=dark] button.danger:hover { background: #4e2d35; border-color: #82505c; }
 :root[data-theme=dark] input:hover, :root[data-theme=dark] textarea:hover { border-color: #63748a; }
 :root[data-theme=dark] input[type=checkbox]:checked { border-color: #075cff; background-color: #075cff; }
-:root[data-theme=dark] .feedback:not(.error) { color: #8bdbb0; }
 :root[data-theme=dark] .context-divider { background: var(--line); }
 :root[data-theme=dark] .context-menu button:hover, :root[data-theme=dark] .context-menu button:focus-visible { color: #fff; background: #075cff; }
 :root[data-theme=dark] .select-trigger::after { border-color: var(--muted); }
