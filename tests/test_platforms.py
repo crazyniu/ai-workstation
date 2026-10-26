@@ -2,6 +2,8 @@
 import importlib.util
 import hashlib
 import json
+import os
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -28,6 +30,19 @@ class ArchitectureTests(unittest.TestCase):
             self.assertEqual(RELEASES.architecture(alias), arch)
         with self.assertRaises(ValueError):
             RELEASES.architecture('unknown-vendor-cpu')
+
+    def test_tailscale_network_mode_tracks_deployment_and_preserves_override(self):
+        with tempfile.TemporaryDirectory() as folder:
+            binary = Path(folder)/'components/current/tailscale/tailscaled'
+            binary.parent.mkdir(parents=True)
+            binary.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
+            binary.chmod(0o755)
+            for extra, expected in [({}, 'tailscale0'), ({'GATEWAY_MODE': 'false'}, 'userspace-networking'),
+                                    ({'GATEWAY_MODE': 'false', 'GATEWAY_TAILSCALE_TUN': 'custom0'}, 'custom0')]:
+                env = {k:v for k,v in os.environ.items() if not k.startswith('GATEWAY_')}
+                result = subprocess.check_output(['/bin/sh', str(ROOT/'gateway/runtime/service'), 'tailscale'],
+                    env=dict(env, DATA_DIR=folder, **extra), text=True)
+                self.assertIn('--tun='+expected, result.splitlines())
 
     def test_switching_architecture_replaces_old_seed_and_failed_fetch_preserves_it(self):
         with tempfile.TemporaryDirectory() as folder:

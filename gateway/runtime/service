@@ -5,6 +5,11 @@ case "$1" in
  mihomo) exec "$base/components/current/mihomo/mihomo" -d "$base/mihomo" -f "$base/mihomo/config.yaml";;
  mihomo-test) exec "$base/components/current/mihomo/mihomo" -t -d "$base/mihomo" -f "$base/mihomo/config.yaml";;
  adguard) exec "$base/components/current/adguard/AdGuardHome" -c "$base/adguard/AdGuardHome.yaml" -w "$base/adguard/work" --no-check-update;;
- tailscale) exec "$base/components/current/tailscale/tailscaled" --state="$base/tailscale/tailscaled.state" --socket=/run/tailscale/tailscaled.sock --tun="${GATEWAY_TAILSCALE_TUN:-tailscale0}" --port=41641;;
+ tailscale)
+   tun=${GATEWAY_TAILSCALE_TUN:-}
+   if [ -z "$tun" ]; then
+     if [ "${GATEWAY_MODE:-true}" = true ]; then tun=tailscale0; else tun=userspace-networking; fi
+   fi
+   exec "$base/components/current/tailscale/tailscaled" --state="$base/tailscale/tailscaled.state" --socket=/run/tailscale/tailscaled.sock --tun="$tun" --port=41641;;
 esac
 exit 2

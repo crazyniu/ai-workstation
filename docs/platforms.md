@@ -26,6 +26,8 @@ Windows/macOS 的 Docker 内运行 Linux 用户空间。Docker Desktop 不支持
 | MIPS / MIPSLE / MIPS64 / MIPS64LE | 三个网关组件均有锁定文件，可使用兼容 Linux 的原生安装或自备基础镜像 | 受工作站上游组件发布范围限制 | 当前公共 Debian 镜像不提供这些变体；没有将它们加入 Docker 发布矩阵。安装环境需有 Python 3.11+、APT 依赖和对应 ABI |
 | 其他 CPU | 按所选版本逐组件检查 | 按所选版本逐组件检查 | 例如部分网关组件没有 ppc64le、s390x、LoongArch 发布，不能承诺完整组合运行 |
 
+CI 跨架构运行检查使用 portable 应用模式，不授予 NET_ADMIN，也不挂载 TUN；Linux LAN 模式的 TUN、macvlan、转发和 Tailscale 子网访问另在实际目标宿主及客户端验收。
+
 以上“矩阵”是 CI 必须执行的检查定义；某个提交是否通过、镜像是否已发布，分别以该提交 Actions 和 GHCR manifest 为准。其他架构的锁定文件是构建输入，不是实机验收证据。网关锁文件包含各架构的固定版本、官方地址与 SHA256；工作站版本文件包含两种 CPU 的独立校验值。APT 提供的 Chromium 与基础系统包随软件源更新，实际版本在验收时输出。
 
 ## 通用 Docker 安装

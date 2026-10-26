@@ -11,7 +11,7 @@ wait_ready(){
     sleep 1
   done
 }
-docker run -d --name "$name" --cap-add NET_ADMIN --device /dev/net/tun -e GATEWAY_MODE=false -e GATEWAY_ADMIN_PASSWORD=root "$image" >/dev/null
+docker run -d --name "$name" -e GATEWAY_MODE=false -e GATEWAY_ADMIN_PASSWORD=root "$image" >/dev/null
 docker inspect "$name" --format '{{json .Mounts}}' | python3 -c 'import json,sys; assert not json.load(sys.stdin), "Business data must stay inside the container; unexpected mounts"'
 wait_ready
 docker exec -i "$name" python3 - <<'PY'

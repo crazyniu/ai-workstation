@@ -95,8 +95,6 @@ jobs:
       - name: Verify gateway clean deployment
         if: matrix.component == 'gateway'
         run: |
-          sudo mkdir -p /dev/net
-          if [ ! -c /dev/net/tun ]; then sudo mknod /dev/net/tun c 10 200; fi
           bash gateway/tests/clean-smoke.sh candidate:gateway
       - name: Verify workstation clean deployment
         if: matrix.component == 'workstation'
