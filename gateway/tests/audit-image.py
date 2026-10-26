@@ -46,6 +46,8 @@ def audit(stream):
     manifest_nodes = set()
     image_manifests = set()
     seen_files = set()
+    declared_attestations = set()
+    attestation_nodes = set()
 
     def blob_path(descriptor):
         digest = descriptor.get('digest', '') if isinstance(descriptor, dict) else ''
@@ -77,7 +79,30 @@ def audit(stream):
                         else:
                             declared_layers.add(normalized(layer))
         if isinstance(document, dict):
-            if 'layers' in document:
+            if (document.get('_type') in ('https://in-toto.io/Statement/v1', 'https://in-toto.io/Statement/v0.1')
+                    and isinstance(document.get('predicateType'), str)
+                    and isinstance(document.get('subject'), list)):
+                attestation_nodes.add(name)
+            # Docker's containerd image store exports provenance alongside image
+            # manifests. These bounded JSON statements are metadata, not tar
+            # filesystem layers; all real image layers still require a full scan.
+            if document.get('artifactType') == 'application/vnd.docker.attestation.manifest.v1+json':
+                manifest_nodes.add(name)
+                entries = document.get('layers')
+                if not isinstance(entries, list) or not entries:
+                    failures.add('invalid attestation manifest: ' + name)
+                else:
+                    for descriptor in entries:
+                        if (not isinstance(descriptor, dict)
+                                or descriptor.get('mediaType') != 'application/vnd.in-toto+json'
+                                or not isinstance(descriptor.get('size'), int)
+                                or not 0 < descriptor['size'] <= METADATA_LIMIT):
+                            failures.add('unsupported or oversized attestation metadata: ' + name)
+                            continue
+                        path = blob_path(descriptor)
+                        if path:
+                            declared_attestations.add(path)
+            if 'layers' in document and document.get('artifactType') != 'application/vnd.docker.attestation.manifest.v1+json':
                 entries = document['layers']
                 if not isinstance(entries, list) or not entries:
                     failures.add('OCI manifest does not declare image layers: ' + name)
@@ -165,6 +190,8 @@ def audit(stream):
         failures.add('no image manifest with declared layers; audit coverage cannot be established')
     for name in declared_manifests - manifest_nodes:
         failures.add('declared OCI manifest missing or unreadable: ' + name)
+    for name in declared_attestations - attestation_nodes:
+        failures.add('declared attestation missing or invalid JSON metadata: ' + name)
     for name in declared_layers - scanned_layers:
         state = 'unreadable' if name in failed_layers else 'missing or not a readable tar layer'
         failures.add('declared image layer ' + state + ': ' + name)

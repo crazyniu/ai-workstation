@@ -1,7 +1,12 @@
 # Repository guide for AI assistants
 
 This repository builds two separate services: `gateway/` and `workstation/`.
-The root `compose.yaml` connects them for a Linux amd64 LAN deployment.
+`compose.portable.yaml` is the default Docker deployment on Linux, Windows and
+macOS; `deploy.ps1` is the Windows entry. Linux may also install native services
+using `install-native.py` (preview first). Read `docs/platforms.md` for the vendor
+architecture matrix, native prerequisites and validation boundaries. Do not
+restrict either role to NAS or amd64 beyond actual upstream software support.
+The root `compose.yaml` connects them for an explicit Linux LAN deployment.
 `compose.gateway.yaml` and `compose.workstation.yaml` deploy roles independently
 on separate hosts on the same LAN. For routed/private-proxy access, the
 workstation bridge example is `workstation/compose.yaml`. Read AI-INSTALL.md to
@@ -18,7 +23,10 @@ containers first. Use `deploy.sh` only for a new environment. Preserve existing
 containers and their internal data until the user has authorized a concrete
 migration or replacement plan. Do not infer permission to delete other services.
 
-Runtime configuration, HOME and identities live inside each container. Restart
+Docker runtime configuration, HOME and identities live inside each container.
+Native state uses the dedicated directories in docs/platforms.md; preserve host
+root credentials, SSH/nginx configuration and existing services. Default new
+container administrator credentials are root/root; applications run as dev. Restart
 preserves them; deletion or recreation removes them. Do not add business bind
 mounts or data volumes to the default deployment. Keep credentials, personal
 configuration, logs and private snapshots outside Git and public images.

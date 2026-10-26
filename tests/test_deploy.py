@@ -54,7 +54,7 @@ class DeploymentGuardTests(unittest.TestCase):
             calls = log.read_text().splitlines() if log.exists() else []
             return result, calls
 
-    def compose_calls(self, *commands, file='compose.yaml'):
+    def compose_calls(self, *commands, file='compose.portable.yaml'):
         return ['compose --env-file .env -f '+file+' '+command for command in commands]
 
     def test_fresh_environment_is_created_after_successful_checks(self):

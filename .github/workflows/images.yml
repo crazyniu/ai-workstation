@@ -48,8 +48,8 @@ jobs:
   images:
     needs: changes
     if: needs.changes.outputs.images == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
     permissions:
       contents: read
       packages: write
@@ -57,39 +57,44 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - component: gateway
-            image: ai-workstation-gateway
-          - component: workstation
-            image: ai-workstation
+          - {component: gateway, image: ai-workstation-gateway, arch: amd64, platform: linux/amd64, runner: ubuntu-latest}
+          - {component: gateway, image: ai-workstation-gateway, arch: arm64, platform: linux/arm64, runner: ubuntu-24.04-arm}
+          - {component: gateway, image: ai-workstation-gateway, arch: '386', platform: linux/386, runner: ubuntu-latest}
+          - {component: gateway, image: ai-workstation-gateway, arch: armv5, platform: linux/arm/v5, runner: ubuntu-latest}
+          - {component: gateway, image: ai-workstation-gateway, arch: armv7, platform: linux/arm/v7, runner: ubuntu-latest}
+          - {component: gateway, image: ai-workstation-gateway, arch: riscv64, platform: linux/riscv64, runner: ubuntu-latest}
+          - {component: workstation, image: ai-workstation, arch: amd64, platform: linux/amd64, runner: ubuntu-latest}
+          - {component: workstation, image: ai-workstation, arch: arm64, platform: linux/arm64, runner: ubuntu-24.04-arm}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
       - uses: docker/setup-buildx-action@v3
       - name: Prepare gateway components and tests
         if: matrix.component == 'gateway'
         run: |
           python3 -m pip install PyYAML
-          python3 gateway/scripts/fetch-components.py amd64
+          python3 gateway/scripts/fetch-components.py ${{ matrix.arch }}
           python3 -m unittest discover -s gateway/tests -v
-          python3 -m unittest discover -s tests -p 'test_deploy.py' -v
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
           node --check gateway/web/app.js
           node --check gateway/web/build-info.js
       - name: Build candidate
         uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.component }}
-          platforms: linux/amd64
+          platforms: ${{ matrix.platform }}
           load: true
           tags: candidate:${{ matrix.component }}
-          cache-from: type=gha,scope=${{ matrix.component }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+          cache-from: type=gha,scope=${{ matrix.component }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}-${{ matrix.arch }}
       - name: Verify gateway clean deployment
         if: matrix.component == 'gateway'
         run: |
-          sudo mkdir -p /dev/net
-          if [ ! -c /dev/net/tun ]; then sudo mknod /dev/net/tun c 10 200; fi
           bash gateway/tests/clean-smoke.sh candidate:gateway
       - name: Verify workstation clean deployment
         if: matrix.component == 'workstation'
@@ -104,6 +109,11 @@ jobs:
           bash workstation/tests/web-desktop.sh candidate:workstation
       - name: Audit all image layers
         run: docker image save candidate:${{ matrix.component }} | python3 ${{ matrix.component }}/tests/audit-image.py
+      - name: Verify native Linux installation from clean source
+        if: matrix.component == 'workstation'
+        run: |
+          docker build -f tests/Dockerfile.native -t native-candidate:test .
+          bash tests/native-smoke.sh native-candidate:test
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
@@ -116,22 +126,54 @@ jobs:
         env:
           IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
           COMMIT: ${{ github.sha }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          docker tag candidate:${{ matrix.component }} "$IMAGE:sha-$COMMIT-$ARCH"
+          docker push "$IMAGE:sha-$COMMIT-$ARCH"
+  windows:
+    needs: changes
+    if: needs.changes.outputs.images == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify PowerShell deployment guard
+        shell: pwsh
+        run: ./tests/test-deploy.ps1
+  publish:
+    needs: [images, windows]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish manifests after all architectures and native checks pass
+        env:
+          OWNER: ${{ github.repository_owner }}
+          COMMIT: ${{ github.sha }}
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
         run: |
-          docker tag candidate:${{ matrix.component }} "$IMAGE:sha-$COMMIT"
-          docker push "$IMAGE:sha-$COMMIT"
-          if [ "$REF_TYPE" = tag ]; then
-            docker tag candidate:${{ matrix.component }} "$IMAGE:$REF_NAME"
-            docker push "$IMAGE:$REF_NAME"
-          else
-            docker tag candidate:${{ matrix.component }} "$IMAGE:latest"
-            docker push "$IMAGE:latest"
-          fi
+          for component in ai-workstation-gateway ai-workstation; do
+            image="ghcr.io/$OWNER/$component"
+            arches='amd64 arm64'
+            if [ "$component" = ai-workstation-gateway ]; then arches='amd64 arm64 386 armv5 armv7 riscv64'; fi
+            sources=()
+            for arch in $arches; do sources+=("$image:sha-$COMMIT-$arch"); done
+            tags=(-t "$image:sha-$COMMIT")
+            if [ "$REF_TYPE" = tag ]; then tags+=(-t "$image:$REF_NAME"); else tags+=(-t "$image:latest"); fi
+            docker buildx imagetools create "${tags[@]}" "${sources[@]}"
+          done
   required-checks:
     name: Required checks
     if: always()
-    needs: [changes, images]
+    needs: [changes, images, windows]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -140,9 +182,10 @@ jobs:
           SCOPE_RESULT: ${{ needs.changes.result }}
           BUILD_IMAGES: ${{ needs.changes.outputs.images }}
           IMAGES_RESULT: ${{ needs.images.result }}
+          WINDOWS_RESULT: ${{ needs.windows.result }}
         run: |
-          case "$SCOPE_RESULT/$BUILD_IMAGES/$IMAGES_RESULT" in
-            success/true/success|success/false/skipped)
+          case "$SCOPE_RESULT/$BUILD_IMAGES/$IMAGES_RESULT/$WINDOWS_RESULT" in
+            success/true/success/success|success/false/skipped/skipped)
               echo 'All applicable checks passed.'
               ;;
             *)

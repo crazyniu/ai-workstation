@@ -2,18 +2,18 @@
 
 按需固定某个工作站的公网出口，并隔离它的 DNS、保留网关其他设备的分流：见[独立出口与 DNS](../docs/workstation-egress.md)。此功能默认不开启，已有个人容器按原状保留。
 
-此目录是统一仓库中的工作站构建上下文，网关、正式 Compose 和 GHCR 发布由仓库根目录统一管理。支持 `linux/amd64`。可复现的验证步骤及发布记录见 [验证记录](VALIDATION.md)。
+此目录是统一仓库中的工作站构建上下文，网关、正式 Compose 和 GHCR 发布由仓库根目录统一管理。完整工作站支持 `linux/amd64` 和 `linux/arm64`，不限定 NAS。Linux 可原生安装；Windows/macOS 使用 Docker Linux 容器。平台差异和安装命令见[平台安装说明](../docs/platforms.md)。可复现的验证步骤及发布记录见 [验证记录](VALIDATION.md)。
 
-包含 Ubuntu、新加坡英文及新加坡时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot、Unity 和 GitHub 六项 MCP 配置。提供 Unity Personal 编辑器与 Hub 的可选安装入口。国家、语言和时区可在初始化时配置。基础镜像固定到官方 amd64 manifest digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Ubuntu 系统软件随 APT 仓库更新。
+包含 Debian Linux、新加坡英文及新加坡时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot、Unity 和 GitHub 六项 MCP 配置。提供 Unity Personal 编辑器与 Hub 的可选安装入口。国家、语言和时区可在初始化时配置。基础镜像固定到官方多架构 index digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Debian 系统软件随 APT 仓库更新。
 
 ## 已安装的软件
 
 | 类别 | 软件与版本 | 用途 |
 | --- | --- | --- |
-| 基础系统 | Ubuntu `26.04` | Linux amd64；默认新加坡英文与 `Asia/Singapore`，可配置 |
+| 基础系统 | Debian `13` | Linux amd64 / arm64；默认新加坡英文与 `Asia/Singapore`，可配置 |
 | 桌面 | XFCE、XFWM、XFCE Panel / Terminal、Thunar | 图形桌面、终端与文件管理 |
 | 远程连接 | TigerVNC、OpenSSH Server | VNC 桌面与 SSH 登录 |
-| 浏览器 | Google Chrome `156.0.8078.47-1` | 桌面浏览器和浏览器 MCP 运行环境 |
+| 浏览器 | amd64：Google Chrome `156.0.8078.47-1`；arm64：Chromium | 桌面浏览器和浏览器 MCP 运行环境 |
 | 编辑器 | Visual Studio Code `1.143.1-1792691907` | 项目编辑与开发 |
 | 游戏开发 | Godot `4.7.2` | 编辑器、命令行与 Godot MCP |
 | AI CLI | Codex `0.164.0`、Claude Code `2.1.309` | 终端及桌面入口，使用个人模型账号 |
@@ -69,7 +69,7 @@ Docker 宿主机无法访问官方 registry 时，可在联网的 Mac/Linux 上�
 python3 workstation/scripts/fetch-base-images.py
 ```
 
-工具选择官方 Docker Hub 的 `linux/amd64` manifest，验证压缩 blob、config 和解压层 SHA256，生成 Docker load archive、`.sha256` 和 `.receipt.json`。校验保证下载和传输完整性；收据记录本次解析的 manifest digest。将导出目录传到构建宿主机后，在该目录执行：
+工具按 `--platform` 选择官方 Docker Hub 的对应 CPU manifest（默认 `linux/amd64`），验证压缩 blob、config 和解压层 SHA256，生成 Docker load archive、`.sha256` 和 `.receipt.json`。校验保证下载和传输完整性；收据记录本次解析的 manifest digest。将导出目录传到构建宿主机后，在该目录执行：
 
 ```sh
 sha256sum -c node-24.22.1-bookworm-slim-linux-amd64.tar.sha256
@@ -87,7 +87,7 @@ docker build --pull=false \
 
 公开工具大文件也可事先下载到单独缓存目录，构建时附加 `--build-context tool-download-cache=/绝对路径/公开下载缓存`。文件名为 `codex-版本.tar.gz`、`claude-版本.zst`、`godot-版本.zip`；安装脚本仍按 `versions.env` 校验 SHA256，缺失文件从官方源下载。缓存以只读挂载供安装步骤使用，原始压缩包不保留在镜像层中。默认构建使用空缓存，无需准备该目录。
 
-启动需要 `DEV_PASSWORD` 和 `VNC_PASSWORD`，也支持对应的 `_FILE` 变量读取容器内文件。`ROOT_PASSWORD` / `ROOT_PASSWORD_FILE` 可选；未提供时 root 密码登录锁定。VNC 使用兼容 Mac 屏幕共享的传统认证，密码为 1–8 个 ASCII 字节。运行时密码不写入镜像。独立 Compose 默认使用运行时环境变量设置密码；`_FILE` 也可读取容器内已准备的文件，无需外置业务挂载。
+启动需要 `DEV_PASSWORD` 和 `VNC_PASSWORD`，也支持对应的 `_FILE` 变量读取容器内文件。正式 Compose 默认管理员 `root / root`，桌面应用用户 `dev / root`，VNC 密码 `root`。`ROOT_PASSWORD` / `ROOT_PASSWORD_FILE` 控制容器管理员密码；直接运行镜像而未提供时 root 保持锁定。Linux 原生安装保留宿主 root 密码。VNC 使用兼容 Mac 屏幕共享的传统认证，密码为 1–8 个 ASCII 字节。运行时密码不写入镜像。独立 Compose 默认使用运行时环境变量设置密码；`_FILE` 也可读取容器内已准备的文件，无需外置业务挂载。
 
 普通应用使用 `dev`，UID/GID 为 `1100`，HOME 为 `/home/dev`。HOME、项目、编辑器配置、CLI 登录和 `/etc/ssh/keys` 均保存在容器内部，默认部署没有业务绑定挂载或数据卷。容器正常重启保留这些内容；更换或重建容器前，先制作私有备份并在目标容器内恢复。首次初始化只拷贝缺失的桌面文件，MCP 配置合并保留已有设置。迁移其他镜像时，应先核对原用户的 UID/GID、HOME 和启动方式，再选择应用状态迁移或完整私有快照恢复。
 

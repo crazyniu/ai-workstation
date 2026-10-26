@@ -3,7 +3,15 @@
 set -euo pipefail
 base=/opt/workstation
 source "$base/versions.env"
-[[ $(uname -m) == x86_64 ]] || { echo 'This image supports linux/amd64 only.' >&2; exit 1; }
+case $(dpkg --print-architecture) in
+    amd64) triple=x86_64; claude_arch=x64; godot_arch=x86_64 ;;
+    arm64) triple=aarch64; claude_arch=arm64; godot_arch=arm64
+        CODEX_SHA256=$CODEX_ARM64_SHA256
+        CLAUDE_ZSTD_SHA256=$CLAUDE_ARM64_ZSTD_SHA256
+        CLAUDE_SHA256=$CLAUDE_ARM64_SHA256
+        GODOT_SHA256=$GODOT_ARM64_SHA256 ;;
+    *) echo 'Codex and Claude upstream Linux binaries require amd64 or arm64.' >&2; exit 1 ;;
+esac
 [[ $(node --version) == "v$NODE_VERSION" ]] || { echo 'Unexpected Node.js version.' >&2; exit 1; }
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
@@ -19,23 +27,23 @@ download() {
     printf '%s  %s\n' "$expected" "$stage/$filename" | sha256sum --check --status
 }
 
-download "codex-$CODEX_VERSION.tar.gz" \
-    "https://github.com/openai/codex/releases/download/rust-v$CODEX_VERSION/codex-package-x86_64-unknown-linux-musl.tar.gz" "$CODEX_SHA256"
+download "codex-$CODEX_VERSION-$triple.tar.gz" \
+    "https://github.com/openai/codex/releases/download/rust-v$CODEX_VERSION/codex-package-$triple-unknown-linux-musl.tar.gz" "$CODEX_SHA256"
 install -d "$base/codex/$CODEX_VERSION"
-tar -xzf "$stage/codex-$CODEX_VERSION.tar.gz" -C "$base/codex/$CODEX_VERSION"
+tar -xzf "$stage/codex-$CODEX_VERSION-$triple.tar.gz" -C "$base/codex/$CODEX_VERSION"
 
-download "claude-$CLAUDE_VERSION.zst" \
-    "https://downloads.claude.ai/claude-code-releases/$CLAUDE_VERSION/linux-x64/claude.zst" "$CLAUDE_ZSTD_SHA256"
+download "claude-$CLAUDE_VERSION-$claude_arch.zst" \
+    "https://downloads.claude.ai/claude-code-releases/$CLAUDE_VERSION/linux-$claude_arch/claude.zst" "$CLAUDE_ZSTD_SHA256"
 install -d "$base/claude"
-zstd --decompress --stdout "$stage/claude-$CLAUDE_VERSION.zst" > "$base/claude/claude-$CLAUDE_VERSION"
+zstd --decompress --stdout "$stage/claude-$CLAUDE_VERSION-$claude_arch.zst" > "$base/claude/claude-$CLAUDE_VERSION"
 printf '%s  %s\n' "$CLAUDE_SHA256" "$base/claude/claude-$CLAUDE_VERSION" | sha256sum --check --status
 chmod 755 "$base/claude/claude-$CLAUDE_VERSION"
 
-download "godot-$GODOT_VERSION.zip" \
-    "https://github.com/godotengine/godot-builds/releases/download/$GODOT_VERSION-stable/Godot_v$GODOT_VERSION-stable_linux.x86_64.zip" "$GODOT_SHA256"
-unzip -q "$stage/godot-$GODOT_VERSION.zip" -d "$stage/godot"
+download "godot-$GODOT_VERSION-$godot_arch.zip" \
+    "https://github.com/godotengine/godot-builds/releases/download/$GODOT_VERSION-stable/Godot_v$GODOT_VERSION-stable_linux.$godot_arch.zip" "$GODOT_SHA256"
+unzip -q "$stage/godot-$GODOT_VERSION-$godot_arch.zip" -d "$stage/godot"
 install -d "$base/godot"
-install -m 755 "$stage/godot/Godot_v$GODOT_VERSION-stable_linux.x86_64" "$base/godot/godot-$GODOT_VERSION"
+install -m 755 "$stage/godot/Godot_v$GODOT_VERSION-stable_linux.$godot_arch" "$base/godot/godot-$GODOT_VERSION"
 
 # Keep the complete Codex bundle: helpers and resources resolve relative to bin/codex.
 # Every interactive launcher refuses root and retains no_new_privs for its children.

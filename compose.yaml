@@ -2,7 +2,6 @@ name: ai-workstation
 services:
   gateway:
     image: ${GATEWAY_IMAGE:-ghcr.io/crazyniu/ai-workstation-gateway:latest}
-    platform: linux/amd64
     hostname: home-gateway
     restart: unless-stopped
     cap_add: [NET_ADMIN]
@@ -14,9 +13,9 @@ services:
       GATEWAY_MODE: 'true'
       GATEWAY_LAN_ADDRESS: ${GATEWAY_ADDRESS:-192.168.1.250}/${LAN_PREFIX:-24}
       GATEWAY_LAN_ROUTER: ${LAN_ROUTER:-192.168.1.1}
-      GATEWAY_ADMIN_PASSWORD: ${WEB_PASSWORD:-admin}
-      GATEWAY_CONTAINER_USER: ${GATEWAY_USER:-admin}
-      GATEWAY_CONTAINER_PASSWORD: ${GATEWAY_PASSWORD:-admin}
+      GATEWAY_ADMIN_PASSWORD: ${WEB_PASSWORD:-root}
+      GATEWAY_CONTAINER_USER: ${GATEWAY_USER:-root}
+      GATEWAY_CONTAINER_PASSWORD: ${GATEWAY_PASSWORD:-root}
       GATEWAY_HOST_ADDRESS: ${HOST_ADDRESS:-}
       GATEWAY_BRIDGE_ROUTER: ${CONTROL_ROUTER:-172.30.100.1}
       GATEWAY_BLOCK_DIRECT_CLIENTS: ${WORKSTATION_ADDRESS:-192.168.1.251}
@@ -26,7 +25,6 @@ services:
       gateway_lan: {}
   workstation:
     image: ${WORKSTATION_IMAGE:-ghcr.io/crazyniu/ai-workstation:latest}
-    platform: linux/amd64
     hostname: ai-workstation
     restart: unless-stopped
     shm_size: 512mb
@@ -36,12 +34,12 @@ services:
       - no-new-privileges:true
       - seccomp=./workstation/security/seccomp-chrome.json
     environment:
-      DEV_PASSWORD: ${WORKSTATION_PASSWORD:-admin}
-      VNC_PASSWORD: ${VNC_PASSWORD:-admin}
+      DEV_PASSWORD: ${WORKSTATION_PASSWORD:-root}
+      VNC_PASSWORD: ${VNC_PASSWORD:-root}
       VNC_AUTH: ${VNC_AUTH:-password}
       NOVNC_TLS: ${NOVNC_TLS:-1}
       NOVNC_ALLOWED_ORIGINS: ${NOVNC_ALLOWED_ORIGINS:-}
-      ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-}
+      ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-root}
       # OS region only; these do not select a proxy node or change public egress.
       WORKSTATION_COUNTRY: ${WORKSTATION_COUNTRY:-SG}
       WORKSTATION_LANGUAGE: ${WORKSTATION_LANGUAGE:-en}

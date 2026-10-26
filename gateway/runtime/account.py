@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Keep SSH identity and the administrator's shell account in the data volume."""
 import os
+import ipaddress
 from pathlib import Path
 import re
 import subprocess
@@ -11,12 +12,12 @@ from state import ROOT, atomic, read, save
 
 account = ROOT / 'system/account.json'
 value = read(account)
-name = os.environ.get('GATEWAY_CONTAINER_USER') or (value or {}).get('name', 'admin')
+name = os.environ.get('GATEWAY_CONTAINER_USER') or (value or {}).get('name', 'root')
 password = os.environ.get('GATEWAY_CONTAINER_PASSWORD')
 if value is None and password is None:
-    password = 'admin'
-if not re.fullmatch(r'[a-z_][a-z0-9_-]{0,30}', name) or name == 'root':
-    raise ValueError('GATEWAY_CONTAINER_USER must name a non-root account')
+    password = 'root'
+if not re.fullmatch(r'[a-z_][a-z0-9_-]{0,30}', name):
+    raise ValueError('GATEWAY_CONTAINER_USER must name a valid Linux account')
 if password is not None and (not password or any(c in password for c in '\r\n\x00:')):
     raise ValueError('GATEWAY_CONTAINER_PASSWORD is invalid')
 if not value or value['name'] != name:
@@ -29,7 +30,12 @@ import pwd
 user = pwd.getpwnam(name)
 os.chown(home, user.pw_uid, user.pw_gid)
 home.chmod(0o700)
-if password is not None:
+native_root = os.environ.get('GATEWAY_INSTALL_MODE') == 'native' and name == 'root'
+if native_root:
+    # Preserve the administrator of the physical host, including its password.
+    value['hash'] = next(line.split(':')[1] for line in Path('/etc/shadow').read_text().splitlines() if line.startswith('root:'))
+    save(account, value)
+elif password is not None:
     subprocess.run(['chpasswd'], input=f'{name}:{password}\n', text=True, check=True)
     value['hash'] = next(line.split(':')[1] for line in Path('/etc/shadow').read_text().splitlines() if line.startswith(name + ':'))
     save(account, value)
@@ -42,9 +48,14 @@ key = keys / 'ssh_host_ed25519_key'
 if not key.exists():
     subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(key)], check=True)
 Path('/run/sshd').mkdir(exist_ok=True)
-atomic('/run/gateway/sshd_config', f'''Port 22
+port = int(os.environ.get('GATEWAY_SSH_PORT', '22'))
+bind = str(ipaddress.IPv4Address(os.environ.get('GATEWAY_BIND_ADDRESS', '0.0.0.0')))
+if not 1 <= port <= 65535:
+    raise ValueError('Invalid GATEWAY_SSH_PORT')
+atomic('/run/gateway/sshd_config', f'''Port {port}
+ListenAddress {bind}
 HostKey {key}
-PermitRootLogin no
+PermitRootLogin {"yes" if name == "root" else "no"}
 PasswordAuthentication yes
 KbdInteractiveAuthentication no
 UsePAM yes

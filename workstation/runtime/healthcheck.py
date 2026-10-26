@@ -4,7 +4,7 @@ import subprocess
 import ssl
 import urllib.request
 from pathlib import Path
-with socket.create_connection(('127.0.0.1', 22), timeout=2) as connection:
+with socket.create_connection(('127.0.0.1', int(os.environ.get('WORKSTATION_SSH_PORT', '22'))), timeout=2) as connection:
     assert connection.recv(64).startswith(b'SSH-')
 # Opening and abandoning VNC authentication increments TigerVNC's blacklist.
 # Inspect its listener without consuming authentication attempts.

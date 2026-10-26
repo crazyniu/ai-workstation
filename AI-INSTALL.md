@@ -2,6 +2,20 @@
 
 本指南供执行安装的 AI 使用。根据 [仓库地址](https://github.com/crazyniu/ai-workstation) 在用户指定的主机上安装网关和工作站。先读取当前版本的 [README](README.md)、[compose.yaml](compose.yaml)、[.env.example](.env.example) 和 [deploy.sh](deploy.sh)，再按下述流程执行。仓库配置描述预期行为，实际安装结果必须以目标主机和真实客户端验证为准。
 
+## 安装前先选择平台与运行方式
+
+先读取 [平台安装说明](docs/platforms.md)。该说明优先于下面 Linux LAN 专用步骤。两个角色不限定 NAS、操作系统品牌或 CPU，按上游软件实际支持范围安装；检查目标用户空间 / Docker Engine 架构，不强制 amd64。上游缺少版本时指出具体组件，区分可构建与已验收。
+
+1. **Linux**：可选择原生安装或 Docker；盘点现有运行环境，复用适用工具。原生用 `python3 install-native.py --role all` 预览，满足依赖与冲突保护后，用私有配置执行 `--apply`；分别安装角色可选 `--role gateway` / `workstation`。自动包安装支持 Debian 12+、Ubuntu 24.04+，现场需要 Python 3.11+，自动启用服务需要 systemd。
+2. **Windows / macOS**：安装并启动 Docker Desktop，使用 Linux containers。PowerShell 使用 `deploy.ps1`；macOS 使用 `deploy.sh`。默认 portable：bridge + 回环端口映射，不要求 macvlan、TUN 或宿主路由变更。
+3. **网络目标**：普通应用/开发优先 portable；Linux 确实需要独立 LAN 地址和透明网关时才使用下面 macvlan 流程。原生服务默认也不接管宿主路由/DNS。
+4. **账号**：默认服务器管理员 `root / root`，网关 Web 只输入密码 `root`。工作站应用由 `dev` 运行，默认密码 `root`；VNC 密码 `root`。Linux 原生安装保留宿主现有 root 密码，工作站专用 SSH 为 `dev / root`；已有部署按实际账号配置保留。
+5. **验收**：必须核对选择的 CPU 版本、真实网页登录、DNS、代理、SSH、桌面应用、重启持久性。Windows/macOS 实机、特定 CPU 或 systemd 开机启动未执行时标为 NOT RUN，不能从锁文件或 CI 定义推定通过。
+
+portable 默认：网关 `http://127.0.0.1:8080/`、工作站 `https://127.0.0.1:6080/`、SSH 2223/2222。同机工作站使用 `gateway:7890` 显式代理。异机按宿主可达地址配置代理，回环映射须通过隧道或明确修改绑定后才能跨机器访问。首次创建命令为 `./deploy.sh` / `.\deploy.ps1`，仅网关为 `gateway-portable`，仅工作站为 `workstation-bridge`。
+
+下文描述 Linux LAN Docker 的详细配置与迁移；原生安装和 Docker Desktop 继续使用平台文档中的对应管理及验收命令。
+
 ## 0. 先确定角色、宿主机和网络拓扑
 
 `250` 指网关角色，`251` 指工作站角色，不代表宿主机地址，也不要求这两个角色位于同一设备。先记录下表，再连接对应 Docker context；外部环境可能是 **工作站 251 在宿主机 A、网关 250 在宿主机 B**。不要把当前家庭环境的宿主机地址、网卡名、磁盘 UUID 或容器名带入新环境。
@@ -16,7 +30,7 @@
 
 | 拓扑 | 首次部署入口 | 前提 |
 | --- | --- | --- |
-| 两角色在同一宿主机、同一 LAN | `./deploy.sh`，使用 `compose.yaml` | 根 Compose 在同一 Docker Engine 内检查 gateway 健康状态 |
+| 两角色在同一宿主机、同一 LAN | `./deploy.sh all`，使用 `compose.yaml` | 根 Compose 在同一 Docker Engine 内检查 gateway 健康状态 |
 | 两台宿主机、同一二层 LAN | B 执行 `./deploy.sh gateway`；A 执行 `./deploy.sh workstation` | 使用 `compose.gateway.yaml` / `compose.workstation.yaml`；分别设置各自的 `LAN_INTERFACE`；251 与 250 的地址属于同一 LAN，251 能直接到达 250 |
 | 两台宿主机、不同网段或经 VPN 互通 | B 使用网关入口；A 执行 `./deploy.sh workstation-bridge` | A 使用 `workstation/compose.yaml` 的 bridge 网络，经 `WORKSTATION_HTTP_PROXY` / `WORKSTATION_HTTPS_PROXY` 指向可达的网关私有端点 |
 
@@ -28,7 +42,7 @@
 
 ## 1. 确认目标，先只读盘点
 
-LAN 部署环境为 **Linux amd64 Docker Engine**，要求 **Docker Compose 2.33.1 或更新版本**、macvlan 及可用的物理 LAN 接口；网关还需要 `/dev/net/tun`。工作站 bridge 模式不需要 macvlan 或 TUN，但仍须使用支持镜像桌面与浏览器沙箱的 Linux amd64 Docker 环境。这套 LAN 方案不以 macOS / Windows 的 Docker Desktop 虚拟网络为部署目标。确认正在操作用户指定的主机与 Docker context，远程终端不要误用本机 Docker。分开部署时，下列盘点在 A/B 上分别执行。
+LAN 部署环境为 **Linux Docker Engine 与对应 CPU 镜像**，要求 **Docker Compose 2.33.1 或更新版本**、macvlan 及可用的物理 LAN 接口；网关还需要 `/dev/net/tun`。工作站 bridge 模式不需要 macvlan 或 TUN，但仍须使用支持镜像桌面与浏览器沙箱的 Linux Docker 环境。macOS / Windows 的 Docker Desktop 使用前述 portable 入口。确认正在操作用户指定的主机与 Docker context，远程终端不要误用本机 Docker。分开部署时，下列盘点在 A/B 上分别执行。
 
 先查看以下信息，暂不创建、停止、删除或重建容器：
 
@@ -167,7 +181,7 @@ chmod 600 .env
 
 - `.env` 只保存在目标部署的私有目录，权限为 `600`；不提交 Git，不写入公开日志、截图、命令参数或交付报告。
 - 不使用 `cat .env`、`set -x`、不带 `--quiet` 的 `docker compose config` 来展示配置。通过私密输入或本地安全编辑填写密码，日志只记录“已设置”。
-- 设置自己的 Web、网关 SSH、工作站 SSH 与 VNC 密码，不直接沿用示例 `admin`。VNC 密码受协议限制，为 **1–8 个 ASCII 字符**；通过私有 LAN、Tailscale 或 SSH 隧道使用。工作站 root 默认锁定，无明确需求时保持该设置。
+- 设置自己的 Web、网关 SSH、工作站 SSH 与 VNC 密码，默认值按用户要求为 `root`，向非本机开放前配置私有密码。VNC 密码受协议限制，为 **1–8 个 ASCII 字符**；通过私有 LAN、Tailscale 或 SSH 隧道使用。Compose 默认提供 root/root 管理登录；桌面程序继续由 dev 运行。
 - 网关 Web 密码仅用于新容器首次初始化，后续通过网页账户设置修改。个人代理订阅、Tailscale、Claude、Codex 和 GitHub 授权由用户配置，不导入其他部署的身份。
 
 选择当前主机需要的部署角色后，由入口先执行不回显的配置检查和已有容器检查，再创建：

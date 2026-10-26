@@ -11,7 +11,7 @@ wait_ready(){
     sleep 1
   done
 }
-docker run -d --name "$name" --cap-add NET_ADMIN --device /dev/net/tun -e GATEWAY_MODE=false -e GATEWAY_ADMIN_PASSWORD=admin "$image" >/dev/null
+docker run -d --name "$name" -e GATEWAY_MODE=false -e GATEWAY_ADMIN_PASSWORD=root "$image" >/dev/null
 docker inspect "$name" --format '{{json .Mounts}}' | python3 -c 'import json,sys; assert not json.load(sys.stdin), "Business data must stay inside the container; unexpected mounts"'
 wait_ready
 docker exec -i "$name" python3 - <<'PY'
@@ -24,7 +24,7 @@ def call(path,data=None):
 assert call('/api/auth')['initialized']
 try:call('/api/cards');raise AssertionError('anonymous cards accepted')
 except urllib.error.HTTPError as error:assert error.code==401
-call('/api/auth/login',{'password':'admin'})
+call('/api/auth/login',{'password':'root'})
 assert not call('/api/cards')['cards']
 c=yaml.safe_load((root/'mihomo/config.yaml').read_text())
 assert not c.get('proxies') and not c.get('proxy-providers')
@@ -34,7 +34,7 @@ assert not call('/api/settings')['subscription']['url']
 appearance={'fit':'cover','image':'','wallpaper':'coast','theme':'dark'}
 assert call('/api/appearance',appearance)==appearance
 call('/api/cards',{'name':'Local NAS','url':'http://192.0.2.15:8080','icon':'server'})
-call('/api/password',{'current_password':'admin','password':'test'})
+call('/api/password',{'current_password':'root','password':'test'})
 assert call('/api/auth')['authenticated']
 assert len(call('/api/cards')['cards'])==1
 assert (root/'adguard/work/data/filters/1.txt').stat().st_size>1000000
@@ -42,9 +42,9 @@ with socket.create_connection(('127.0.0.1',22),timeout=5) as connection:assert c
 import os,subprocess,tempfile
 with tempfile.TemporaryDirectory() as folder:
     askpass=pathlib.Path(folder)/'askpass'
-    askpass.write_text('#!/bin/sh\nprintf \"admin\\n\"\n');askpass.chmod(0o700)
-    result=subprocess.run(['ssh','-T','-o','PreferredAuthentications=password','-o','PubkeyAuthentication=no','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=5','admin@127.0.0.1','id -un'],env=dict(os.environ,DISPLAY=':0',SSH_ASKPASS_REQUIRE='force',SSH_ASKPASS=str(askpass)),stdin=subprocess.DEVNULL,capture_output=True,text=True,timeout=15,start_new_session=True,check=True)
-    assert result.stdout.strip()=='admin'
+    askpass.write_text('#!/bin/sh\nprintf \"root\\n\"\n');askpass.chmod(0o700)
+    result=subprocess.run(['ssh','-T','-o','PreferredAuthentications=password','-o','PubkeyAuthentication=no','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=5','root@127.0.0.1','id -un'],env=dict(os.environ,DISPLAY=':0',SSH_ASKPASS_REQUIRE='force',SSH_ASKPASS=str(askpass)),stdin=subprocess.DEVNULL,capture_output=True,text=True,timeout=15,start_new_session=True,check=True)
+    assert result.stdout.strip()=='root'
 print('PASS fresh login, access control, empty private state, appearance, cards, password and SSH authentication')
 PY
 docker restart "$name" >/dev/null

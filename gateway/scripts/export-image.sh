@@ -5,12 +5,9 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 image=${GATEWAY_IMAGE:-gateway-local:1.0.0}
 out=${1:-./dist}
 arch=$(docker image inspect --format '{{.Architecture}}' "$image")
-if [ "$arch" != amd64 ]; then
-  echo 'The initial offline bundle supports amd64 only.' >&2
-  exit 1
-fi
+[ -n "$arch" ] || { echo "Image architecture is missing" >&2; exit 1; }
 mkdir -p "$out"
-name=gateway-local-1.0.0-amd64.tar.gz
+name=gateway-local-1.0.0-$arch.tar.gz
 staging=$(mktemp -d "$out/.export-XXXXXX")
 trap 'rm -rf "$staging"' EXIT HUP INT TERM
 # Keep save and gzip separate so a failed docker save cannot produce a success.

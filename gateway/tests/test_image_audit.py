@@ -57,6 +57,24 @@ def oci_image(layers, omit_layer=None, invalid_layer=None, omit_manifest=False, 
     return archive(entries)
 
 
+def attested_oci_image(missing=False, payload=None):
+    with tarfile.open(fileobj=io.BytesIO(oci_image([archive({'etc/example.txt': b'public'})]))) as source:
+        entries = {m.name: source.extractfile(m).read() for m in source if m.isfile()}
+    body = payload or json.dumps({'_type': 'https://in-toto.io/Statement/v1',
+        'predicateType': 'https://slsa.dev/provenance/v1', 'subject': []}).encode()
+    digest = hashlib.sha256(body).hexdigest()
+    if not missing:
+        entries['blobs/sha256/'+digest] = body
+    manifest = json.dumps({'artifactType': 'application/vnd.docker.attestation.manifest.v1+json',
+        'layers': [{'mediaType': 'application/vnd.in-toto+json', 'digest': 'sha256:'+digest, 'size': len(body)}]}).encode()
+    digest = hashlib.sha256(manifest).hexdigest()
+    entries['blobs/sha256/'+digest] = manifest
+    index = json.loads(entries['index.json'])
+    index['manifests'].append({'digest': 'sha256:'+digest, 'size': len(manifest)})
+    entries['index.json'] = json.dumps(index).encode()
+    return archive(entries)
+
+
 class ImageAuditTests(unittest.TestCase):
     def test_gateway_data_is_rejected(self):
         self.check_audit(docker_image([{'data/dashboard/admin.json': b'{}'}]), False, 'gateway private state')
@@ -70,6 +88,18 @@ class ImageAuditTests(unittest.TestCase):
         if message:
             self.assertIn(message, (result.stdout + result.stderr).decode())
         return result
+
+    def test_containerd_provenance_is_scanned_as_metadata(self):
+        self.check_audit(attested_oci_image(), True, 'all 1 manifest-declared')
+
+    def test_missing_or_invalid_provenance_fails_closed(self):
+        self.check_audit(attested_oci_image(missing=True), False, 'attestation missing or invalid')
+        self.check_audit(attested_oci_image(payload=b'{"config":{}}'), False, 'attestation missing or invalid')
+
+    def test_provenance_credentials_are_still_rejected(self):
+        body = json.dumps({'_type': 'https://in-toto.io/Statement/v1', 'predicateType': 'provenance',
+                           'subject': [], 'value': 'ghp_'+'a'*40}).encode()
+        self.check_audit(attested_oci_image(payload=body), False, 'credential-shaped value')
 
     def test_clean_locked_accounts(self):
         self.check_audit(docker_image([{'etc/shadow': b'root:!:0:0:99999:7:::\ndev:!:0:0:99999:7:::\n'}],

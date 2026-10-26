@@ -23,9 +23,9 @@
 
 ## 部署前准备
 
-首发目标为 **Linux amd64 Docker Engine**，采用 macvlan 接入局域网；arm64 尚未构建及验收。macOS/Windows 上的 Docker Desktop 不作为旁路网关运行环境。[Docker Compose 需要 2.33.1 或更新版本](https://docs.docker.com/reference/compose-file/networks/#enable_ipv4)以支持 `enable_ipv4`，宿主 Docker Engine 也必须支持禁用网络自动 IPv4 分配。宿主机需要 `/dev/net/tun`、macvlan、iptables 和可用的物理 LAN 接口，容器需要 `NET_ADMIN`。部署不使用 `privileged`、宿主网络或 Docker socket。
+网关不限定 NAS 或 CPU。Linux、Windows、macOS 的通用 Docker 入口为仓库根目录 `./deploy.sh gateway-portable` / `.\deploy.ps1 -Role gateway-portable`；Linux 可选原生安装。架构、默认 root/root 管理账号、端口和网络边界见[平台安装说明](../docs/platforms.md)。以下本目录 Compose 为 Linux LAN macvlan 专用，需要 Compose 2.33.1+、TUN、iptables 和真实 LAN 接口。
 
-下列命令用于在本目录首次创建独立网关。双容器部署从仓库根目录使用 `./deploy.sh`；该脚本发现已有容器（包括停止的容器）会退出。已有环境使用 `docker compose start` / `restart`，更换镜像前先按下文备份恢复。
+下列命令用于在本目录首次创建独立网关。双容器部署从仓库根目录使用 `./deploy.sh all`；该脚本发现已有容器（包括停止的容器）会退出。已有环境使用 `docker compose start` / `restart`，更换镜像前先按下文备份恢复。
 
 选择局域网内未占用、在 DHCP 分配范围以外的固定地址。配置网段应与物理 LAN 一致；使用独立测试地址验证后再切换原网关地址。以下示例 `192.168.10.2` 是文档地址，请替换为实际网络。
 
@@ -48,7 +48,7 @@ docker compose up -d --no-build
 
 若宿主配置的镜像加速源不可用，可仅对此次构建设置 `GATEWAY_BASE_IMAGE=public.ecr.aws/ubuntu/ubuntu:24.04`，使用 [Canonical 官方 ECR 发布](https://ubuntu.com/docs/oci-registries/oci-how-to/getting-started/)，无需修改宿主的全局镜像源。
 
-下载器从官方来源校验 SHA256，版本与下载来源记录在 `components.lock.json`。Python 下载工具只使用标准库；需安装 `curl`。不带 `--refresh` 时使用锁定版本，已有 `seed/` 不会被覆盖。要更新构建用默认组件，应在干净工作副本重新下载并审核新 lock，运行中的服务升级使用设置页。
+下载器从官方来源校验 SHA256，版本与下载来源记录在 `components.lock.json`。Python 下载工具只使用标准库；需安装 `curl`。不带 `--refresh` 时使用锁定版本，同版本同架构的 `seed/` 复用，切换架构时验证下载后替换旧文件。要更新构建用默认组件，应在干净工作副本重新下载并审核新 lock，运行中的服务升级使用设置页。
 
 `.env` 中的主要参数：
 
@@ -63,16 +63,16 @@ docker compose up -d --no-build
 | `GATEWAY_CONTROL_ADDRESS` | 容器 control bridge 地址，与上述 bridge 网关处于同一网段 |
 | `GATEWAY_IMAGE` | 本地镜像标签，默认 `gateway-local:1.0.0` |
 | `GATEWAY_BASE_IMAGE` | 构建用 Ubuntu 官方镜像，默认 `ubuntu:24.04` |
-| `GATEWAY_ADMIN_PASSWORD` | 全新容器初始网页密码，默认 `admin`；已有密码不覆盖 |
-| `GATEWAY_CONTAINER_USER` / `GATEWAY_CONTAINER_PASSWORD` | 容器 SSH 账号和密码，默认 `admin` / `admin`；启动时应用 |
+| `GATEWAY_ADMIN_PASSWORD` | 全新容器初始网页密码，默认 `root`；已有密码不覆盖 |
+| `GATEWAY_CONTAINER_USER` / `GATEWAY_CONTAINER_PASSWORD` | 容器 SSH 账号和密码，默认 `root` / `root`；启动时应用 |
 
 macvlan 使容器拥有独立 LAN 地址，因此不映射宿主的 80/53 端口。uplink 设置 `enable_ipv4: false`，关闭 Docker 自动 IPv4 地址分配，启动脚本在容器内设置固定 LAN 地址及上游默认路由。宿主与 macvlan 容器默认不能直接通信；control bridge 和可选宿主 `/32` 路由解决容器到 NAS 的访问。宿主可经 control 地址打开主页，LAN 用户使用 LAN 地址。宿主防火墙仍须允许需要的 bridge 流量。
 
 ## 首次设置与日常使用
 
-1. 用局域网浏览器打开 `http://192.168.10.2`，默认管理员密码为 `admin`。登录后可在“设置 → 账户”修改，支持 1–256 个字符。`GATEWAY_ADMIN_PASSWORD` 只用于全新容器首次初始化；重启保留已保存的网页密码。删除或重建容器前应备份，并在新容器启动前恢复数据。改密后当前浏览器会话续期，其余旧会话失效。
+1. 用局域网浏览器打开 `http://192.168.10.2`，默认管理员密码为 `root`。登录后可在“设置 → 账户”修改，支持 1–256 个字符。`GATEWAY_ADMIN_PASSWORD` 只用于全新容器首次初始化；重启保留已保存的网页密码。删除或重建容器前应备份，并在新容器启动前恢复数据。改密后当前浏览器会话续期，其余旧会话失效。
 
-   容器 SSH 默认账号和密码均为 `admin`，可通过 Compose 的 `GATEWAY_CONTAINER_USER` 和 `GATEWAY_CONTAINER_PASSWORD` 修改，重建后应用；SSH 账号设置与网页密码独立。GitHub CLI 已安装，使用自己的账号运行 `gh auth login`，凭据保存在容器内部 HOME 中，干净镜像不包含个人登录。
+   容器 SSH 默认账号和密码均为 `root`，可通过 Compose 的 `GATEWAY_CONTAINER_USER` 和 `GATEWAY_CONTAINER_PASSWORD` 修改，重建后应用；SSH 账号设置与网页密码独立。新建容器的 root HOME 位于 `/data/home`，随 `/data` 备份；Linux 原生安装保留宿主 root HOME。GitHub CLI 已安装，使用自己的账号运行 `gh auth login`，凭据保存在容器内部 HOME 中，干净镜像不包含个人登录。
 
    可信私网可在“设置 → 账户 → 密码登录”关闭“进入网关时需要密码”，输入当前密码并保存。关闭后，能访问网页的设备可直接管理网关、Clash 和 AdGuard Home；SSH 认证独立保留。原网页密码和登录开关保存在容器内部，重启沿用，改密不会改变开关。重新开启仍需当前密码，并使其他旧会话失效。全新容器默认开启密码登录；管理员密码和登录开关均不随配置备份导出或恢复。
 2. 进入“设置 → 代理配置”，点击“上传配置文件”，选择已有的 Clash/Mihomo `.yaml` 或 `.yml` 文件（最大 2 MB）。文件载入后可在编辑器查看和修改，点击“保存并应用”才会生效；校验失败会保留原配置。相同配置重复保存会确认当前服务状态并直接完成；修改规则时复用未变化的节点订阅缓存，只刷新新增、修改或缺少缓存的订阅。高级订阅的手动刷新和定时更新仍会刷新全部节点订阅，失败时回滚。首次导入或修改订阅来源仍需要等待实际下载。成功应用后再调整客户端网关。初始配置采用直连，不提供个人代理节点。

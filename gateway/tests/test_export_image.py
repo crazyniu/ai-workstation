@@ -87,10 +87,10 @@ class OfflineImageExportTests(unittest.TestCase):
         self.assertEqual(result.returncode, 42)
         self.assertEqual(files, {})
 
-    def test_unsupported_architecture_does_not_export(self):
+    def test_arm64_clean_image_is_exported(self):
         result, files = self.export(docker_image([{}]), arch='arm64')
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(files, {})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(BUNDLE.replace('amd64', 'arm64'), files)
 
 
 if __name__ == '__main__':
