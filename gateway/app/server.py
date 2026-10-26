@@ -14,9 +14,18 @@ FAILURES={}
 JOB_LOCK=threading.Lock()
 DESKTOP_BUILTINS=('builtin:clash','builtin:adguard','builtin:tailscale','builtin:workstation','builtin:settings')
 
+def default_workstation_url():
+    configured=os.environ.get('GATEWAY_WORKSTATION_URL')
+    if configured:return configured
+    if os.environ.get('GATEWAY_MODE','true')=='false':
+        scheme='http' if os.environ.get('NOVNC_TLS','1')=='0' else 'https'
+        port=int(os.environ.get('GATEWAY_WORKSTATION_PORT','6080'))
+        return f'{scheme}://127.0.0.1:{port}/'
+    return 'https://192.168.1.251:6080/'
+
 def validate_desktop(value):
     if not isinstance(value,dict):raise ValueError('桌面设置必须为对象')
-    url=value.get('workstation_url','https://192.168.1.251:6080/')
+    url=value.get('workstation_url',default_workstation_url())
     if not isinstance(url,str) or not 1<=len(url)<=500 or any(c.isspace() or ord(c)<32 for c in url):
         raise ValueError('请输入有效的工作站 HTTP(S) 地址')
     try:

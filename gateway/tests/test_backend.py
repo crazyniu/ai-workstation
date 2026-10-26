@@ -787,6 +787,14 @@ class UpgradeTests(DataTest):
 
 
 class StateTests(DataTest):
+    def test_portable_desktop_link_tracks_scheme_port_and_preserves_saved_target(self):
+        with patch.dict(os.environ, {'GATEWAY_MODE':'false', 'NOVNC_TLS':'0', 'GATEWAY_WORKSTATION_PORT':'16080'},clear=True):
+            self.assertEqual(server.validate_desktop({})['workstation_url'],'http://127.0.0.1:16080/')
+            saved={'workstation_url':'https://workstation.example:6080/','order':[]}
+            self.assertEqual(server.validate_desktop(saved),saved)
+        with patch.dict(os.environ, {'GATEWAY_WORKSTATION_URL':'https://private.example/'},clear=True):
+            self.assertEqual(server.validate_desktop({})['workstation_url'],'https://private.example/')
+
     def test_adguard_health_uses_persisted_native_dns_port(self):
         path=self.root/'adguard/AdGuardHome.yaml'
         config=yaml.safe_load(path.read_text());config['dns']['port']=1053

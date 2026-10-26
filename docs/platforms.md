@@ -69,7 +69,7 @@ Windows 的 `.env` 继承当前用户目录的 ACL，应保存在私人目录中
 
 网关容器 root HOME 使用 `/data/home`，包含在网关数据备份范围内。默认管理员凭据统一为 **`root / root`**，供首次初始化使用。桌面、Codex、Claude、浏览器仍由 `dev` 执行，其默认密码同为 `root`。在开放 LAN 或公网访问之前配置私有密码；示例默认不开放公网。已有部署的网关账户和密码保留，不因文档默认值变化自动重置。工作站密码环境变量属于每次启动输入，按原部署配置保留。
 
-需要 LAN 访问时，明确设置 `BIND_ADDRESS`、对应端口和宿主防火墙，并使用可达的宿主 IP；不把容器私有 IP 写成客户端访问地址。自定义网页桌面端口或域名要设置实际的 `NOVNC_ALLOWED_ORIGINS`。portable 网关使用 Tailscale userspace 模式，不向宿主添加透明路由，也不接管宿主 DNS；需要透明网关 / Tailscale 子网路由时使用满足网络权限要求的 Linux LAN 部署。默认 workstation 经同一 Compose 的 `gateway:7890` 显式代理；HTTP 代理不覆盖全部 UDP 或系统 DNS。
+需要 LAN 访问时，明确设置 `BIND_ADDRESS`、对应端口和宿主防火墙，并使用可达的宿主 IP；不把容器私有 IP 写成客户端访问地址。自定义网页桌面端口或域名要设置实际的 `NOVNC_ALLOWED_ORIGINS`；网关工作站图标默认跟随本机协议/端口，跨机器访问在 `.env` 设置 `WORKSTATION_URL` 或修改网关中的已保存入口，已有用户入口保留。portable 网关使用 Tailscale userspace 模式，不向宿主添加透明路由，也不接管宿主 DNS；需要透明网关 / Tailscale 子网路由时使用满足网络权限要求的 Linux LAN 部署。默认 workstation 经同一 Compose 的 `gateway:7890` 显式代理；HTTP 代理不覆盖全部 UDP 或系统 DNS。
 
 Linux LAN 部署继续使用 `./deploy.sh all`、`./deploy.sh gateway`、`./deploy.sh workstation`，参数见 AI-INSTALL.md。不要在 Docker Desktop 上选择这些 macvlan 入口。
 
