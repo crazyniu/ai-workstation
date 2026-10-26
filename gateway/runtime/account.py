@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Keep SSH identity and the administrator's shell account in the data volume."""
 import os
+import ipaddress
 from pathlib import Path
 import re
 import subprocess
@@ -30,6 +31,9 @@ user = pwd.getpwnam(name)
 os.chown(home, user.pw_uid, user.pw_gid)
 home.chmod(0o700)
 native_root = os.environ.get('GATEWAY_INSTALL_MODE') == 'native' and name == 'root'
+if name == 'root' and not native_root:
+    # Keep the container administrator's HOME inside the existing backup scope.
+    subprocess.run(['usermod', '-d', str(home), 'root'], check=True)
 if native_root:
     # Preserve the administrator of the physical host, including its password.
     value['hash'] = next(line.split(':')[1] for line in Path('/etc/shadow').read_text().splitlines() if line.startswith('root:'))
@@ -48,9 +52,11 @@ if not key.exists():
     subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(key)], check=True)
 Path('/run/sshd').mkdir(exist_ok=True)
 port = int(os.environ.get('GATEWAY_SSH_PORT', '22'))
+bind = str(ipaddress.IPv4Address(os.environ.get('GATEWAY_BIND_ADDRESS', '0.0.0.0')))
 if not 1 <= port <= 65535:
     raise ValueError('Invalid GATEWAY_SSH_PORT')
 atomic('/run/gateway/sshd_config', f'''Port {port}
+ListenAddress {bind}
 HostKey {key}
 PermitRootLogin {"yes" if name == "root" else "no"}
 PasswordAuthentication yes

@@ -25,8 +25,8 @@ def architecture(machine=None):
                'armhf': 'armv7', 'arm/v7': 'armv7', 'armel': 'armv5',
                'armv5': 'armv5', 'armv5tel': 'armv5', 'arm/v5': 'armv5',
                'armv6': 'armv6', 'armv6l': 'armv6', 'arm/v6': 'armv6',
-               'mips': 'mips', 'mipsle': 'mipsle', 'mips64': 'mips64',
-               'mips64le': 'mips64le', 'riscv64': 'riscv64'}
+               'mips': 'mips', 'mipsle': 'mipsle', 'mipsel': 'mipsle', 'mips64': 'mips64',
+               'mips64le': 'mips64le', 'mips64el': 'mips64le', 'riscv64': 'riscv64'}
     if machine not in aliases:
         raise ValueError('Unsupported CPU architecture: ' + machine)
     return aliases[machine]

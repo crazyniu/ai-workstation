@@ -15,13 +15,16 @@ docker exec -e WORKSTATION_SSH_PORT=2222 "$name" python3 /etc/workstation/health
 docker exec -e DATA_DIR=/var/lib/ai-gateway "$name" python3 /opt/gateway/app/healthcheck.py
 docker exec --user 1100:1100 -e HOME=/home/dev -e DISPLAY=:1 "$name" bash /opt/workstation/scripts/verify-tools.sh
 docker exec -i "$name" python3 - <<'PY'
-import json, pathlib, socket, urllib.request
+import json, pathlib, socket, urllib.request, pwd
 for port in [2222,2223]:
     with socket.create_connection(('127.0.0.1',port),timeout=3) as connection:
         assert connection.recv(64).startswith(b'SSH-')
 request=urllib.request.Request('http://127.0.0.1:8080/api/auth/login',data=b'{"password":"root"}',headers={'Content-Type':'application/json'})
 with urllib.request.urlopen(request,timeout=5) as response: assert response.status==200
 assert pathlib.Path('/etc/nginx/nginx.conf').read_text()!=pathlib.Path('/run/gateway/nginx.conf').read_text()
+root_hash=next(line.split(':')[1] for line in pathlib.Path('/etc/shadow').read_text().splitlines() if line.startswith('root:'))
+assert root_hash.startswith(('!', '*')), 'Native runtime changed the locked host root account'
+assert pwd.getpwnam('root').pw_dir=='/root'
 assert 'Port 2222' in pathlib.Path('/etc/workstation/sshd_config').read_text()
 assert 'native' in pathlib.Path('/etc/systemd/system/ai-workstation.service').read_text()
 print('PASS: native provisioning, host root preservation, private service configs, web login and both SSH greetings.')

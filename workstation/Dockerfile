@@ -16,7 +16,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 RUN case "$TARGETARCH" in amd64|arm64) ;; *) echo 'Codex and Claude upstream Linux binaries require amd64 or arm64.' >&2; exit 1 ;; esac
 COPY versions.env /opt/workstation/versions.env
-COPY scripts /opt/workstation/scripts
+COPY scripts/install-system.sh /opt/workstation/scripts/install-system.sh
 COPY desktop/home-template/ /opt/workstation/home-template/
 RUN bash /opt/workstation/scripts/install-system.sh
 COPY --from=node-runtime /usr/local/bin/node /opt/node/bin/node
@@ -25,6 +25,7 @@ RUN ln -s /opt/node/bin/node /usr/local/bin/node \
     && ln -s /opt/node/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s /opt/node/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 COPY mcp /opt/workstation/mcp
+COPY scripts /opt/workstation/scripts
 COPY unity /opt/workstation/unity
 RUN --mount=type=bind,from=tool-download-cache,target=/mnt/tool-download-cache \
     WORKSTATION_DOWNLOAD_CACHE=/mnt/tool-download-cache bash /opt/workstation/scripts/install-tools.sh

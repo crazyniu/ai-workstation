@@ -33,6 +33,9 @@ PROGRAM = Path('/opt/workstation-exit-dns')
 DATA = Path('/var/lib/workstation-exit-dns')
 SERVICE = Path('/etc/supervisor/conf.d/workstation-exit-dns.conf')
 SUPERVISOR = '/etc/supervisor/supervisord.conf'
+if Path('/etc/systemd/system/ai-workstation.service').is_file():
+    SUPERVISOR = '/etc/workstation/supervisord.conf'
+    SERVICE = Path('/etc/workstation/conf.d/workstation-exit-dns.conf')
 
 
 def addresses(source, gateway, port):
@@ -135,7 +138,7 @@ def install(source, gateway, port):
     settings.read(SUPERVISOR)
     includes = shlex.split(settings.get('include', 'files', fallback=''))
     if not any(fnmatch.fnmatch(str(SERVICE), str(Path(SUPERVISOR).parent / p)) for p in includes):
-        raise ValueError('Supervisor must include /etc/supervisor/conf.d/*.conf; upgrade separately')
+        raise ValueError('Supervisor must include the selected resolver service directory; upgrade separately')
     subprocess.run(['supervisorctl', '-c', SUPERVISOR, 'pid'], check=True,
                    stdout=subprocess.DEVNULL)
     for host, candidate_port in ((source, port), ('127.0.0.1', port), ('127.0.0.1', 3001)):

@@ -123,7 +123,7 @@ def prevent_package_service_start():
 
 
 def unit(name, command, environment):
-    text = '[Unit]\nDescription=AI ' + name + '\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\nEnvironmentFile=/etc/ai-workstation-native.env\n'
+    text = '[Unit]\nDescription=AI ' + name + '\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\nNoNewPrivileges=true\nEnvironmentFile=/etc/ai-workstation-native.env\n'
     text += ''.join('Environment=' + key + '=' + value + '\n' for key, value in environment.items())
     text += 'ExecStart=' + command + '\nRestart=on-failure\nRestartSec=5\nKillMode=control-group\nTimeoutStopSec=30\n\n[Install]\nWantedBy=multi-user.target\n'
     Path('/etc/systemd/system').mkdir(parents=True, exist_ok=True)
@@ -148,7 +148,7 @@ def install(role, config, arch, start):
         unit('gateway', '/bin/bash /opt/gateway/runtime/start', {
             'DATA_DIR': '/var/lib/ai-gateway', 'GATEWAY_INSTALL_MODE': 'native',
             'GATEWAY_MODE': 'false', 'GATEWAY_TAILSCALE_TUN': 'userspace-networking',
-            'GATEWAY_WEB_PORT': '8080', 'GATEWAY_SSH_PORT': '2223',
+            'GATEWAY_WEB_PORT': '8080', 'GATEWAY_SSH_PORT': '2223', 'GATEWAY_BIND_ADDRESS': '127.0.0.1',
             'GATEWAY_CORE_DNS_LISTEN': '127.0.0.1:1053', 'GATEWAY_CORE_DNS_UPSTREAM': '127.0.0.1:1053'})
     if role in ('all', 'workstation'):
         dest = Path('/opt/workstation')
@@ -164,13 +164,13 @@ def install(role, config, arch, start):
         run('bash', str(dest/'scripts/install-tools.sh'), env=env)
         run('bash', str(dest/'scripts/install-runtime.sh'), env=env)
         ssh = Path('/etc/workstation/sshd_config')
-        ssh.write_text(ssh.read_text().replace('Port 22', 'Port 2222').replace('/etc/ssh/keys/', '/etc/workstation/ssh-keys/').replace('PermitRootLogin yes', 'PermitRootLogin no') + '\nAllowUsers dev\n')
+        ssh.write_text(ssh.read_text().replace('Port 22', 'Port 2222\nListenAddress 127.0.0.1').replace('/etc/ssh/keys/', '/etc/workstation/ssh-keys/').replace('PermitRootLogin yes', 'PermitRootLogin no') + '\nAllowUsers dev\n')
         supervisor = Path('/etc/workstation/supervisord.conf')
         supervisor.write_text(supervisor.read_text().replace('command=/usr/sbin/sshd -D -e', 'command=/usr/sbin/sshd -D -e -f /etc/workstation/sshd_config').replace('/run/supervisord.pid', '/run/workstation-supervisord.pid').replace('files=/etc/supervisor/conf.d/*.conf', 'files=/etc/workstation/conf.d/*.conf'))
         Path('/etc/workstation/conf.d').mkdir()
         profile = Path('/home/dev/.profile')
         profile.write_text(profile.read_text() + '\n[ ! -r /etc/workstation/region.sh ] || . /etc/workstation/region.sh\n')
-        unit('workstation', '/usr/local/bin/workstation-entrypoint', {'WORKSTATION_INSTALL_MODE': 'native', 'WORKSTATION_SSH_PORT': '2222'})
+        unit('workstation', '/usr/local/bin/workstation-entrypoint', {'WORKSTATION_INSTALL_MODE': 'native', 'WORKSTATION_SSH_PORT': '2222', 'WORKSTATION_BIND_ADDRESS': '127.0.0.1', 'NOVNC_BIND': '127.0.0.1'})
     if start:
         run('systemctl', 'daemon-reload')
         for name in (('gateway', 'workstation') if role == 'all' else (role,)):

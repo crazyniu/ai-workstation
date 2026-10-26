@@ -49,6 +49,19 @@ class RegionTests(unittest.TestCase):
         self.assertEqual((self.root / 'etc/localtime').readlink(),
                          Path('/usr/share/zoneinfo/Asia/Singapore'))
 
+    def test_native_region_preserves_host_timezone_and_global_profiles(self):
+        files = ('etc/environment', 'etc/default/locale', 'etc/timezone',
+                 'etc/localtime', 'etc/profile.d/workstation-region.sh')
+        for name in files:
+            (self.root/name).write_text('existing host setting\n')
+        selected = REGION.configure_region(self.root, {'WORKSTATION_INSTALL_MODE': 'native',
+            'WORKSTATION_COUNTRY': 'TW', 'WORKSTATION_LANGUAGE': 'zh',
+            'WORKSTATION_TIMEZONE': 'Asia/Taipei'}, self.run)
+        self.assertEqual(selected['LANG'], 'zh_TW.UTF-8')
+        for name in files:
+            self.assertEqual((self.root/name).read_text(), 'existing host setting\n')
+        self.assertIn('export TZ=Asia/Taipei', (self.root/'etc/workstation/region.sh').read_text())
+
     def test_custom_locale_is_generated_without_inheriting_invalid_locale(self):
         selected = REGION.configure_region(self.root, {'WORKSTATION_COUNTRY': 'TW',
             'WORKSTATION_LANGUAGE': 'zh', 'WORKSTATION_TIMEZONE': 'Asia/Taipei',
