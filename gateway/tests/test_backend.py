@@ -787,6 +787,15 @@ class UpgradeTests(DataTest):
 
 
 class StateTests(DataTest):
+    def test_adguard_health_uses_persisted_native_dns_port(self):
+        path=self.root/'adguard/AdGuardHome.yaml'
+        config=yaml.safe_load(path.read_text());config['dns']['port']=1053
+        state.atomic(path,yaml.safe_dump(config))
+        with patch('urllib.request.urlopen',return_value=io.BytesIO(b'{"running":true}')), \
+             patch.object(updates,'command',return_value=Mock(stdout='192.0.2.251\n')) as probe:
+            updates.health('adguard')
+        self.assertEqual(probe.call_args.args[0][2:4],['-p','1053'])
+
     def test_initial_admin_env_default_and_existing_password_preservation(self):
         with patch.dict(os.environ, {'GATEWAY_ADMIN_PASSWORD': 'a'}):state.initialize_admin()
         original = (self.dash / 'admin.json').read_bytes()

@@ -1,4 +1,5 @@
 import json,os,shutil,tempfile,time,uuid
+import yaml
 from pathlib import Path
 from state import ROOT,LOCK,atomic,save,read,command
 from releases import discover,install_asset
@@ -33,7 +34,9 @@ def health(component):
         with urllib.request.urlopen('http://127.0.0.1:3000/control/status',timeout=5) as r:
             if not json.load(r).get('running'):raise ValueError('DNS 服务未运行')
         from state import settings,lan_ip
-        result=command(['dig','@127.0.0.1','-p','5353',settings()['domain'],'+short','+time=3','+tries=1'],timeout=5)
+        port=int(yaml.safe_load((ROOT/'adguard/AdGuardHome.yaml').read_text())['dns']['port'])
+        if not 1 <= port <= 65535:raise ValueError('DNS 监听端口无效')
+        result=command(['dig','@127.0.0.1','-p',str(port),settings()['domain'],'+short','+time=3','+tries=1'],timeout=5)
         if lan_ip() not in result.stdout.splitlines():raise ValueError('本地域名解析检查失败')
     else:
         r=command([str(ROOT/'components/current/tailscale/tailscale'),'--socket=/run/tailscale/tailscaled.sock','status','--json'],check=False)
