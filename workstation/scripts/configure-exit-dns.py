@@ -25,6 +25,10 @@ VERSION = 'v0.107.79'
 URL = f'https://github.com/AdguardTeam/AdGuardHome/releases/download/{VERSION}/AdGuardHome_linux_amd64.tar.gz'
 ARCHIVE_SHA256 = 'c48f4a43000665484c5ec28177de11a004759b620dae8f77b2aabefc9ef3687f'
 BINARY_SHA256 = '7e247573e63ce771a5925d16ca4ca9344e6e888673244289dc302f0fdfdfbf4e'
+if platform.machine() in ('aarch64', 'arm64'):
+    URL = f'https://github.com/AdguardTeam/AdGuardHome/releases/download/{VERSION}/AdGuardHome_linux_arm64.tar.gz'
+    ARCHIVE_SHA256 = '3f7893c18e8aaadc456d0452839190561c306ca95175a2254958be80a769c1ae'
+    BINARY_SHA256 = '64a9b6fc6269247f1973cddbf285aa6ce866d11bd29546b0f4135ba31d2283c8'
 PROGRAM = Path('/opt/workstation-exit-dns')
 DATA = Path('/var/lib/workstation-exit-dns')
 SERVICE = Path('/etc/supervisor/conf.d/workstation-exit-dns.conf')
@@ -123,8 +127,8 @@ redirect_stderr=true
 
 def install(source, gateway, port):
     addresses(source, gateway, port)
-    if os.getuid() != 0 or platform.system() != 'Linux' or platform.machine() != 'x86_64':
-        raise ValueError('Apply inside the Linux amd64 workstation as root')
+    if os.getuid() != 0 or platform.system() != 'Linux' or platform.machine() not in ('x86_64', 'aarch64', 'arm64'):
+        raise ValueError('Apply inside the Linux amd64/arm64 workstation as root')
     if any(p.exists() or p.is_symlink() for p in (PROGRAM, DATA, SERVICE)):
         raise ValueError('Existing resolver files found; inspect or roll back before installing')
     settings = configparser.RawConfigParser()

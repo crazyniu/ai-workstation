@@ -3,7 +3,7 @@
 [![Container images](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml/badge.svg)](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-面向家庭网络与远程开发的双容器环境：一个带桌面式 Web 后台的网关，一个可通过浏览器、SSH / VNC 使用的 Linux 开发工作站。
+面向家庭网络与远程开发的网关与工作站环境：一个带桌面式 Web 后台的网关，一个可通过浏览器、SSH / VNC 使用的 Linux 开发工作站。
 
 工作站默认新加坡英文，可配置国家、语言和时区。两个角色既可同机运行，也可分别部署在宿主机 A/B；独立部署入口、网络前提和初始化参数见 [AI 安装指南](AI-INSTALL.md)。
 
@@ -13,24 +13,36 @@
 
 ```text
 请帮我安装 https://github.com/crazyniu/ai-workstation 。
-先读取仓库 README.md、AGENTS.md 和 AI-INSTALL.md，按实际主机环境执行。
+先读取当前版本 README.md、AGENTS.md、AI-INSTALL.md 和 docs/platforms.md。
 
-目标是在 Linux amd64 / NAS Docker 主机上部署两个服务：
-Clash 网关默认 192.168.1.250，Claude 开发工作站默认 192.168.1.251。
-先确定网关和工作站是否位于同一宿主机；分开时分别盘点 A/B。
-先检查 Docker、Compose、LAN 网卡、路由、地址占用以及已有容器和数据。
-地址和网卡必须依据现场核实；缺少关键参数时向我询问，不能猜测。
+先只读盘点目标机器：操作系统、CPU 和用户空间架构、现有服务与数据；
+使用 Docker 时核对 context、Engine 的 Linux/CPU 架构、Compose 版本和已有容器。
+网关、工作站都不限定 NAS 或平台，只按各软件上游的真实支持范围选择版本；
+区分 x86/32 位、amd64/x64/x86_64、arm64/aarch64、ARM 变体等。
+遇到缺少上游版本的组件，说明组件名和可用方案，不套用 amd64 程序或承诺已支持。
 
-两个服务的配置、HOME 和身份保存在容器内部，不添加业务目录挂载或数据卷。
-发现已有部署时先说明现状和方案，不删除或重建已有容器，不改动其他服务。
-首次安装使用仓库 deploy.sh；密码通过私有 .env 配置，不回显，不提交 Git。
-不擅自迁移 Docker 存储、修改主路由器或向公网开放端口。
-工作站默认 WORKSTATION_COUNTRY=SG、WORKSTATION_LANGUAGE=en、
-WORKSTATION_TIMEZONE=Asia/Singapore；按 AI-INSTALL.md 配置和验收。
+Linux 可选择原生服务或 Docker。已有适用运行环境优先复用；
+原生安装用 install-native.py，先预览再 --apply，核对发行版依赖。
+Windows/macOS 使用 Docker Desktop 的 Linux containers，缺少时先完成安装；
+默认 portable 端口映射，Windows 用 deploy.ps1，Linux/macOS 用 deploy.sh。
+只有需要透明 LAN 网关且目标 Linux 满足 macvlan/TUN/转发条件时才选择 LAN 入口。
+网关和工作站可以同机或异机；按实际网络设置代理、DNS 和客户端访问地址。
+192.168.1.250/251 仅为 LAN 示例，网卡、空闲地址、路由和宿主均现场核实。
 
-完成后验证容器状态、实际地址、Mounts、网关网页/DNS/代理、工作站 SSH/VNC，
-核对 Python 和工具版本；需要账号登录的服务交由我登录后再验证。
-最后给我访问入口、实际通过和未验证项目，以及重启、备份和重建的数据注意事项。
+默认服务器管理员账号/密码统一 root/root；网关网页登录只需密码 root。
+工作站桌面和应用使用 dev，默认密码 root，VNC 默认密码 root。
+Linux 原生安装保留宿主已有 root 密码和现有 SSH 入口，不重置服务器身份。
+配置保存在私有 .env 或原生初始化文件，不回显或提交个人凭据。
+工作站默认 SG/en/Asia/Singapore，需要其他地区时按指南设置三项。
+
+已有环境先说明实际状态并保留数据，不删除、重建或迁移其他服务。
+Docker 数据留在容器内部，不添加业务挂载；原生状态留在文档指定目录。
+不擅自迁移 Docker 存储、修改主路由器、接管宿主路由/DNS 或开放公网端口。
+
+完成后验证实际网页登录、DNS 查询、代理请求、SSH、网页/VNC 桌面与应用启动，
+核对工具 CPU/版本、重启后的数据和 SSH 指纹；需要账号登录的服务由我登录。
+区分构建/健康检查、模拟执行、真实客户端验收；缺环境的项目明确标为 NOT RUN。
+最后给我访问入口、账号、已通过/未验证项、服务管理命令和升级的数据注意事项。
 ```
 
 ![AI Workstation 与网关桌面展示](docs/images/gateway-home.png)
@@ -38,6 +50,12 @@ WORKSTATION_TIMEZONE=Asia/Singapore；按 AI-INSTALL.md 配置和验收。
 *项目展示图；实际界面以运行版本为准。[图片说明](docs/images/README.md)*
 
 当前网关操作反馈的实际界面：[桌面截图](docs/images/gateway-global-toast-desktop.jpg)、[手机尺寸截图](docs/images/gateway-global-toast-mobile.jpg)。
+
+## 支持的平台与安装方式
+
+Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop 的 Linux 容器。两个角色按上游软件实际支持的 CPU 范围提供构建：完整工作站覆盖 amd64/x64 和 arm64；网关还覆盖 32 位 x86、ARMv5/ARMv7、RISC-V，并锁定其他上游可用架构的依赖。只有软件自身缺少对应版本时才说明限制。完整矩阵、命令和验证边界见[平台安装说明](docs/platforms.md)。
+
+默认管理员账号、密码为 **`root / root`**；工作站应用以普通用户 `dev` 运行，默认密码和 VNC 密码均为 `root`。Linux 原生安装保留宿主已有 root 密码。默认 Docker 端口映射只绑定本机回环地址。
 
 ## 两个服务
 
@@ -55,7 +73,7 @@ WORKSTATION_TIMEZONE=Asia/Singapore；按 AI-INSTALL.md 配置和验收。
 
 ## 每个容器的软件
 
-以下清单对应仓库的镜像构建定义。固定版本以 [网关组件锁定文件](gateway/components.lock.json)、[工作站版本文件](workstation/versions.env) 和 [MCP 依赖锁定文件](workstation/mcp/package-lock.json) 为准；通过 Ubuntu APT 安装的软件版本由构建时的软件源决定。
+以下清单对应仓库的镜像构建定义。固定版本以 [网关组件锁定文件](gateway/components.lock.json)、[工作站版本文件](workstation/versions.env) 和 [MCP 依赖锁定文件](workstation/mcp/package-lock.json) 为准；通过 Debian/Ubuntu APT 安装的软件版本由构建时的软件源决定。
 
 ### `192.168.1.250`：Clash 网关
 
@@ -72,7 +90,7 @@ WORKSTATION_TIMEZONE=Asia/Singapore；按 AI-INSTALL.md 配置和验收。
 
 | 类别 | 安装的软件 |
 | --- | --- |
-| 桌面与连接 | Ubuntu `26.04`、XFCE、Thunar 文件管理器、XFCE Terminal、TigerVNC、noVNC `1.7.0`、websockify、OpenSSH Server |
+| 桌面与连接 | Debian `13`、XFCE、Thunar 文件管理器、XFCE Terminal、TigerVNC、noVNC `1.7.0`、websockify、OpenSSH Server |
 | 浏览器与编辑器 | Google Chrome `156.0.8078.47`、Visual Studio Code `1.143.1`、Godot `4.7.2` |
 | AI CLI | Codex `0.164.0`、Claude Code `2.1.309` |
 | 开发运行时 | Python 3（Ubuntu 软件包，`3.14` 系列）、Node.js `24.22.1`、npm / npx、GCC |
@@ -85,22 +103,21 @@ WORKSTATION_TIMEZONE=Asia/Singapore；按 AI-INSTALL.md 配置和验收。
 
 ## 首次部署
 
-下面示例为同机 LAN 部署。分开部署时先按 [AI 安装指南](AI-INSTALL.md#0-先确定角色宿主机和网络拓扑) 选择宿主机 A/B 的独立入口；不同网段的工作站使用 bridge 与可达的私有代理端点。
-
-需要接入局域网的 **Linux amd64 主机**、Docker Engine、**Docker Compose 2.33.1 或更新版本**、macvlan 支持和 `/dev/net/tun`。提前为两个容器保留未占用的 LAN 地址。Docker Desktop 默认虚拟网络不适用于这套地址方案。
+默认 portable 模式适用于 Linux、Windows、macOS 的 Docker Linux 容器；需要 Docker Compose 2.33.1+。首次部署：
 
 ```sh
 git clone https://github.com/crazyniu/ai-workstation.git
 cd ai-workstation
 cp .env.example .env
 chmod 600 .env
-# 编辑 .env：网卡、路由器、容器地址、初始密码，以及需要访问的 NAS 宿主地址
 ./deploy.sh
 ```
 
-[`.env.example`](.env.example) 列出全部参数。`LAN_INTERFACE` 必须是实际 LAN 网卡；需要访问 NAS 宿主时填写 `HOST_ADDRESS`。网关使用 control bridge 到达宿主，再为工作站转发该地址的访问。
+Windows PowerShell 执行 `Copy-Item .env.example .env` 后运行 `.\deploy.ps1`。默认入口为网关 `http://127.0.0.1:8080/`、工作站 `https://127.0.0.1:6080/`，SSH 分别为 2223/2222。默认管理员均为 `root / root`。
 
-`deploy.sh` 只用于首次创建：项目已有运行中或已停止的容器时会拒绝执行，避免重新创建容器覆盖内部数据。日常重启使用 `docker compose restart`。
+Linux 不安装 Docker 时使用 `python3 install-native.py` 预览，再按[原生安装流程](docs/platforms.md#linux-原生安装)执行。需要独立 LAN 地址和透明网关时使用下面的 Linux macvlan 入口，现场确认网卡、地址、TUN 和转发能力。
+
+首次部署入口发现本项目已有容器（包括停止的容器）会退出，保留内部数据。后续操作继续指定本次选择的 Compose 文件；portable 模式使用 `docker compose --env-file .env -f compose.portable.yaml restart`。
 
 ### 按宿主机选择部署入口
 
@@ -108,7 +125,8 @@ chmod 600 .env
 
 | 部署方式 | 首次创建命令 | Compose 文件 |
 | --- | --- | --- |
-| 同一宿主机、同一 LAN | `./deploy.sh` | `compose.yaml` |
+| 通用 Docker 端口映射 | `./deploy.sh` / `.\deploy.ps1` | `compose.portable.yaml` |
+| 同一 Linux 宿主机、同一 LAN | `./deploy.sh all` | `compose.yaml` |
 | 宿主机 B：独立网关 | `./deploy.sh gateway` | `compose.gateway.yaml` |
 | 宿主机 A：同一 LAN 的工作站 | `./deploy.sh workstation` | `compose.workstation.yaml` |
 | 宿主机 A：跨网段或 VPN 的工作站 | `./deploy.sh workstation-bridge` | `workstation/compose.yaml` |
@@ -169,12 +187,12 @@ reset-claude-user --apply  # 关闭 Claude 后，执行本地身份与历史清�
 
 | 入口 | 初始账号 / 密码 |
 | --- | --- |
-| 网关 Web：`http://192.168.1.250/` | 密码来自 `WEB_PASSWORD`，示例值为 `admin` |
-| 网关 SSH：`192.168.1.250:22` | `GATEWAY_USER` / `GATEWAY_PASSWORD`，示例均为 `admin` |
-| 工作站 SSH：`192.168.1.251:22` | `dev` / `WORKSTATION_PASSWORD`，示例密码为 `admin` |
-| 工作站 VNC：`192.168.1.251:5901` | `VNC_PASSWORD`，示例值为 `admin` |
+| 网关 Web：`http://192.168.1.250/` | 密码来自 `WEB_PASSWORD`，示例值为 `root` |
+| 网关 SSH：`192.168.1.250:22` | `GATEWAY_USER` / `GATEWAY_PASSWORD`，示例均为 `root` |
+| 工作站 SSH：`192.168.1.251:22` | 管理员 `root / root`；应用用户 `dev / root` |
+| 工作站 VNC：`192.168.1.251:5901` | `VNC_PASSWORD`，示例值为 `root` |
 
-部署前设置自己的密码。VNC 密码接受 1–8 个 ASCII 字符；工作站 root 默认锁定。网关 Web 密码首次初始化后由“设置 → 账户”管理。后续环境变量变更与数据处理见各服务文档。
+部署前设置自己的密码。VNC 密码接受 1–8 个 ASCII 字符；Compose 默认启用工作站 root / root 管理登录，桌面应用仍由 dev 运行。网关 Web 密码首次初始化后由“设置 → 账户”管理。后续环境变量变更与数据处理见各服务文档。
 
 可信私网可在“设置 → 账户 → 密码登录”关闭“进入网关时需要密码”，输入当前密码后保存。关闭后，能访问网页的设备可直接管理网关、Clash 和 AdGuard Home；SSH 认证独立保留。重新开启仍需当前密码。登录开关和原密码保存在网关内部，重启沿用，均不随网页配置备份导出或恢复。全新容器默认开启密码登录，详见[网关账户说明](gateway/README.md#首次设置与日常使用)。
 
@@ -195,7 +213,9 @@ docker compose exec --user 1100:1100 -e HOME=/home/dev workstation gh auth login
 
 ## 数据与升级
 
-两个服务不声明业务 bind mount、命名卷或匿名卷。数据写入容器层，底层位置由宿主的 Docker `data-root` 决定；建议放在 SSD，Compose 本身不会迁移宿主存储。
+Docker 部署的两个服务不声明业务 bind mount、命名卷或匿名卷。数据写入容器层，底层位置由宿主的 Docker `data-root` 决定；建议放在 SSD，Compose 本身不会迁移宿主存储。
+
+原生安装的状态与服务管理见[平台说明](docs/platforms.md#linux-原生安装)。
 
 **重启保留数据；删除或重新创建容器会丢失内部数据。** 替换镜像前，先停止业务、导出需要保留的私有状态，并验证恢复流程。完整私有镜像用于原环境恢复；升级到新镜像需要选择性迁移配置和用户数据。操作步骤见 [网关数据处理](gateway/README.md) 和 [工作站备份与恢复](workstation/README.md)。个人状态、恢复镜像和凭据应留在私有存储中。
 
@@ -212,7 +232,7 @@ python3 -m unittest discover -s tests -p 'test_*.py' -v
 for test in workstation/tests/test-*.py; do python3 "$test"; done
 
 python3 gateway/scripts/fetch-components.py amd64
-docker build --build-arg TARGETARCH=amd64 -t gateway-local:test gateway
+docker build --platform linux/amd64 -t gateway-local:test gateway
 bash gateway/tests/clean-smoke.sh gateway-local:test
 docker image save gateway-local:test | python3 gateway/tests/audit-image.py
 
@@ -223,7 +243,7 @@ bash workstation/tests/web-desktop.sh workstation-local:test
 docker image save workstation-local:test | python3 workstation/tests/audit-image.py
 ```
 
-容器验证需要 Linux Docker 环境。GitHub Actions 会构建两个干净镜像，运行启动、内部存储和镜像层检查；主分支验证通过后发布 `latest` 与 `sha-<完整提交号>` 标签。使用固定 SHA 标签可选择已验证的版本。实时进度见 [Actions](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml)。
+容器验证需要 Linux Docker 环境。GitHub Actions 按 CPU 架构构建两个角色的干净镜像，运行启动、内部存储、原生安装和镜像层检查；主分支验证通过后发布 `latest` 与 `sha-<完整提交号>` 标签。使用固定 SHA 标签可选择已验证的版本。实时进度见 [Actions](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml)。
 
 默认分支通过 PR 和 `Required checks` 合并门槛保护，要求分支保持最新、审查讨论已解决，并禁止强推和删除。代码 PR 验证两个镜像；纯文档 PR 执行轻量检查并报告同一个必过结果。规则说明见 [贡献指南](CONTRIBUTING.md#默认分支保护)，版本化定义见 [main Ruleset](.github/rulesets/main.json)。
 
@@ -231,7 +251,10 @@ docker image save workstation-local:test | python3 workstation/tests/audit-image
 | --- | --- |
 | [`gateway/`](gateway/) | Web 后台、网关运行时、组件锁定文件和测试 |
 | [`workstation/`](workstation/) | 桌面环境、工具安装、启动配置和测试 |
-| [`compose.yaml`](compose.yaml) | 双容器网络与运行参数 |
+| [`compose.portable.yaml`](compose.portable.yaml) | Linux / Windows / macOS 通用 Docker 部署 |
+| [`install-native.py`](install-native.py) | Linux 原生安装、冲突检查和服务注册 |
+| [`docs/platforms.md`](docs/platforms.md) | 平台、CPU、默认账号与安装选择 |
+| [`compose.yaml`](compose.yaml) | Linux LAN 双容器网络与运行参数 |
 | [`compose.gateway.yaml`](compose.gateway.yaml) | 宿主机 B 的独立网关部署 |
 | [`compose.workstation.yaml`](compose.workstation.yaml) | 宿主机 A 的同 LAN 工作站部署 |
 | [`workstation/compose.yaml`](workstation/compose.yaml) | 跨网段私有代理或独立 bridge 工作站部署 |

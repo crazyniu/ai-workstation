@@ -1,7 +1,7 @@
-ARG BASE_IMAGE=ubuntu:24.04
+ARG BASE_IMAGE=debian:trixie-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 FROM ${BASE_IMAGE}
 ARG TARGETARCH
-RUN test "$TARGETARCH" = amd64
+ARG TARGETVARIANT
 ENV DEBIAN_FRONTEND=noninteractive DATA_DIR=/data LANG=C.UTF-8
 RUN apt-get update && apt-get install -y --no-install-recommends nginx supervisor python3 python3-yaml ca-certificates iproute2 iptables dnsutils curl procps tini openssh-server git gh && rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled/default /etc/ssh/ssh_host_*
 COPY app /opt/gateway/app
@@ -12,11 +12,13 @@ COPY seed/adguard /opt/gateway/seed/adguard
 COPY seed/tailscale /opt/gateway/seed/tailscale
 COPY seed/panel /opt/gateway/seed/panel
 COPY seed/filters/adguard-dns.txt seed/filters/manifest.json /opt/gateway/seed/filters/
+COPY seed/architecture /opt/gateway/seed/architecture
 COPY components.lock.json /opt/gateway/components.lock.json
 COPY NOTICE /opt/gateway/NOTICE
 COPY licenses /opt/gateway/licenses
 COPY runtime/nginx.conf /etc/nginx/nginx.conf
-RUN python3 /opt/gateway/runtime/build-info.py \
+RUN arch="$TARGETARCH"; if [ "$arch" = arm ]; then arch="arm$TARGETVARIANT"; fi; test "$(cat /opt/gateway/seed/architecture)" = "$arch" \
+    && python3 /opt/gateway/runtime/build-info.py \
     && chmod +x /opt/gateway/runtime/start /opt/gateway/runtime/service \
     && chmod -R a+rX /opt/gateway/web /opt/gateway/licenses \
     && mkdir -p /data /run/gateway

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch official Docker Hub linux/amd64 bases as verified docker-load archives.
+"""Fetch official Docker Hub Linux bases as verified docker-load archives.
 
 Requires Python 3 and curl, no Docker daemon or registry credentials. Downloaded
 blobs are checked against registry SHA256 descriptors; uncompressed layers are
@@ -50,7 +50,7 @@ def download(url, path, headers=()):
     partial.replace(path)
 
 
-def fetch(image, cache, output):
+def fetch(image, cache, output, arch="amd64", variant=None):
     # Scope deliberately limited to Docker Official Images, no arbitrary URL input.
     if not re.fullmatch(r'[a-z0-9][a-z0-9_.-]*:[A-Za-z0-9_.-]+', image):
         raise ValueError('Expected official image:tag (for example ubuntu:26.04)')
@@ -68,9 +68,10 @@ def fetch(image, cache, output):
         index = json.loads(index_path.read_bytes())
         if 'manifests' in index:
             candidates = [m for m in index['manifests'] if m.get('platform', {}).get('os') == 'linux'
-                          and m['platform'].get('architecture') == 'amd64']
+                          and m['platform'].get('architecture') == arch
+                          and (not variant or m['platform'].get('variant') == variant)]
             if len(candidates) != 1:
-                raise ValueError(f'Expected one linux/amd64 manifest, found {len(candidates)}')
+                raise ValueError(f'Expected one linux/{arch} manifest, found {len(candidates)}')
             manifest_digest = candidates[0]['digest']
             manifest_path = temp / 'manifest.json'
             download(base + '/manifests/' + manifest_digest, manifest_path, (auth, 'Accept: ' + ACCEPT))
@@ -96,7 +97,7 @@ def fetch(image, cache, output):
 
         config_path = blob(manifest['config'])
         config = json.loads(config_path.read_bytes())
-        if (config.get('os'), config.get('architecture')) != ('linux', 'amd64'):
+        if (config.get('os'), config.get('architecture')) != ('linux', arch):
             raise ValueError('Config platform mismatch')
         layers = manifest['layers']
         diffs = config['rootfs']['diff_ids']
@@ -119,7 +120,7 @@ def fetch(image, cache, output):
         config_name = manifest['config']['digest'].split(':')[1] + '.json'
         archive_manifest = [{'Config': config_name, 'RepoTags': [image],
                              'Layers': [name for name, _ in expanded]}]
-        archive = output / (image.replace(':', '-') + '-linux-amd64.tar')
+        archive = output / (image.replace(':', '-') + '-linux-' + arch + ('-' + variant if variant else '') + '.tar')
         partial = archive.with_suffix('.tar.partial')
         with tarfile.open(partial, 'w') as tar:
             tar.add(config_path, arcname=config_name)
@@ -132,7 +133,7 @@ def fetch(image, cache, output):
         partial.replace(archive)
         sha = digest_file(archive).split(':')[1]
         archive.with_suffix('.tar.sha256').write_text(f'{sha}  {archive.name}\n')
-        receipt = {'image': image, 'platform': 'linux/amd64', 'manifest': manifest_digest,
+        receipt = {'image': image, 'platform': 'linux/' + arch + ('/' + variant if variant else ''), 'manifest': manifest_digest,
                    'config': manifest['config']['digest'], 'archive_sha256': sha,
                    'layers': [d['digest'] for d in layers]}
         archive.with_suffix('.tar.receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
@@ -141,14 +142,18 @@ def fetch(image, cache, output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('images', nargs='*', default=['node:24.22.1-bookworm-slim', 'ubuntu:26.04'])
+    parser.add_argument('images', nargs='*', default=['node:24.22.1-bookworm-slim', 'debian:trixie-slim'])
     parser.add_argument('--cache', type=pathlib.Path, default=pathlib.Path('/tmp/workstation-base-cache'))
     parser.add_argument('--output', type=pathlib.Path, default=pathlib.Path('/tmp/workstation-base-images'))
+    parser.add_argument('--platform', default='linux/amd64', help='e.g. linux/arm64 or linux/arm/v7')
     args = parser.parse_args()
+    parts = args.platform.split('/')
+    if len(parts) not in (2, 3) or parts[0] != 'linux':
+        parser.error('--platform must be linux/ARCH[/VARIANT]')
     args.cache.mkdir(parents=True, exist_ok=True)
     args.output.mkdir(parents=True, exist_ok=True)
     for image in args.images:
-        fetch(image, args.cache, args.output)
+        fetch(image, args.cache, args.output, parts[1], parts[2] if len(parts) == 3 else None)
 
 
 if __name__ == '__main__':

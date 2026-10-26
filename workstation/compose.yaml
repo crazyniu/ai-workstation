@@ -1,7 +1,6 @@
 services:
   workstation:
     image: ${WORKSTATION_IMAGE:-ghcr.io/crazyniu/ai-workstation:latest}
-    platform: linux/amd64
     hostname: ai-workstation
     restart: unless-stopped
     shm_size: 512mb
@@ -15,12 +14,12 @@ services:
       - "127.0.0.1:${VNC_PORT:-5901}:5901"
       - "127.0.0.1:${NOVNC_PORT:-6080}:6080"
     environment:
-      DEV_PASSWORD: ${WORKSTATION_PASSWORD:-admin}
-      VNC_PASSWORD: ${VNC_PASSWORD:-admin}
+      DEV_PASSWORD: ${WORKSTATION_PASSWORD:-root}
+      VNC_PASSWORD: ${VNC_PASSWORD:-root}
       VNC_AUTH: ${VNC_AUTH:-password}
       NOVNC_TLS: ${NOVNC_TLS:-1}
       NOVNC_ALLOWED_ORIGINS: ${NOVNC_ALLOWED_ORIGINS:-}
-      ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-}
+      ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-root}
       # Country + language select the glibc UTF-8 locale (default: en_SG.UTF-8).
       WORKSTATION_COUNTRY: ${WORKSTATION_COUNTRY:-SG}
       WORKSTATION_LANGUAGE: ${WORKSTATION_LANGUAGE:-en}

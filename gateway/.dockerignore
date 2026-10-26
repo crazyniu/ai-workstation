@@ -7,6 +7,7 @@
 !runtime/
 !runtime/*
 !seed/
+!seed/architecture
 !seed/mihomo/
 !seed/mihomo/**
 !seed/adguard/

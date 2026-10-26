@@ -36,4 +36,16 @@ if [[ ${GATEWAY_MODE:-true} == true ]]; then
   done
 fi
 /opt/gateway/runtime/service mihomo-test
+# Use a private nginx configuration beside any native host nginx service.
+python3 - <<'PY'
+import os
+from pathlib import Path
+port = int(os.environ.get('GATEWAY_WEB_PORT', '80'))
+if not 1 <= port <= 65535:
+    raise ValueError('Invalid GATEWAY_WEB_PORT')
+config = Path('/opt/gateway/runtime/nginx.conf').read_text()
+config = config.replace('listen 80 default_server;', f'listen {port} default_server;')
+config = config.replace('/run/nginx.pid', '/run/gateway/nginx.pid')
+Path('/run/gateway/nginx.conf').write_text(config)
+PY
 exec supervisord -n -c /opt/gateway/runtime/supervisord.conf

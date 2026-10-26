@@ -39,5 +39,293 @@
       "license": "GPL-3.0",
       "license_url": "https://github.com/AdguardTeam/AdGuardSDNSFilter/blob/master/LICENSE"
     }
+  },
+  "architectures": {
+    "amd64": {
+      "mihomo": {
+        "component": "mihomo",
+        "version": "v1.19.33",
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-amd64-compatible-v1.19.33.gz",
+        "sha256": "386508bfb1c72c43b6a0eda73708ecdce82546581b0ebcb16366c53757c622b6"
+      },
+      "adguard": {
+        "component": "adguard",
+        "version": "v0.107.79",
+        "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_amd64.tar.gz",
+        "sha256": "c48f4a43000665484c5ec28177de11a004759b620dae8f77b2aabefc9ef3687f"
+      },
+      "tailscale": {
+        "component": "tailscale",
+        "version": "1.104.2",
+        "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_amd64.tgz",
+        "sha256": "512f613ed7d04fc7282f7dc5bd76aa105aae28168fbb9357eb749ebcbc29f0ae"
+      },
+      "panel": {
+        "component": "panel",
+        "version": "v1.273.1",
+        "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+        "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+      }
+    },
+    "arm64": {
+      "mihomo": {
+        "component": "mihomo",
+        "version": "v1.19.33",
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-arm64-v1.19.33.gz",
+        "sha256": "ba408b317080ee265c46cb923a50018c1b82cbd708551cdd46a1e3e307396187"
+      },
+      "adguard": {
+        "component": "adguard",
+        "version": "v0.107.79",
+        "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_arm64.tar.gz",
+        "sha256": "3f7893c18e8aaadc456d0452839190561c306ca95175a2254958be80a769c1ae"
+      },
+      "tailscale": {
+        "component": "tailscale",
+        "version": "1.104.2",
+        "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_arm64.tgz",
+        "sha256": "5776aaa901b5ef1916e66be5bb54b9f481cd399c9c28db123a8cab620efa237b"
+      },
+      "panel": {
+        "component": "panel",
+        "version": "v1.273.1",
+        "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+        "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+      }
+    },
+    "386": {
+      "mihomo": {
+        "component": "mihomo",
+        "version": "v1.19.33",
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-386-v1.19.33.gz",
+        "sha256": "e5580e1b8484e484936b0cefb14f22e9c6e86028c64e14824858fdb5eeedbd3e"
+      },
+      "adguard": {
+        "component": "adguard",
+        "version": "v0.107.79",
+        "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_386.tar.gz",
+        "sha256": "e9a90f94f34d78e6d165f57b968a71aae0ba0233868246fff98cbef5f43fad30"
+      },
+      "tailscale": {
+        "component": "tailscale",
+        "version": "1.104.2",
+        "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_386.tgz",
+        "sha256": "87f3d3932f7430d2f0a01106ce604b25b9245823ebb7a7c383ba73650e399e4a"
+      },
+      "panel": {
+        "component": "panel",
+        "version": "v1.273.1",
+        "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+        "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+      }
+    },
+    "armv7": {
+      "mihomo": {
+        "component": "mihomo",
+        "version": "v1.19.33",
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-armv7-v1.19.33.gz",
+        "sha256": "c8a8f9bcaab914269fbdca7569e4a9f024cc667ecf12eb43e8ccdc01b3731604"
+      },
+      "adguard": {
+        "component": "adguard",
+        "version": "v0.107.79",
+        "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_armv7.tar.gz",
+        "sha256": "7f8a4135ed427c5faafbc52d29845ea42acb38818bd7648626ddc07ee61a999e"
+      },
+      "tailscale": {
+        "component": "tailscale",
+        "version": "1.104.2",
+        "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_arm.tgz",
+        "sha256": "b694ff9c67235da98798b9592a0cc900bc9d1613041f77722ec9bf4ce2d215cf"
+      },
+      "panel": {
+        "component": "panel",
+        "version": "v1.273.1",
+        "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+        "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+      }
+    },
+    "armv5": {
+      "mihomo": {
+        "component": "mihomo",
+        "version": "v1.19.33",
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-armv5-v1.19.33.gz",
+        "sha256": "5981edb813ce9cc112852ba12c0d42a5187b1b0f26cf307629f2d68719fedcb9"
+      },
+      "adguard": {
+        "component": "adguard",
+        "version": "v0.107.79",
+        "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_armv5.tar.gz",
+        "sha256": "b709eaffc2b1cd1236a4dfdc90a00f174ddee5a1ad6a389e8a75918fb450e27c"
+      },
+      "tailscale": {
+        "component": "tailscale",
+        "version": "1.104.2",
+        "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_arm.tgz",
+        "sha256": "b694ff9c67235da98798b9592a0cc900bc9d1613041f77722ec9bf4ce2d215cf"
+      },
+      "panel": {
+        "component": "panel",
+        "version": "v1.273.1",
+        "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+        "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+      }
+    },
+    "armv6": {
+      "mihomo": {
+        "component": "mihomo",
+        "version": "v1.19.33",
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-armv6-v1.19.33.gz",
+        "sha256": "288d525db3a8bac99ee5497ca0cba3d14c8a2397c7bb5354f84d6240cf907c8d"
+      },
+      "adguard": {
+        "component": "adguard",
+        "version": "v0.107.79",
+        "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_armv6.tar.gz",
+        "sha256": "49b04698ac4fadd433ba5d83b8ae19dd8c2a6ee0b2eabfb0b11471114bb6f100"
+      },
+      "tailscale": {
+        "component": "tailscale",
+        "version": "1.104.2",
+        "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_arm.tgz",
+        "sha256": "b694ff9c67235da98798b9592a0cc900bc9d1613041f77722ec9bf4ce2d215cf"
+      },
+      "panel": {
+        "component": "panel",
+        "version": "v1.273.1",
+        "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+        "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+      }
+    },
+    "mips": {
+      "mihomo": {
+        "component": "mihomo",
+        "version": "v1.19.33",
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-mips-softfloat-v1.19.33.gz",
+        "sha256": "d57934651a36af34c4a45539a946d1c8a35ce6381f93a79ca417b5e78a6170a7"
+      },
+      "adguard": {
+        "component": "adguard",
+        "version": "v0.107.79",
+        "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_mips_softfloat.tar.gz",
+        "sha256": "7f72c1d4db8bd29a12b24ca19ac9ddaac3963765fcaa580577dfea33811a9cb0"
+      },
+      "tailscale": {
+        "component": "tailscale",
+        "version": "1.104.2",
+        "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_mips.tgz",
+        "sha256": "f01bd0127e5023e871eba007fba50abefd9ddd70cdfd4261288fcada6cceae25"
+      },
+      "panel": {
+        "component": "panel",
+        "version": "v1.273.1",
+        "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+        "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+      }
+    },
+    "mipsle": {
+      "mihomo": {
+        "component": "mihomo",
+        "version": "v1.19.33",
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-mipsle-softfloat-v1.19.33.gz",
+        "sha256": "ad6b3837db8dff2a6853a3c1604b82ee2f7e4019f626a5ab61f46b7c565871c4"
+      },
+      "adguard": {
+        "component": "adguard",
+        "version": "v0.107.79",
+        "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_mipsle_softfloat.tar.gz",
+        "sha256": "f2b6cccb5272fe726b09a35463732c580e4e8fab8a4e6e717a7d9af4d02b532c"
+      },
+      "tailscale": {
+        "component": "tailscale",
+        "version": "1.104.2",
+        "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_mipsle.tgz",
+        "sha256": "5398e14b280711f1139e1c2ad84f405a08bcce58a512c155fb139aea3eeea3ee"
+      },
+      "panel": {
+        "component": "panel",
+        "version": "v1.273.1",
+        "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+        "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+      }
+    },
+    "mips64": {
+      "mihomo": {
+        "component": "mihomo",
+        "version": "v1.19.33",
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-mips64-v1.19.33.gz",
+        "sha256": "018a08fcdef319a36bb545cb5a9bb8841ccf5b72cc533c838ae2d497c7e128b3"
+      },
+      "adguard": {
+        "component": "adguard",
+        "version": "v0.107.79",
+        "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_mips64_softfloat.tar.gz",
+        "sha256": "ed00a44c2bea2c7e6ef27225f2f5ef1cbdace0b3ff20bf2c7f4f51d78549229e"
+      },
+      "tailscale": {
+        "component": "tailscale",
+        "version": "1.104.2",
+        "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_mips64.tgz",
+        "sha256": "06da831b50002fec3f113f3589872399c5890e317b69411d2ad4267d8846a2f8"
+      },
+      "panel": {
+        "component": "panel",
+        "version": "v1.273.1",
+        "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+        "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+      }
+    },
+    "mips64le": {
+      "mihomo": {
+        "component": "mihomo",
+        "version": "v1.19.33",
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-mips64le-v1.19.33.gz",
+        "sha256": "a917b212031b56521ab96f14db35302de27918059965de5c7ec893ea1d4bbe61"
+      },
+      "adguard": {
+        "component": "adguard",
+        "version": "v0.107.79",
+        "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_mips64le_softfloat.tar.gz",
+        "sha256": "ed48c74a218925909a3cf65d61827ff3217b53541b136662dddf70ce078fe9d4"
+      },
+      "tailscale": {
+        "component": "tailscale",
+        "version": "1.104.2",
+        "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_mips64le.tgz",
+        "sha256": "5dfc813883a759c31e12e0ef82df41bfba21fc07d317efbe825910b038ac7df5"
+      },
+      "panel": {
+        "component": "panel",
+        "version": "v1.273.1",
+        "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+        "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+      }
+    },
+    "riscv64": {
+      "mihomo": {
+        "component": "mihomo",
+        "version": "v1.19.33",
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-riscv64-v1.19.33.gz",
+        "sha256": "bdcf02e83108c2e94ca38ee95c891509a7b188082f5ec85c2481ea28f607fa41"
+      },
+      "adguard": {
+        "component": "adguard",
+        "version": "v0.107.79",
+        "url": "https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.79/AdGuardHome_linux_riscv64.tar.gz",
+        "sha256": "9bd4a801e7791e047d6bba932f3a5f4e8f30b99f2b3c37418b011c75c7d6384b"
+      },
+      "tailscale": {
+        "component": "tailscale",
+        "version": "1.104.2",
+        "url": "https://pkgs.tailscale.com/stable/tailscale_1.104.2_riscv64.tgz",
+        "sha256": "1f8065e0d966a607ec013c31da09ced55943e4de17cd2e520c9cb8e22f6d3f62"
+      },
+      "panel": {
+        "component": "panel",
+        "version": "v1.273.1",
+        "url": "https://github.com/MetaCubeX/metacubexd/releases/download/v1.273.1/compressed-dist.tgz",
+        "sha256": "a178e00b67acabcda2dcef00afa90be6a7bb261e466a67dad58c8478d9553603"
+      }
+    }
   }
 }

@@ -44,7 +44,7 @@ def initialize_admin():
     # Compose supplies an initial password only; persistent credentials always win.
     with LOCK:
         if not (DASH/'admin.json').exists():
-            password=validate_password(os.environ.get('GATEWAY_ADMIN_PASSWORD','admin'))
+            password=validate_password(os.environ.get('GATEWAY_ADMIN_PASSWORD','root'))
             save(DASH/'admin.json',{'password':password_hash(password)})
 
 def local_domain(domain):
@@ -124,12 +124,12 @@ def initialize():
     if not CONFIG.exists():
         write_config({'mixed-port':7890,'socks-port':7891,'allow-lan':True,'bind-address':'*','mode':'rule','log-level':'info','ipv6':False,
           'external-controller':'127.0.0.1:9090','secret':secrets.token_urlsafe(32),'external-ui':str(ROOT/'components/current/panel'),
-          'dns':{'enable':True,'listen':'0.0.0.0:53','enhanced-mode':'fake-ip','fake-ip-range':'198.18.0.1/16','nameserver':[os.environ.get('GATEWAY_LAN_ROUTER','1.1.1.1')],'proxy-server-nameserver':[os.environ.get('GATEWAY_LAN_ROUTER','1.1.1.1')]},
+          'dns':{'enable':True,'listen':os.environ.get('GATEWAY_CORE_DNS_LISTEN','0.0.0.0:53'),'enhanced-mode':'fake-ip','fake-ip-range':'198.18.0.1/16','nameserver':[os.environ.get('GATEWAY_LAN_ROUTER','1.1.1.1')],'proxy-server-nameserver':[os.environ.get('GATEWAY_LAN_ROUTER','1.1.1.1')]},
           'tun':{'enable':os.environ.get('GATEWAY_MODE','true')=='true','device':'Mihomo','stack':'gvisor','auto-route':True,'strict-route':True,'auto-detect-interface':True,'dns-hijack':['any:53','tcp://any:53'],'route-exclude-address':['192.168.0.0/16','10.0.0.0/8','172.16.0.0/12']},'proxies':[],'proxy-groups':[],'rules':['MATCH,DIRECT']})
     c=config();c['external-controller']='127.0.0.1:9090';c['external-ui']=str(ROOT/'components/current/panel');c.setdefault('secret',secrets.token_urlsafe(32));write_config(c)
     if not (ROOT/'adguard/AdGuardHome.yaml').exists():
         atomic(ROOT/'adguard/AdGuardHome.yaml',yaml.safe_dump({'http':{'address':'127.0.0.1:3000'},'users':[],'language':'zh-cn',
-          'dns':{'bind_hosts':['0.0.0.0'],'port':5353,'upstream_dns':['127.0.0.1:53'],'fallback_dns':[],'bootstrap_dns':['1.1.1.1'],'ratelimit':100,'cache_size':4194304,'use_private_ptr_resolvers':False},
+          'dns':{'bind_hosts':['0.0.0.0'],'port':5353,'upstream_dns':[os.environ.get('GATEWAY_CORE_DNS_UPSTREAM','127.0.0.1:53')],'fallback_dns':[],'bootstrap_dns':['1.1.1.1'],'ratelimit':100,'cache_size':4194304,'use_private_ptr_resolvers':False},
           'filtering':{'protection_enabled':True,'filtering_enabled':True,'filters_update_interval':24},
           'filters':[{'enabled':True,'url':'https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt','name':'AdGuard DNS filter','id':1}],
           'querylog':{'enabled':True,'file_enabled':True,'interval':'168h'},'statistics':{'enabled':True,'interval':'24h'},'dhcp':{'enabled':False},'schema_version':34},sort_keys=False))

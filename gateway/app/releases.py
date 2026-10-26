@@ -13,6 +13,24 @@ from pathlib import Path
 REPOS = {'mihomo': 'MetaCubeX/mihomo', 'adguard': 'AdguardTeam/AdGuardHome', 'panel': 'MetaCubeX/metacubexd'}
 MAX_DOWNLOAD = 180 * 1024 * 1024
 
+def architecture(machine=None):
+    if machine is None:
+        receipt = Path('/opt/gateway/seed/architecture')
+        machine = receipt.read_text().strip() if receipt.is_file() else platform.machine()
+    machine = machine.lower()
+    aliases = {'x86_64': 'amd64', 'x64': 'amd64', 'amd64': 'amd64',
+               'aarch64': 'arm64', 'arm64': 'arm64', 'i386': '386',
+               'i486': '386', 'i586': '386', 'i686': '386', 'x86': '386',
+               '386': '386', 'armv7l': 'armv7', 'armv7': 'armv7',
+               'armhf': 'armv7', 'arm/v7': 'armv7', 'armel': 'armv5',
+               'armv5': 'armv5', 'armv5tel': 'armv5', 'arm/v5': 'armv5',
+               'armv6': 'armv6', 'armv6l': 'armv6', 'arm/v6': 'armv6',
+               'mips': 'mips', 'mipsle': 'mipsle', 'mips64': 'mips64',
+               'mips64le': 'mips64le', 'riscv64': 'riscv64'}
+    if machine not in aliases:
+        raise ValueError('Unsupported CPU architecture: ' + machine)
+    return aliases[machine]
+
 def download(url, limit=MAX_DOWNLOAD):
     if not url.startswith('https://'):
         raise ValueError('下载必须使用 HTTPS')
@@ -27,10 +45,10 @@ def download(url, limit=MAX_DOWNLOAD):
     return data
 
 def discover(component, arch=None, version=None):
-    arch = arch or ('arm64' if platform.machine() in ('aarch64', 'arm64') else 'amd64')
+    arch = architecture(arch)
     if component == 'tailscale':
         catalog = json.loads(download('https://pkgs.tailscale.com/stable/?mode=json', 1024 * 1024))
-        name = catalog['Tarballs'][arch]
+        name = catalog['Tarballs']['arm' if arch.startswith('armv') else arch]
         url = 'https://pkgs.tailscale.com/stable/' + name
         digest = download(url + '.sha256', 1024).decode().strip().split()[0]
         return {'component': component, 'version': name.split('_')[1], 'url': url, 'sha256': digest}
@@ -38,8 +56,10 @@ def discover(component, arch=None, version=None):
     endpoint = 'tags/' + version if version else 'latest'
     release = json.loads(download(f'https://api.github.com/repos/{repo}/releases/{endpoint}', 3 * 1024 * 1024))
     version = release['tag_name']
-    name = {'mihomo': f'mihomo-linux-{arch}-compatible-{version}.gz' if arch == 'amd64' else f'mihomo-linux-arm64-{version}.gz',
-            'adguard': f'AdGuardHome_linux_{arch}.tar.gz', 'panel': 'compressed-dist.tgz'}[component]
+    mihomo_arch = arch + '-softfloat' if arch in ('mips', 'mipsle') else arch
+    adguard_arch = arch + '_softfloat' if arch.startswith('mips') else arch
+    name = {'mihomo': f'mihomo-linux-amd64-compatible-{version}.gz' if arch == 'amd64' else f'mihomo-linux-{mihomo_arch}-{version}.gz',
+            'adguard': f'AdGuardHome_linux_{adguard_arch}.tar.gz', 'panel': 'compressed-dist.tgz'}[component]
     asset = next(a for a in release['assets'] if a['name'] == name)
     digest = asset.get('digest', '')
     if not digest.startswith('sha256:'):

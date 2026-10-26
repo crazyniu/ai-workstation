@@ -1,0 +1,49 @@
+# Linux containers on Docker Engine or Docker Desktop (Linux, Windows, macOS).
+# Docker selects the CPU variant from each verified multi-platform image.
+name: ai-workstation-portable
+services:
+  gateway:
+    image: ${GATEWAY_IMAGE:-ghcr.io/crazyniu/ai-workstation-gateway:latest}
+    hostname: home-gateway
+    restart: unless-stopped
+    environment:
+      GATEWAY_MODE: 'false'
+      GATEWAY_TAILSCALE_TUN: userspace-networking
+      GATEWAY_ADMIN_PASSWORD: ${WEB_PASSWORD:-root}
+      GATEWAY_CONTAINER_USER: ${GATEWAY_USER:-root}
+      GATEWAY_CONTAINER_PASSWORD: ${GATEWAY_PASSWORD:-root}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${GATEWAY_WEB_PORT:-8080}:80"
+      - "${BIND_ADDRESS:-127.0.0.1}:${GATEWAY_SSH_PORT:-2223}:22"
+      - "${BIND_ADDRESS:-127.0.0.1}:${PROXY_PORT:-7890}:7890"
+      - "${BIND_ADDRESS:-127.0.0.1}:${DNS_PORT:-5353}:5353/tcp"
+      - "${BIND_ADDRESS:-127.0.0.1}:${DNS_PORT:-5353}:5353/udp"
+  workstation:
+    image: ${WORKSTATION_IMAGE:-ghcr.io/crazyniu/ai-workstation:latest}
+    hostname: ai-workstation
+    restart: unless-stopped
+    shm_size: 512mb
+    cap_drop: [NET_ADMIN, NET_RAW]
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./workstation/security/seccomp-chrome.json
+    depends_on:
+      gateway:
+        condition: service_healthy
+    environment:
+      DEV_PASSWORD: ${WORKSTATION_PASSWORD:-root}
+      VNC_PASSWORD: ${VNC_PASSWORD:-root}
+      VNC_AUTH: ${VNC_AUTH:-password}
+      NOVNC_TLS: ${NOVNC_TLS:-1}
+      NOVNC_ALLOWED_ORIGINS: ${NOVNC_ALLOWED_ORIGINS:-}
+      ROOT_PASSWORD: ${WORKSTATION_ROOT_PASSWORD:-root}
+      WORKSTATION_COUNTRY: ${WORKSTATION_COUNTRY:-SG}
+      WORKSTATION_LANGUAGE: ${WORKSTATION_LANGUAGE:-en}
+      WORKSTATION_TIMEZONE: ${WORKSTATION_TIMEZONE:-Asia/Singapore}
+      HTTP_PROXY: http://gateway:7890
+      HTTPS_PROXY: http://gateway:7890
+      NO_PROXY: ${WORKSTATION_NO_PROXY:-localhost,127.0.0.1,gateway}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${SSH_PORT:-2222}:22"
+      - "${BIND_ADDRESS:-127.0.0.1}:${VNC_PORT:-5901}:5901"
+      - "${BIND_ADDRESS:-127.0.0.1}:${NOVNC_PORT:-6080}:6080"

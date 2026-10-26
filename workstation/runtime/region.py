@@ -81,6 +81,13 @@ def configure_region(root=Path('/'), environ=None, run=subprocess.run):
             source = locale.split('.')[0]
             run(['localedef', '-i', source, '-f', 'UTF-8', locale],
                 env=tool_env, check=True, stdout=subprocess.DEVNULL)
+    if environ.get('WORKSTATION_INSTALL_MODE') == 'native':
+        # Only the dedicated account receives this region; retain host defaults.
+        profile = root / 'etc/workstation/region.sh'
+        profile.write_text(''.join('export ' + key + '=' + shlex.quote(value) + '\n'
+                                   for key, value in selected.items()))
+        profile.chmod(0o644)
+        return selected
     (root / 'etc/default/locale').write_text(''.join(
         key + '=' + value + '\n' for key, value in selected.items()
         if key in ('LANG', 'LANGUAGE') or key.startswith('LC_')))

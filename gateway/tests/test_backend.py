@@ -193,25 +193,25 @@ class AuthTests(DataTest):
 
     def test_default_admin_login_and_password_change_preserves_new_session(self):
         with patch.dict(os.environ, {}, clear=True):state.initialize_admin()
-        with self.request('/api/auth/login', {'password': 'admin'}) as response:
+        with self.request('/api/auth/login', {'password': 'root'}) as response:
             self.assertEqual(response.status, 200)
             old_cookie = response.headers['Set-Cookie'].split(';')[0]
         before = (self.dash / 'admin.json').read_bytes()
         for data, cookie, origin, status in (
-            ({'current_password': 'admin', 'password': 'x'}, None, None, 401),
-            ({'current_password': 'admin', 'password': 'x'}, old_cookie, 'https://elsewhere.invalid', 403),
+            ({'current_password': 'root', 'password': 'x'}, None, None, 401),
+            ({'current_password': 'root', 'password': 'x'}, old_cookie, 'https://elsewhere.invalid', 403),
             ({'current_password': 'wrong', 'password': 'x'}, old_cookie, None, 400),
-            ({'current_password': 'admin', 'password': ''}, old_cookie, None, 400),
-            ({'current_password': 'admin', 'password': 'x' * 257}, old_cookie, None, 400)):
+            ({'current_password': 'root', 'password': ''}, old_cookie, None, 400),
+            ({'current_password': 'root', 'password': 'x' * 257}, old_cookie, None, 400)):
             with self.request('/api/password', data, cookie=cookie, origin=origin) as response:
                 self.assertEqual(response.status, status)
             self.assertEqual((self.dash / 'admin.json').read_bytes(), before)
-        with self.request('/api/password', {'current_password': 'admin', 'password': 'x'}, cookie=old_cookie) as response:
+        with self.request('/api/password', {'current_password': 'root', 'password': 'x'}, cookie=old_cookie) as response:
             self.assertEqual(response.status, 200)
             new_cookie = response.headers['Set-Cookie'].split(';')[0]
         with self.request('/api/settings', cookie=old_cookie) as response:self.assertEqual(response.status, 401)
         with self.request('/api/settings', cookie=new_cookie) as response:self.assertEqual(response.status, 200)
-        with self.request('/api/auth/login', {'password': 'admin'}) as response:self.assertEqual(response.status, 401)
+        with self.request('/api/auth/login', {'password': 'root'}) as response:self.assertEqual(response.status, 401)
         with self.request('/api/auth/login', {'password': 'x'}) as response:self.assertEqual(response.status, 200)
         with patch.dict(os.environ, {'GATEWAY_ADMIN_PASSWORD': 'replacement'}):state.initialize_admin()
         self.assertTrue(state.password_valid('x', state.read(self.dash / 'admin.json')['password']))
@@ -795,7 +795,7 @@ class StateTests(DataTest):
         self.assertEqual((self.dash / 'admin.json').read_bytes(), original)
         (self.dash / 'admin.json').unlink()
         with patch.dict(os.environ, {}, clear=True):state.initialize_admin()
-        self.assertTrue(state.password_valid('admin', state.read(self.dash / 'admin.json')['password']))
+        self.assertTrue(state.password_valid('root', state.read(self.dash / 'admin.json')['password']))
         (self.dash / 'admin.json').unlink()
         with patch.dict(os.environ, {'GATEWAY_ADMIN_PASSWORD': ''}), self.assertRaises(ValueError):state.initialize_admin()
         self.assertFalse((self.dash / 'admin.json').exists())

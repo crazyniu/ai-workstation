@@ -23,7 +23,8 @@ def main():
     if vnc_auth not in ('password', 'none'):
         raise ValueError('VNC_AUTH must be password or none')
     vnc_password = secret('VNC_PASSWORD', vnc_auth == 'password')
-    root_password = secret('ROOT_PASSWORD')
+    native = os.environ.get('WORKSTATION_INSTALL_MODE') == 'native'
+    root_password = '' if native else secret('ROOT_PASSWORD')
     if vnc_password and not 1 <= len(vnc_password.encode('ascii')) <= 8:
         raise ValueError('VNC password must be 1–8 ASCII bytes for Mac Screen Sharing')
     # Apply region to system/PAM configuration and every supervised child.
@@ -44,10 +45,10 @@ def main():
     credentials = 'dev:' + dev_password + '\n'
     if root_password:
         credentials += 'root:' + root_password + '\n'
-    else:
+    elif not native:
         subprocess.run(['usermod', '--lock', 'root'], check=True)
     subprocess.run(['chpasswd'], input=credentials.encode(), check=True)
-    keys = Path('/etc/ssh/keys')
+    keys = Path('/etc/workstation/ssh-keys' if native else '/etc/ssh/keys')
     keys.mkdir(parents=True, exist_ok=True)
     keys.chmod(0o700)
     key = keys / 'ssh_host_ed25519_key'
@@ -56,7 +57,8 @@ def main():
     Path('/run/sshd').mkdir(parents=True, exist_ok=True)
     for name in ('DEV_PASSWORD', 'ROOT_PASSWORD', 'VNC_PASSWORD'):
         os.environ.pop(name, None)
-    os.execv('/usr/bin/supervisord', ['supervisord', '-n', '-c', '/etc/supervisor/supervisord.conf'])
+    config = '/etc/workstation/supervisord.conf' if native else '/etc/supervisor/supervisord.conf'
+    os.execv('/usr/bin/supervisord', ['supervisord', '-n', '-c', config])
 
 if __name__ == '__main__':
     try:

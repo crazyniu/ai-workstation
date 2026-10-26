@@ -1,7 +1,7 @@
 {
   "name": "Gateway",
-  "version": "dev.860231ebf9f6",
+  "version": "dev.19260de71187",
   "source": "https://github.com/crazyniu/ai-workstation",
-  "source_sha256": "860231ebf9f6ee7728aca0784b6d911204d832ede47603e69ea3a154d97ed5db",
+  "source_sha256": "19260de71187cd35d5d09db037da1a643b266d68e7c99efcf2badd072863c378",
   "source_files": 100
 }
