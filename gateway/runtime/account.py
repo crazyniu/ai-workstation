@@ -31,9 +31,6 @@ user = pwd.getpwnam(name)
 os.chown(home, user.pw_uid, user.pw_gid)
 home.chmod(0o700)
 native_root = os.environ.get('GATEWAY_INSTALL_MODE') == 'native' and name == 'root'
-if name == 'root' and not native_root:
-    # Keep the container administrator's HOME inside the existing backup scope.
-    subprocess.run(['usermod', '-d', str(home), 'root'], check=True)
 if native_root:
     # Preserve the administrator of the physical host, including its password.
     value['hash'] = next(line.split(':')[1] for line in Path('/etc/shadow').read_text().splitlines() if line.startswith('root:'))

@@ -8,7 +8,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends \
     ca-certificates curl gnupg python3 git gh locales tzdata supervisor openssh-server \
-    util-linux procps iproute2 tar unzip zstd gcc libc6-dev \
+    util-linux procps iproute2 tar unzip xz-utils zstd gcc libc6-dev \
     xfce4-session xfwm4 xfce4-panel xfdesktop4 xfce4-settings xfce4-terminal thunar dbus-x11 \
     tigervnc-standalone-server tigervnc-tools x11-utils x11-xserver-utils \
     arc-theme papirus-icon-theme fonts-inter fonts-noto-cjk fonts-dejavu-core \

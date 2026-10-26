@@ -3,7 +3,9 @@ FROM ${BASE_IMAGE}
 ARG TARGETARCH
 ARG TARGETVARIANT
 ENV DEBIAN_FRONTEND=noninteractive DATA_DIR=/data LANG=C.UTF-8
-RUN apt-get update && apt-get install -y --no-install-recommends nginx supervisor python3 python3-yaml ca-certificates iproute2 iptables dnsutils curl procps tini openssh-server git gh && rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled/default /etc/ssh/ssh_host_*
+RUN apt-get update && apt-get install -y --no-install-recommends nginx supervisor python3 python3-yaml ca-certificates iproute2 iptables dnsutils curl procps tini openssh-server git gh \
+    && sed -i '/^root:/s|:/root:|:/data/home:|' /etc/passwd \
+    && rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled/default /etc/ssh/ssh_host_*
 COPY app /opt/gateway/app
 COPY web /opt/gateway/web
 COPY runtime /opt/gateway/runtime
