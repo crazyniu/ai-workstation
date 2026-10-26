@@ -14,6 +14,18 @@ printf '%s\n' "$uv_output"
 }
 [[ $(/opt/workstation/unity-mcp/bin/python -c 'from importlib.metadata import version; print(version("mcpforunityserver"))') == "$UNITY_MCP_VERSION" ]]
 [[ $(node --version) == "v$NODE_VERSION" ]]
+# Exercise the desktop's SVG decoder: missing loaders leave icons and wallpaper
+# blank even though the desktop processes and network health probes pass.
+PATH="/usr/local/libexec/workstation-glycin:$PATH" python3 - <<'PY'
+import ctypes
+import ctypes.util
+decoder = ctypes.CDLL(ctypes.util.find_library('gdk_pixbuf-2.0'))
+decoder.gdk_pixbuf_new_from_file.argtypes = [ctypes.c_char_p, ctypes.c_void_p]
+decoder.gdk_pixbuf_new_from_file.restype = ctypes.c_void_p
+assert decoder.gdk_pixbuf_new_from_file(
+    b'/home/dev/.local/share/backgrounds/workstation-dark.svg', None), 'Desktop SVG decoding failed'
+print('PASS: desktop SVG wallpaper and icon decoder.')
+PY
 codex --version | grep -F "$CODEX_VERSION"
 claude --version | grep -F "$CLAUDE_VERSION"
 godot --version | grep -F "$GODOT_VERSION"

@@ -13,6 +13,11 @@ apt-get install -y --no-install-recommends \
     tigervnc-standalone-server tigervnc-tools x11-utils x11-xserver-utils \
     arc-theme papirus-icon-theme fonts-inter fonts-noto-cjk fonts-dejavu-core \
     libgl1-mesa-dri libgl1 libegl1 mesa-utils xdg-utils websockify openssl xclip
+# Debian/older Ubuntu provide the SVG pixbuf loader separately. Newer systems
+# may provide it through glycin; retain that system's loader in that case.
+if apt-cache show librsvg2-common >/dev/null 2>&1; then
+    apt-get install -y --no-install-recommends librsvg2-common
+fi
 localedef -i en_SG -f UTF-8 en_SG.UTF-8
 useradd --uid 1100 --user-group --create-home --shell /bin/bash dev
 if [[ ${WORKSTATION_INSTALL_MODE:-container} == container ]]; then
