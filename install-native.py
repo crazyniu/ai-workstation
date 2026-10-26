@@ -45,7 +45,7 @@ def preflight(role, config, system=Path('/')):
     if role in ('all', 'gateway'):
         paths += ['opt/gateway', 'var/lib/ai-gateway', 'run/gateway', 'run/tailscale',
                   'etc/systemd/system/ai-gateway.service']
-        ports += [8080, 2223, 7890, 7891, 1053, 5353, 8787, 9090, 3000, 41641]
+        ports += [8080, 2223, 7890, 7891, 1053, 1153, 8787, 9090, 3000, 41641]
         # An existing tailscaled owns this socket even when it has no listener.
         if shutil.which('tailscaled'):
             raise ValueError('Existing host Tailscale detected; retain it and use Docker isolation for this gateway.')
@@ -149,7 +149,7 @@ def install(role, config, arch, start):
             'DATA_DIR': '/var/lib/ai-gateway', 'GATEWAY_INSTALL_MODE': 'native',
             'GATEWAY_MODE': 'false', 'GATEWAY_TAILSCALE_TUN': 'userspace-networking',
             'GATEWAY_WEB_PORT': '8080', 'GATEWAY_SSH_PORT': '2223', 'GATEWAY_BIND_ADDRESS': '127.0.0.1',
-            'GATEWAY_CORE_DNS_LISTEN': '127.0.0.1:1053', 'GATEWAY_CORE_DNS_UPSTREAM': '127.0.0.1:1053'})
+            'GATEWAY_DNS_PORT': '1053', 'GATEWAY_CORE_DNS_LISTEN': '127.0.0.1:1153', 'GATEWAY_CORE_DNS_UPSTREAM': '127.0.0.1:1153'})
     if role in ('all', 'workstation'):
         dest = Path('/opt/workstation')
         dest.mkdir()

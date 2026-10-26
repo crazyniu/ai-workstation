@@ -16,8 +16,8 @@ services:
       - "${BIND_ADDRESS:-127.0.0.1}:${GATEWAY_WEB_PORT:-8080}:80"
       - "${BIND_ADDRESS:-127.0.0.1}:${GATEWAY_SSH_PORT:-2223}:22"
       - "${BIND_ADDRESS:-127.0.0.1}:${PROXY_PORT:-7890}:7890"
-      - "${BIND_ADDRESS:-127.0.0.1}:${DNS_PORT:-5353}:5353/tcp"
-      - "${BIND_ADDRESS:-127.0.0.1}:${DNS_PORT:-5353}:5353/udp"
+      - "${BIND_ADDRESS:-127.0.0.1}:${DNS_PORT:-1053}:5353/tcp"
+      - "${BIND_ADDRESS:-127.0.0.1}:${DNS_PORT:-1053}:5353/udp"
   workstation:
     image: ${WORKSTATION_IMAGE:-ghcr.io/crazyniu/ai-workstation:latest}
     hostname: ai-workstation

@@ -63,7 +63,7 @@ Windows 的 `.env` 继承当前用户目录的 ACL，应保存在私人目录中
 | 工作站网页桌面 | `https://127.0.0.1:6080/` | VNC 密码 `root` |
 | 工作站 VNC | `127.0.0.1:5901` | VNC 密码 `root` |
 | HTTP / HTTPS 显式代理 | `127.0.0.1:7890` | 从网关网页导入用户自己的代理配置 |
-| AdGuard DNS | `127.0.0.1:5353`，TCP / UDP | 非标准 DNS 端口；客户端须支持指定端口 |
+| AdGuard DNS | `127.0.0.1:1053`，TCP / UDP | 非标准 DNS 端口；客户端须支持指定端口 |
 
 网关容器 root HOME 使用 `/data/home`，包含在网关数据备份范围内。默认管理员凭据统一为 **`root / root`**，供首次初始化使用。桌面、Codex、Claude、浏览器仍由 `dev` 执行，其默认密码同为 `root`。在开放 LAN 或公网访问之前配置私有密码；示例默认不开放公网。已有部署的网关账户和密码保留，不因文档默认值变化自动重置。工作站密码环境变量属于每次启动输入，按原部署配置保留。
 
@@ -92,7 +92,7 @@ sudo python3 install-native.py --role all \
   --config /安全的私有路径/ai-workstation-native.env --apply
 ```
 
-原生网关：`/opt/gateway`、`/var/lib/ai-gateway`、`ai-gateway.service`；网页 8080、SSH 2223、代理 7890、AdGuard DNS 5353。原生工作站：`/opt/workstation`、`/etc/workstation`、`/home/dev`、`ai-workstation.service`；SSH 2222、VNC 5901、网页桌面 6080。私有初始化文件为 `/etc/ai-workstation-native.env`，权限 600。两个角色可装在同机，也可装在不同 Linux 主机上；分别设置访问端点和实际代理。
+原生网关：`/opt/gateway`、`/var/lib/ai-gateway`、`ai-gateway.service`；网页 8080、SSH 2223、代理 7890、AdGuard DNS 1053。原生工作站：`/opt/workstation`、`/etc/workstation`、`/home/dev`、`ai-workstation.service`；SSH 2222、VNC 5901、网页桌面 6080。私有初始化文件为 `/etc/ai-workstation-native.env`，权限 600。两个角色可装在同机，也可装在不同 Linux 主机上；分别设置访问端点和实际代理。
 
 **原生安装保留宿主已有 root 密码、主 SSH 配置、Nginx 配置及系统地区。** 网关管理用户名默认为 `root`，原生网关 SSH 使用宿主现有 root 密码（若宿主锁定 root，则保持锁定）；工作站专用 SSH 只开放 `dev`，默认 `dev / root`。宿主 root 管理继续通过原有 SSH 入口。原生安装不会把现有 Linux 服务器的 root 密码重置为 `root`。应用地区只应用于专用工作站用户和进程。
 

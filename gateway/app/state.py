@@ -129,7 +129,7 @@ def initialize():
     c=config();c['external-controller']='127.0.0.1:9090';c['external-ui']=str(ROOT/'components/current/panel');c.setdefault('secret',secrets.token_urlsafe(32));write_config(c)
     if not (ROOT/'adguard/AdGuardHome.yaml').exists():
         atomic(ROOT/'adguard/AdGuardHome.yaml',yaml.safe_dump({'http':{'address':'127.0.0.1:3000'},'users':[],'language':'zh-cn',
-          'dns':{'bind_hosts':[os.environ.get('GATEWAY_BIND_ADDRESS','0.0.0.0')],'port':5353,'upstream_dns':[os.environ.get('GATEWAY_CORE_DNS_UPSTREAM','127.0.0.1:53')],'fallback_dns':[],'bootstrap_dns':['1.1.1.1'],'ratelimit':100,'cache_size':4194304,'use_private_ptr_resolvers':False},
+          'dns':{'bind_hosts':[os.environ.get('GATEWAY_BIND_ADDRESS','0.0.0.0')],'port':int(os.environ.get('GATEWAY_DNS_PORT','5353')),'upstream_dns':[os.environ.get('GATEWAY_CORE_DNS_UPSTREAM','127.0.0.1:53')],'fallback_dns':[],'bootstrap_dns':['1.1.1.1'],'ratelimit':100,'cache_size':4194304,'use_private_ptr_resolvers':False},
           'filtering':{'protection_enabled':True,'filtering_enabled':True,'filters_update_interval':24},
           'filters':[{'enabled':True,'url':'https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt','name':'AdGuard DNS filter','id':1}],
           'querylog':{'enabled':True,'file_enabled':True,'interval':'168h'},'statistics':{'enabled':True,'interval':'24h'},'dhcp':{'enabled':False},'schema_version':34},sort_keys=False))
