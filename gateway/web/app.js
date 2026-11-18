@@ -127,7 +127,7 @@ function finishSettingsLoading(){settingsLoadingDone?.();settingsLoadingDone=nul
 async function api(path,options={}){
   let r;try{r=await fetch('/api'+path,{...options,headers:{'Content-Type':'application/json',...options.headers}});}catch{throw Error('无法连接网关，请检查网络后重试。');}
   let data;try{data=await r.json();}catch{throw Error('网关返回异常，请稍后重试。');}
-  if(!r.ok){if(r.status===401&&!path.startsWith('/auth'))await authState();throw Error(data.error||'请求失败，请稍后重试。');}return data;
+  if(!r.ok){if(r.status===401&&!path.startsWith('/auth'))await readAccess();throw Error(data.error||'请求失败，请稍后重试。');}return data;
 }
 const post=(path,data={})=>api(path,{method:'POST',body:JSON.stringify(data)});
 function element(tag,text,className){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(className)el.className=className;return el;}
@@ -182,9 +182,35 @@ function updateLoginHint(){
   $('#login-settings-status').textContent=$('#login-required').checked?'':'关闭密码登录后，能访问网关网页的设备均可管理网关。';
 }
 $('#login-required').addEventListener('change',updateLoginHint);
-async function authState(){const a=await api('/auth');initialized=a.initialized;$('#auth-title').textContent=initialized?'登录网关':'创建管理员';$('#auth-copy').textContent=initialized?'默认初始密码为 root。':'';$('#auth-submit').textContent=initialized?'登录':'创建管理员';$('#confirm-field').hidden=initialized;$('#password').autocomplete=initialized?'current-password':'new-password';if(!a.authenticated){cards=[];desktopPrefs={workstation_url:"https://192.168.1.251:6080/",order:[]};drawDesktop();destroySettings();$('#link-dialog').close();navigation++;currentPage=null;savedConfig=null;$('#home-domain').textContent='';if(!$('#auth-dialog').open)$('#auth-dialog').showModal();return false;}$('#auth-dialog').close();await Promise.all([loadCards(),loadStatus(),loadAppearance()]);loadWebRelease(false,true).catch(e=>toast(e.message,true));return true;}
+async function readAccess() {
+  const access = await api('/auth');
+  initialized = access.initialized;
+  if (access.authenticated) {
+    $('#auth-dialog').close();
+    return true;
+  }
+  $('#auth-title').textContent = initialized ? '登录网关' : '创建管理员';
+  $('#auth-copy').textContent = initialized ? '默认初始密码为 root。' : '';
+  $('#auth-submit').textContent = initialized ? '登录' : '创建管理员';
+  $('#confirm-field').hidden = initialized;
+  $('#password').autocomplete = initialized ? 'current-password' : 'new-password';
+  cards = [];
+  desktopPrefs = {workstation_url:'https://192.168.1.251:6080/', order:[]};
+  drawDesktop();
+  destroySettings();
+  $('#link-dialog').close();
+  $('#home-domain').textContent = '';
+  if (!$('#auth-dialog').open) $('#auth-dialog').showModal();
+  return false;
+}
+async function authState() {
+  if (!await readAccess()) return false;
+  await Promise.all([loadCards(), loadStatus(), loadAppearance()]);
+  loadWebRelease(false, true).catch(e => toast(e.message, true));
+  return true;
+}
 async function openSettings(page='overview',{force=false}={}){
-  if(page==='proxy')return openProxyWindow(force);
+  if(page==='proxy'||page==='ranges')return openProxyWindow(force, page==='ranges');
   if(!force&&$('#settings-dialog').open&&currentPage===page){showSettingsWindow();return;}
   if(!force&&!await discardChanges())return;
   const previousPage=currentPage;
@@ -290,11 +316,10 @@ $('#config-file').onchange=async()=>{
 };
 $('#save-config').onclick=()=>guard(async()=>{
   const request=proxyGeneration;
-  if(pendingUpload){
-    const draft=await post('/proxy/draft',{content:editor.getValue(),upload:true});
-    if(request!==proxyGeneration)return;
-    editor.setValue(draft.content);pendingUpload=false;
-  }
+  const draft=await post('/proxy/draft',{content:editor.getValue(),upload:pendingUpload});
+  if(request!==proxyGeneration)return;
+  if(draft.content!==undefined)editor.setValue(draft.content);
+  pendingUpload=false;
   const result=await post('/proxy/config',{filename:'config.yaml',content:editor.getValue(),revision,edit_network:true});
   const saved=await api('/proxy/config');
   if(request!==proxyGeneration)return;
@@ -441,4 +466,4 @@ function setupDesktop(){
   window.addEventListener('resize',hideContext);
 }
 
-setupToast();setupDesktop();drawDesktop();withLoading($('.desktop-workspace'),async()=>{await loadCatalogs();await authState();}).catch(e=>{if(!$('#auth-dialog').open)$('#auth-dialog').showModal();toast(e.message,true);});
+setupToast();setupDesktop();drawDesktop();withLoading($('.desktop-workspace'),async()=>{await loadCatalogs();await authState();}).catch(e=>toast(e.message,true));

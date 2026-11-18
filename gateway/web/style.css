@@ -608,3 +608,22 @@ dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
   .device-bindings :is(th,td) { padding: 7px 2px; }
   .device-bindings .text-button { padding-inline: 3px; }
 }
+
+#proxy-window.range-workspace .proxy-nav,
+#proxy-window.range-workspace :is(#upload-config,#download-config,.proxy-toolbar a) { display: none; }
+#proxy-window.range-workspace .proxy-layout { grid-template-columns: minmax(0,1fr); }
+.rule-advanced { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 10px; }
+.rule-advanced summary { cursor: pointer; color: var(--muted); }
+#proxy-entry-fields .rule-advanced[open] label { margin-top: 10px; }
+.routing-rule-table { width: 100%; font-size: 14px; border-collapse: collapse; }
+.routing-rule-table :is(th,td) { text-align: start; padding: 9px 6px; border-bottom: 1px solid var(--line); }
+.routing-rule-table th { color: var(--muted); font-weight: 500; font-size: 12px; }
+.routing-rule-table td:first-child { font-variant-numeric: tabular-nums; color: var(--muted); }
+.routing-rule-table td:nth-child(3) { overflow-wrap: anywhere; }
+.routing-rule-table td:nth-child(4) { font-weight: 550; overflow-wrap: anywhere; }
+.routing-rule-table :is(th,td):last-child { text-align: end; }
+@media (max-width: 620px) {
+  .routing-rule-table { font-size: 12px; }
+  .routing-rule-table :is(th,td) { padding: 8px 3px; }
+  .routing-rule-table td .text-button { padding-inline: 2px; }
+}
