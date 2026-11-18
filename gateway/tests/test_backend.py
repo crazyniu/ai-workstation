@@ -316,7 +316,7 @@ class AuthTests(DataTest):
             with self.request('/api/cards', {'name': name, 'url': 'http://192.0.2.249/', 'icon': 'server'}, cookie=cookie) as response:
                 self.assertEqual(response.status, 201)
         cards = legacy.read_cards()
-        ids = [cards[1]['id'], 'builtin:workstation', cards[0]['id'], 'builtin:settings', 'builtin:clash', 'builtin:adguard', 'builtin:tailscale']
+        ids = [cards[1]['id'], 'builtin:workstation', cards[0]['id'], 'builtin:settings', 'builtin:clash', 'builtin:adguard', 'builtin:files', 'builtin:tailscale']
         with self.request('/api/cards/order', {'ids': ids}, cookie=cookie) as response:
             self.assertEqual(response.status, 200)
         with self.request('/api/cards', cookie=cookie) as response:
@@ -338,7 +338,7 @@ class AuthTests(DataTest):
         refreshed = server.desktop_settings(legacy.read_cards())['order']
         self.assertNotIn(cards[1]['id'], refreshed)
         self.assertEqual(refreshed[-1], 'new-card')
-        self.assertEqual(len(refreshed), 7)
+        self.assertEqual(len(refreshed), len(ids))
 
     def test_workstation_entry_requires_login_and_persists_in_backup(self):
         with self.request('/api/settings/workstation', {'url': 'http://192.0.2.20:6080/'}) as response:

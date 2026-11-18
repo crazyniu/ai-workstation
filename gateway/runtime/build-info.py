@@ -12,14 +12,13 @@ from pathlib import Path
 
 def write_build_info(root):
     web = root / 'web'
-    index = web / 'index.html'
-    html = index.read_text()
     def asset_url(match):
         attr, name = match.groups()
         fingerprint = hashlib.sha256((web / name).read_bytes()).hexdigest()[:12]
         return f'{attr}="/{name}?v={fingerprint}"'
-    html = re.sub(r'(src|href)="/([\w/.-]+\.(?:js|css))(?:\?v=[\w.-]+)?"', asset_url, html)
-    index.write_text(html)
+    for index in web.rglob('index.html'):
+        html = re.sub(r'(src|href)="/([\w/.-]+\.(?:js|css))(?:\?v=[\w.-]+)?"', asset_url, index.read_text())
+        index.write_text(html)
     files = [root / 'components.lock.json']
     for directory, pattern in (('app', '*.py'), ('runtime', '*'), ('web', '**/*')):
         files.extend(path for path in (root / directory).glob(pattern)

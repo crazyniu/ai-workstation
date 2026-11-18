@@ -14,7 +14,7 @@ MAX_BODY=36*1024*1024
 JOBS={}
 FAILURES={}
 JOB_LOCK=threading.Lock()
-DESKTOP_BUILTINS=('builtin:clash','builtin:adguard','builtin:tailscale','builtin:workstation','builtin:settings')
+DESKTOP_BUILTINS=('builtin:clash','builtin:adguard','builtin:tailscale','builtin:workstation','builtin:files','builtin:settings')
 
 def default_workstation_url():
     configured=os.environ.get('GATEWAY_WORKSTATION_URL')
@@ -37,7 +37,7 @@ def validate_desktop(value):
     except ValueError:valid=False;port=None
     if not valid or port is not None and not 1<=port<=65535:raise ValueError('请输入有效的工作站 HTTP(S) 地址')
     order=value.get('order',[])
-    if not isinstance(order,list) or len(order)>1005 or any(not isinstance(i,str) or not i or len(i)>100 for i in order) or len(set(order))!=len(order):
+    if not isinstance(order,list) or len(order)>1000+len(DESKTOP_BUILTINS) or any(not isinstance(i,str) or not i or len(i)>100 for i in order) or len(set(order))!=len(order):
         raise ValueError('桌面排序无效')
     return {'workstation_url':url,'order':order}
 
@@ -45,6 +45,8 @@ def desktop_settings(cards):
     value=validate_desktop(read(DASH/'desktop.json',{}))
     ids=[*DESKTOP_BUILTINS,*(c['id'] for c in cards)]
     value['order']=[i for i in value['order'] if i in ids]
+    if 'builtin:workstation' in value['order'] and 'builtin:files' not in value['order']:
+        value['order'].insert(value['order'].index('builtin:workstation')+1, 'builtin:files')
     value['order'] += [i for i in ids if i not in value['order']]
     return value
 

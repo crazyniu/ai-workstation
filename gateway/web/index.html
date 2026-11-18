@@ -10,7 +10,7 @@
   <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180">
   <link rel="stylesheet" href="/vendor/winbox/winbox.min.css?v=9d6b72dc5f03">
-  <link rel="stylesheet" href="/style.css?v=d5326fecb2af">
+  <link rel="stylesheet" href="/style.css?v=2579b57eb9a8">
   <link rel="stylesheet" href="/loading.css?v=e549cd70c0dd">
   <link rel="stylesheet" href="/favicon.css?v=941afb91f398">
 </head>
@@ -29,7 +29,7 @@
   </header>
   <main class="desktop-workspace">
     <section class="desktop" id="desktop" aria-label="桌面应用"></section>
-    <footer class="desktop-footer"><span id="home-domain"></span><a class="transfer-entry" href="/transfer/"><img src="/icons/files.svg" width="24" height="24" alt="">局域网互传</a></footer>
+    <footer class="desktop-footer"><span id="home-domain"></span></footer>
   </main>
 
   <dialog id="auth-dialog" aria-labelledby="auth-title">
@@ -236,16 +236,12 @@
   </dialog>
   <dialog id="confirm-dialog" class="confirm-window" aria-labelledby="confirm-title"><div class="confirm-content"><h2 id="confirm-title">确认操作</h2><p id="confirm-copy"></p></div><div class="window-actions"><button id="confirm-cancel">取消</button><button class="primary" id="confirm-accept">确定</button></div></dialog>
   <div id="desktop-context-menu" class="context-menu" role="menu" aria-label="桌面菜单" hidden></div>
-  <div id="desktop-toast" class="desktop-toast" popover="manual" hidden>
-    <svg class="toast-icon" viewBox="0 0 24 24" aria-hidden="true"><path class="toast-success" d="m5 12 4 4L19 6"/><g class="toast-error"><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 4h.01"/></g></svg>
-    <p id="toast-message" class="toast-message" role="status" aria-live="polite" aria-atomic="true"></p>
-    <button type="button" id="toast-close" class="toast-close" aria-label="关闭提示"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button>
-  </div>
+  <script src="/toast.js?v=213fd4fb47a6"></script>
   <script src="/assets/config-editor.bundle.js?v=e91ff9456f76"></script>
   <script src="/vendor/winbox/winbox.min.js?v=cd0b4efd9450"></script>
   <script src="/proxy-rules.js?v=6d945790a882"></script>
   <script src="/proxy-editor.js?v=af6e53ee6fce"></script>
   <script src="/build-info.js?v=98bb99b2069d"></script>
-  <script src="/app.js?v=1ad97f75f61b"></script>
+  <script src="/app.js?v=394170ffa200"></script>
 </body>
 </html>

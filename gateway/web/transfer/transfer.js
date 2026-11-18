@@ -7,9 +7,8 @@ const current = () => new URLSearchParams(location.search).get('path') || '';
 const pathQuery = path => '?' + new URLSearchParams({path});
 const endpoint = (kind, path) => base + kind + pathQuery(path);
 
-function status(message, error = false) {
+function status(message) {
   $('status').textContent = message;
-  $('status').classList.toggle('error', error);
 }
 
 async function request(url, options) {
@@ -62,7 +61,8 @@ async function run(action) {
     status('');
     await action();
   } catch (error) {
-    status(error.message, true);
+    status('');
+    toast(error.message, true);
   } finally {
     area.inert = false;
     area.removeAttribute('aria-busy');
@@ -76,6 +76,8 @@ async function refresh() {
   const {entries} = await request(endpoint('list', parent));
   $('entries').replaceChildren();
   $('empty').hidden = entries.length !== 0;
+  $('columns').hidden = entries.length === 0;
+  $('count').textContent = entries.length + ' 项';
   for (const item of entries) {
     const path = join(parent, item.name);
     const folder = item.type === 'folder';
@@ -83,27 +85,32 @@ async function refresh() {
     const row = node('li', '', 'entry');
     const name = link('', href, 'name');
     const img = node('img');
-    img.src = folder ? '/icons/folder.svg' : '/icons/files.svg';
-    img.width = img.height = 26;
+    img.src = folder ? '/icons/folder.svg' : './document.svg';
+    img.width = img.height = 32;
     img.alt = '';
     name.append(img, node('span', item.name));
+    const actions = node('div', '', 'row-actions');
     row.append(name);
     if (!folder) {
       name.download = item.name;
-      const download = link('下载', href, 'action');
+      const download = link('下载', href, 'text-action');
+      download.setAttribute('aria-label', '下载' + item.name);
       download.download = item.name;
-      row.append(node('span', readableSize(item.size), 'size'), download);
+      row.append(node('span', readableSize(item.size), 'size'));
+      actions.append(download);
     }
-    const remove = node('button', '删除');
+    const remove = node('button', '删除', 'text-action destructive');
     remove.setAttribute('aria-label', '删除' + item.name);
     remove.onclick = () => {
       const message = folder ? '删除文件夹“' + item.name + '”及其中所有内容？' : '删除文件“' + item.name + '”？';
       if (confirm(message)) run(async () => {
         await request(endpoint(item.type, path), {method: 'DELETE'});
+        toast('已删除“' + item.name + '”');
         await refresh();
       });
     };
-    row.append(remove);
+    actions.append(remove);
+    row.append(actions);
     $('entries').append(row);
   }
 }
@@ -164,8 +171,8 @@ $('clear').onclick = () => {
   run(async () => {
     await request(base + 'all', {method: 'DELETE'});
     history.replaceState(null, '', './');
+    toast('已清空全部文件和文件夹');
     await refresh();
-    status('已清空全部文件和文件夹');
   });
 };
 
@@ -176,18 +183,24 @@ const promptReady = fetch('./ai.txt').then(async res => {
 }).catch(() => {});
 $('copy').onclick = async () => {
   if (!promptText) await promptReady;
-  if (!promptText) { status('无法读取 AI 提示词，请刷新页面', true); return; }
+  if (!promptText) { toast('无法读取 AI 提示词，请刷新页面', true); return; }
   if (navigator.clipboard) {
-    try { await navigator.clipboard.writeText(promptText); status('已复制 AI 提示词'); return; }
+    try { await navigator.clipboard.writeText(promptText); toast('已复制 AI 提示词'); return; }
     catch { /* Plain HTTP and browser permissions may require manual selection. */ }
   }
   $('prompt').value = promptText;
   $('manual').showModal();
   $('prompt').focus();
   $('prompt').select();
-  if (document.execCommand('copy')) {
+  $('prompt').oncopy = null;
+  let copied = false;
+  try { copied = document.execCommand('copy'); } catch { /* Manual selection remains available. */ }
+  if (copied) {
     $('manual').close();
-    status('已复制 AI 提示词');
+    toast('已复制 AI 提示词');
+  } else {
+    toast('自动复制未成功，请复制已选文字', true);
+    $('prompt').oncopy = () => toast('已复制所选文字');
   }
 };
 run(refresh);
