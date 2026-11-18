@@ -6,9 +6,9 @@
   <title>局域网互传 · Gateway</title>
   <link rel="icon" href="/favicon.svg">
   <link rel="alternate" type="text/plain" title="AI 使用说明" href="./ai.txt">
-  <link rel="stylesheet" href="/style.css">
-  <link rel="stylesheet" href="./transfer.css">
-  <script src="./transfer.js" defer></script>
+  <link rel="stylesheet" href="/style.css?v=2579b57eb9a8">
+  <link rel="stylesheet" href="/transfer/transfer.css?v=76707f3edc0e">
+  <script src="/transfer/transfer.js?v=5a81481929e8" defer></script>
 </head>
 <body>
   <main class="transfer">
@@ -16,17 +16,23 @@
       <div class="title"><img src="/icons/files.svg" alt="" width="36" height="36"><h1>局域网互传</h1></div>
       <button id="copy">复制 AI 提示词</button>
     </header>
-    <div class="toolbar">
-      <button id="upload" class="primary">上传文件</button>
-      <input id="files" type="file" multiple hidden>
-      <button id="new-folder">新建文件夹</button>
-      <button id="refresh">刷新</button>
-      <button id="clear" class="danger">清空全部</button>
-    </div>
-    <nav id="crumbs" aria-label="当前文件夹"></nav>
-    <p id="status" role="status"></p>
-    <ul id="entries" aria-label="文件列表"></ul>
-    <p id="empty" hidden>文件夹为空</p>
+    <section class="library" aria-label="共享文件">
+      <div class="toolbar">
+        <button id="upload" class="primary">上传文件</button>
+        <input id="files" type="file" multiple hidden>
+        <button id="new-folder">新建文件夹</button>
+        <button id="refresh" class="text-action">刷新</button>
+        <button id="clear" class="text-action destructive">清空全部</button>
+      </div>
+      <div class="location">
+        <nav id="crumbs" aria-label="当前文件夹"></nav>
+        <span id="count"></span>
+      </div>
+      <p id="status" role="status"></p>
+      <div class="columns" id="columns" aria-hidden="true" hidden><span>名称</span><span>大小</span><span>操作</span></div>
+      <ul id="entries" aria-label="文件列表"></ul>
+      <p id="empty" hidden>文件夹为空</p>
+    </section>
   </main>
   <dialog id="folder-dialog" aria-labelledby="folder-title">
     <form id="folder-form">

@@ -146,7 +146,7 @@ async function guard(work,target=null){
 }
 function openLinkEditor(card=null){cancelFaviconPreview();editing=card?.id||null;$('#link-title').textContent=card?'编辑链接':'添加链接';$('#link-name').value=card?.name||'';$('#link-url').value=card?.url||'';$('#link-icon').value=card?(card.icon||'link'):'auto';$('#icon-search').value='';drawIconChoices();$('#link-newtab').checked=card?.open_in_new_tab??true;$('#link-dialog').showModal();previewFavicon(0);}
 function desktopItems(){
-  const builtins=[{name:'Clash',icon:'clash',page:'proxy'},{name:'AdGuard Home',icon:'adguard',url:'/adguard/'},{name:'Tailscale',icon:'tailscale',page:'tailscale'},{name:'工作站',icon:'workstation',url:desktopPrefs.workstation_url},{name:'设置',icon:'settings',page:'overview'}].map(item=>({...item,id:'builtin:'+item.icon,fixed:true}));
+  const builtins=[{name:'Clash',icon:'clash',page:'proxy'},{name:'AdGuard Home',icon:'adguard',url:'/adguard/'},{name:'Tailscale',icon:'tailscale',page:'tailscale'},{name:'工作站',icon:'workstation',url:desktopPrefs.workstation_url},{name:'局域网互传',icon:'files',url:'/transfer/'},{name:'设置',icon:'settings',page:'overview'}].map(item=>({...item,id:'builtin:'+item.icon,fixed:true}));
   const items=[...builtins,...cards],lookup=new Map(items.map(item=>[item.id,item]));
   return [...new Set([...desktopPrefs.order,...lookup.keys()])].map(id=>lookup.get(id)).filter(Boolean);
 }
@@ -378,44 +378,6 @@ function askConfirm(copy,title='确认操作'){
     dialog.showModal();$('#confirm-cancel').focus();
   });
 }
-let toastTimer=null,toastRemaining=0,toastStarted=0;
-function dismissToast(){
-  clearTimeout(toastTimer);toastTimer=null;
-  const el=$('#desktop-toast');
-  if(el.matches(':popover-open'))el.hidePopover();
-  el.hidden=true;
-}
-function syncToastLayer(){
-  const el=$('#desktop-toast');if(el.hidden)return;
-  const parent=document.activeElement?.closest('dialog:modal')||$$('dialog:modal').at(-1)||document.body;
-  if(el.parentElement!==parent){if(el.matches(':popover-open'))el.hidePopover();parent.append(el);}
-  if(el.showPopover&&!el.matches(':popover-open'))el.showPopover();
-}
-function resumeToast(){
-  clearTimeout(toastTimer);toastTimer=null;
-  const el=$('#desktop-toast');
-  if(el.hidden||el.matches(':hover')||el.contains(document.activeElement))return;
-  toastStarted=performance.now();toastTimer=setTimeout(dismissToast,toastRemaining);
-}
-function pauseToast(){
-  if(toastTimer===null)return;
-  clearTimeout(toastTimer);toastTimer=null;
-  toastRemaining=Math.max(0,toastRemaining-(performance.now()-toastStarted));
-}
-function toast(message,error=false){
-  if(!message)return;
-  const el=$('#desktop-toast'),text=$('#toast-message');
-  el.classList.toggle('error',error);text.setAttribute('role',error?'alert':'status');text.setAttribute('aria-live',error?'assertive':'polite');
-  el.hidden=false;syncToastLayer();text.textContent=message;
-  toastRemaining=Math.max(error?8000:4200,Math.min(12000,message.length*160));resumeToast();
-}
-function setupToast(){
-  const el=$('#desktop-toast');$('#toast-close').onclick=dismissToast;
-  el.addEventListener('mouseenter',pauseToast);el.addEventListener('mouseleave',resumeToast);
-  el.addEventListener('focusin',pauseToast);el.addEventListener('focusout',()=>queueMicrotask(resumeToast));
-  el.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();dismissToast();}});
-  new MutationObserver(records=>{if(records.some(record=>record.target instanceof HTMLDialogElement))syncToastLayer();}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['open']});
-}
 async function deleteCard(card){if(!await askConfirm('删除链接“'+card.name+'”？此操作仅移除桌面入口。','删除桌面链接'))return;await api('/cards/'+card.id,{method:'DELETE'});await loadCards();toast('链接已删除');}
 function hideContext(){const menu=$('#desktop-context-menu');if(menu)menu.hidden=true;}
 function showContext(x,y,item=null,origin=null){
@@ -480,4 +442,4 @@ function setupDesktop(){
   window.addEventListener('resize',hideContext);
 }
 
-setupToast();setupDesktop();drawDesktop();withLoading($('.desktop-workspace'),async()=>{await loadCatalogs();await authState();}).catch(e=>toast(e.message,true));
+setupDesktop();drawDesktop();withLoading($('.desktop-workspace'),async()=>{await loadCatalogs();await authState();}).catch(e=>toast(e.message,true));
