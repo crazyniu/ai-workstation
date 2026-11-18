@@ -176,12 +176,11 @@ $('clear').onclick = () => {
   });
 };
 
-const promptText = JSON.stringify({mcpServers: {'lan-transfer': {
-  type: 'http', url: location.origin + base + 'mcp'
-}}});
+const promptText = `请连接下面的局域网互传 MCP（Streamable HTTP，无需认证）。先调用 tools/list，再按我的要求上传、下载或管理文件和文件夹。
+${location.origin}${base}mcp`;
 $('copy').onclick = async () => {
   if (navigator.clipboard) {
-    try { await navigator.clipboard.writeText(promptText); toast('已复制 MCP 配置'); return; }
+    try { await navigator.clipboard.writeText(promptText); toast('已复制 AI 提示词'); return; }
     catch { /* Plain HTTP and browser permissions may require manual selection. */ }
   }
   $('prompt').value = promptText;
@@ -193,7 +192,7 @@ $('copy').onclick = async () => {
   try { copied = document.execCommand('copy'); } catch { /* Manual selection remains available. */ }
   if (copied) {
     $('manual').close();
-    toast('已复制 MCP 配置');
+    toast('已复制 AI 提示词');
   } else {
     toast('自动复制未成功，请复制已选文字', true);
     $('prompt').oncopy = () => toast('已复制所选文字');

@@ -70,7 +70,7 @@ h2 { font-size: 19px; margin-bottom: 18px; }
 .transfer .text-action:hover, .transfer .text-action:focus-visible { text-decoration: underline; }
 #status:not(:empty) { margin: 0 var(--inset) 12px; color: var(--muted); }
 #status:empty { margin: 0; }
-#empty { color: var(--muted); margin: 0; padding: 42px var(--inset) 56px; text-align: center; }
+#empty { color: var(--muted); max-width: none; margin: 0; padding: 48px var(--inset); text-align: center; }
 dialog form { padding: 24px; min-width: min(350px, 80vw); }
 .dialog-actions { justify-content: flex-end; gap: 8px; margin-top: 18px; }
 #prompt { width: min(640px, 75vw); height: 48vh; }
