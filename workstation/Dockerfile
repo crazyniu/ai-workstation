@@ -1,4 +1,4 @@
-ARG NODE_BASE=node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
+ARG NODE_BASE=node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54
 ARG WORKSTATION_BASE=debian:trixie-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 # Optional public artifact cache supplied with --build-context tool-download-cache=PATH.
 # Empty by default; downloads always retain the versions.env SHA256 checks.

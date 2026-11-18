@@ -717,6 +717,23 @@ class UpgradeTests(DataTest):
         self.link.symlink_to(self.prior)
         self.manifest = {'component': 'panel', 'version': 'v2'}
 
+    def test_all_components_are_discovered_and_accepted_by_update_api(self):
+        components = ('mihomo', 'adguard', 'tailscale', 'panel')
+        with patch.object(updates, 'discover', side_effect=lambda c: {'version':'v2'}):
+            self.assertEqual(set(updates.check()), set(components))
+        for component in components:
+            handler = server.Handler.__new__(server.Handler)
+            handler.path = '/api/updates/install'
+            handler.same_origin = lambda: True
+            handler.authorized = lambda: True
+            handler.body = lambda: {'component':component}
+            handler.reply = Mock()
+            with patch.object(server, 'submit', return_value={'id':'fixture'}) as submit, patch.object(updates, 'upgrade') as upgrade:
+                handler.post()
+                submit.call_args.args[1]()
+                upgrade.assert_called_once_with(component)
+                handler.reply.assert_called_once_with(202, {'id':'fixture'})
+
     def install(self, manifest, dest):
         dest.mkdir(parents=True)
         (dest / 'index.html').write_text('new')
