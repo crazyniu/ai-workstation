@@ -253,6 +253,12 @@ python3 scripts/export-source.py ./dist --include-seed
 组件来源及许可证见 [NOTICE](NOTICE)，对应版本许可证原文在 `licenses/`，随镜像放在 `/opt/gateway/licenses`。公开镜像由 [GitHub Actions](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml) 构建并验证，发布来源以提交标签和镜像摘要为准。
 
 
+### Clash 网段出口
+
+在独立 Clash 编辑器的 **网段出口** 选择 AI 默认出口，也可给来源范围指定固定出口并添加备注。范围支持起止地址、CIDR 和单个 IP。一个范围可由多个 CIDR 组成，编辑器按一条绑定展示。重叠时按配置顺序首次命中，新绑定放在现有绑定前面。网段内保留子规则已有的直连和拒绝例外，剩余流量经指定出口。网段外沿用普通分流规则，只有指向 Proxy 的流量才使用 AI 默认出口。
+
+**Proxy 出口池** 管理可绑定的出口。**策略分组** 中可分别开关其他业务分组，关闭后其分流规则改走当前 MATCH 目标，重新开启会恢复原目标。Proxy 与 Proxy-Reply 是固定分组。修改草稿后选择 **保存并应用**。
+
 ### 网关 Web 在线升级
 
 从控制面板打开 **服务升级 → 网关 Web**。页面读取本项目的稳定 GitHub Release，展示当前版本、最新版本和发布说明。确认后下载并核对 SHA-256，在当前容器内切换管理网页和 Python API。网络服务、私有配置和桌面会话继续运行。管理 API 启动失败会切回上一版。

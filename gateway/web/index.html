@@ -198,16 +198,20 @@
         <input id="config-file" type="file" accept=".yaml,.yml" hidden>
       </div>
       <div class="proxy-layout"><nav class="proxy-nav" aria-label="配置分类">
-        <button type="button" data-proxy-tab="exits" aria-pressed="false">代理节点</button>
+        <button type="button" data-proxy-tab="bindings" aria-pressed="false">网段出口</button>
+        <button type="button" data-proxy-tab="exits" aria-pressed="false">Proxy 出口池</button>
+        <button type="button" data-proxy-tab="groups" aria-pressed="false">策略分组</button>
         <button type="button" data-proxy-tab="providers" aria-pressed="false">节点订阅</button>
-        <button type="button" data-proxy-tab="groups" aria-pressed="false">策略组</button>
-        <button type="button" data-proxy-tab="bindings" aria-pressed="false">来源 IP 绑定</button>
         <button type="button" data-proxy-tab="rules" aria-pressed="false">分流规则</button>
         <button type="button" data-proxy-tab="direct" aria-pressed="false">直连地址</button>
         <button type="button" data-proxy-tab="options" aria-pressed="false">全部配置项</button>
         <button type="button" id="config-code" aria-pressed="false">YAML 源码</button>
       </nav><div class="proxy-canvas"><div id="proxy-fields">
             <section id="proxy-browser">
+              <div id="routing-defaults" class="routing-defaults">
+                <label>AI 默认出口<select id="ai-default-exit"></select></label>
+                <div><span>默认分组</span><strong id="general-default-policy"></strong></div>
+              </div>
               <div class="proxy-browser-heading"><div><h3 id="proxy-browser-title" tabindex="-1"></h3><span id="proxy-count" class="muted" role="status"></span></div><button id="add-proxy-item"></button></div>
               <button id="proxy-rule-mode" class="text-button" hidden></button>
               <nav id="proxy-path" aria-label="配置路径" hidden></nav>

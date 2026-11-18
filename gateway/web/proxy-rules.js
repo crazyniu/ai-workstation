@@ -294,9 +294,24 @@ function openOptionEntry(parent, key, existing) {
 }
 
 function renderProxyBrowser() {
-  const collections = {exits: ['代理节点', 'exit'], providers: ['节点订阅', 'provider'],
-                       groups: ['策略组', 'group'], bindings: ['来源 IP 绑定', 'binding']};
+  const collections = {exits: ['Proxy 出口池', 'exit'], providers: ['节点订阅', 'provider'],
+                       groups: ['策略组', 'group'], bindings: ['网段出口', 'binding']};
   const collection = collections[proxyTab];
+  const config = proxyModel.options;
+  const pool = (config['proxy-groups'] || []).find(g => g.name === 'Proxy');
+  const defaults = $('#routing-defaults'), selector = $('#ai-default-exit');
+  defaults.hidden = !['bindings','exits','groups'].includes(proxyTab);
+  if (!defaults.hidden) {
+    const dynamic = pool?.use?.length || pool?.['include-all'] || pool?.['include-all-providers'] || pool?.['include-all-proxies'];
+    const members = [...new Set([...(pool?.proxies || []), ...(dynamic ? liveSelector.all || [] : [])])];
+    const selected = pool?.['default-selected'] || liveSelector.now || members[0];
+    selector.replaceChildren(...members.map(n => new Option(n, n)));
+    selector.value = selected || '';
+    selector.disabled = members.length === 0 || pool?.type !== 'select';
+    selector.dataset.stateDisabled = String(selector.disabled);
+    $('#general-default-policy').textContent = proxyModel.defaultPolicy || '未设置 MATCH';
+  }
+
   const advanced = proxyTab === 'options', direct = proxyTab === 'direct';
   const search = $('#proxy-search').value.trim().toLowerCase();
   const results = $('#proxy-results'), add = $('#add-proxy-item'), select = $('#proxy-scope');
@@ -315,8 +330,11 @@ function renderProxyBrowser() {
   }
   if (collection) {
     const [title, kind] = collection;
-    add.textContent = '添加' + title;
-    add.onclick = () => openProxyEntry(kind);
+    add.textContent = {binding:'添加网段',exit:'添加出口',group:'添加分组',provider:'添加订阅'}[kind];
+    add.onclick = () => {
+      if (kind === 'binding' && !proxyModel.deviceExits.length) { toast('请先在 Proxy 出口池添加出口', true); return; }
+      openProxyEntry(kind);
+    };
     function advancedEntry(path) {
       proxyTab = 'options';
       resetProxyBrowser();
@@ -327,14 +345,22 @@ function renderProxyBrowser() {
       row(title, detail, () => {
         const actions = [button('编辑', () => editable ? openProxyEntry(kind, item) : advancedEntry(path), 'text-button')];
         if (editable && path) actions.push(button('全部字段', () => advancedEntry(path), 'text-button'));
+        if (kind === 'group' && !['Proxy','Proxy-Reply'].includes(item.name)) {
+          const enabled = !proxyModel.disabledGroups.includes(item.name);
+          const toggle = button(enabled ? '已启用' : '已关闭', () => guard(() =>
+            updateProxyDraft({kind:'toggle-group', name:item.name, enabled:!enabled})), 'group-switch');
+          toggle.setAttribute('role','switch');
+          toggle.setAttribute('aria-label',item.name);
+          toggle.setAttribute('aria-checked',String(enabled));
+          actions.unshift(toggle);
+        }
         if (kind === 'binding') actions.push(button('解绑', () => guard(() =>
           updateProxyDraft({kind, id: item.id, remove: true})), 'text-button'));
         return actions;
       });
     }
-    const config = proxyModel.options;
     if (kind === 'exit') (config.proxies || []).forEach((item, i) =>
-      entry(item, item.name, [item.type?.toUpperCase(), item.server, item.port].filter(Boolean).join(' · '),
+      proxyModel.deviceExits.includes(item.name) && entry(item, item.name, [item.type?.toUpperCase(), item.server, item.port].filter(Boolean).join(' · '),
             ['proxies', i], ['http', 'socks5'].includes(item.type)));
     if (kind === 'provider') for (const [name, item] of Object.entries(config['proxy-providers'] || {})) {
       let detail = item.type;
@@ -344,7 +370,7 @@ function renderProxyBrowser() {
     if (kind === 'group') (config['proxy-groups'] || []).forEach((item, i) =>
       entry(item, item.name, [item.type, (item.proxies || []).length + ' 个成员', (item.use || []).length + ' 个订阅'].join(' · '),
             ['proxy-groups', i]));
-    if (kind === 'binding') for (const item of proxyModel.bindings) entry(item, item.ip, item.target);
+    if (kind === 'binding') for (const item of proxyModel.bindings) entry(item, item.ip, [item.note, item.target].filter(Boolean).join(' · '));
   } else if (advanced) {
     let parent = proxyModel.options;
     const valid = [];
@@ -420,8 +446,20 @@ function renderProxyBrowser() {
   resultPage = Math.min(resultPage, pages - 1);
   $('#proxy-count').textContent = rows.length + ' 项';
   results.replaceChildren();
-  for (const item of rows.slice(resultPage * perPage, (resultPage + 1) * perPage)) {
-    proxyRow(results, item.title, item.detail, item.actions());
+  const visible = rows.slice(resultPage * perPage, (resultPage + 1) * perPage);
+  if (proxyTab === 'bindings' && visible.length) {
+    const table = element('table', undefined, 'device-bindings'), heading = table.createTHead().insertRow();
+    for (const name of ['来源网段','备注','固定出口','操作']) heading.append(element('th', name));
+    const body = table.createTBody(), devices = new Map(proxyModel.bindings.map(b => [b.ip,b]));
+    for (const row of visible) {
+      const item = devices.get(row.title), tr = body.insertRow();
+      for (const value of [item.ip, item.note || '—', item.target]) tr.insertCell().textContent = value;
+      const actions = tr.insertCell();
+      actions.append(...row.actions());
+    }
+    results.append(table);
+  } else {
+    for (const item of visible) proxyRow(results, item.title, item.detail, item.actions());
   }
   if (!rows.length) results.append(element('p', search ? '没有匹配项' : '暂无条目', 'muted'));
   $('#proxy-pager').hidden = pages === 1;

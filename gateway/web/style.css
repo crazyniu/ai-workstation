@@ -593,3 +593,18 @@ dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
   .proxy-canvas { padding: 14px; }
   .proxy-toolbar { padding: 9px 14px; }
 }
+
+.routing-defaults { display: flex; align-items: end; flex-wrap: wrap; gap: 14px 32px; border-bottom: 1px solid var(--line); padding: 0 0 18px; margin-bottom: 18px; }
+.routing-defaults label, .routing-defaults > div { display: grid; gap: 5px; margin: 0; font-size: 13px; color: var(--muted); }
+.routing-defaults select { min-width: 15ch; max-width: 100%; appearance: auto; }
+.routing-defaults strong { font-size: 14px; font-weight: 550; color: var(--text); padding-block: 6px; }
+.device-bindings { width: 100%; border-collapse: collapse; text-align: start; font-size: 14px; }
+.device-bindings :is(th,td) { text-align: start; padding: 10px 6px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.device-bindings th { font-weight: 500; font-size: 12px; color: var(--muted); }
+.device-bindings td:first-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+.device-bindings :is(th,td):last-child { text-align: end; }
+.group-switch[aria-checked=true] { color: var(--blue); background: var(--selected); }
+@media (max-width:600px) {
+  .device-bindings :is(th,td) { padding: 7px 2px; }
+  .device-bindings .text-button { padding-inline: 3px; }
+}

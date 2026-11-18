@@ -3,11 +3,13 @@ import hashlib
 import ipaddress
 import re
 from copy import deepcopy
-from urllib.parse import urlsplit
+import json
+from urllib.parse import quote, urlsplit
 
 import yaml
 import legacy
 import state
+import routing_groups as routing
 
 from workstation_dns import PRIVATE_RULES
 
@@ -17,43 +19,92 @@ DIRECT_SOURCE = re.compile(r'SRC-IP-CIDR,\s*([^,]+),\s*([^,]+)(?:,\s*no-resolve)
 SUB_SOURCE = re.compile(r'SUB-RULE,\s*\(SRC-IP-CIDR,\s*([^,)]+)\),\s*([^,]+)', re.I)
 
 
-def bindings(config):
-    rules = config.get('rules') or []
-    subs = config.get('sub-rules') or {}
-    index = 0
-    while index < len(rules):
-        rule = rules[index]
-        if not isinstance(rule, str):
-            index += 1
-            continue
-        sub = SUB_SOURCE.fullmatch(rule)
-        match = sub or DIRECT_SOURCE.fullmatch(rule)
-        if match:
-            try:
-                network = ipaddress.ip_network(match[1].strip(), strict=False)
-            except ValueError:
-                index += 1
-                continue
-            target = match[2].strip()
-            key = target if sub else None
-            end = index + 1
-            if sub:
-                body = subs.get(key, [])
-                target = body[-1][6:] if body and isinstance(body[-1], str) and body[-1].startswith('MATCH,') else None
-                fallback = DIRECT_SOURCE.fullmatch(rules[end]) if end < len(rules) and isinstance(rules[end], str) else None
-                if fallback and fallback[1].strip() == match[1].strip() and fallback[2].strip() == 'REJECT':
-                    end += 1
-            if network.num_addresses == 1 and target:
-                yield {'id': index, 'ip': str(network.network_address), 'target': target,
-                       'sub': key, 'end': end}
-            index = end
+def address_range(value):
+    value = value.strip()
+    try:
+        if '-' in value:
+            start, end = (part.strip() for part in value.split('-', 1))
+            first = ipaddress.ip_address(start)
+            # Allow 192.168.1.240-249 in addition to two complete addresses.
+            if first.version == 4 and end.isdecimal():
+                end = start.rsplit('.', 1)[0] + '.' + end
+            last = ipaddress.ip_address(end)
+            if first.version != last.version or first > last:
+                raise ValueError
         else:
-            index += 1
+            network = ipaddress.ip_network(value, strict=False)
+            first, last = network.network_address, network.broadcast_address
+    except ValueError:
+        raise ValueError('请输入有效的单个 IP、CIDR 或起止地址范围') from None
+    return first, last
+
+
+def range_label(first, last):
+    return str(first) if first == last else f'{first}-{last}'
+
+
+def binding_blocks(config):
+    rules, subs = config.get('rules') or [], config.get('sub-rules') or {}
+    i = 0
+    while i < len(rules):
+        text = rules[i]
+        sub = SUB_SOURCE.fullmatch(text) if isinstance(text, str) else None
+        match = sub or (DIRECT_SOURCE.fullmatch(text) if isinstance(text, str) else None)
+        if not match:
+            i += 1
+            continue
+        try:
+            net = ipaddress.ip_network(match[1].strip(), strict=False)
+        except ValueError:
+            i += 1
+            continue
+        target = match[2].strip()
+        key = target if sub else None
+        end = i + 1
+        reject = False
+        if sub:
+            body = subs.get(key, [])
+            target = body[-1][6:].strip() if body and isinstance(body[-1], str) and body[-1].startswith('MATCH,') else None
+            fallback = DIRECT_SOURCE.fullmatch(rules[end]) if end < len(rules) and isinstance(rules[end], str) else None
+            reject = bool(fallback and fallback[1].strip() == match[1].strip() and fallback[2].strip() == 'REJECT')
+            end += int(reject)
+        if target and target not in ('REJECT', 'DIRECT', 'REJECT-DROP'):
+            yield dict(id=i, first=net.network_address, last=net.broadcast_address, target=target,
+                       sub=key, end=end, reject=reject)
+        i = end
+
+
+def bindings(config):
+    # One range may occupy several consecutive CIDR dispatch/guard pairs.
+    pending = None
+    for row in binding_blocks(config):
+        if (pending and row['sub'] and row['sub'] == pending['sub'] and row['reject'] == pending['reject']
+                and pending['end'] == row['id'] and pending['first'].version == row['first'].version
+                and int(pending['last']) + 1 == int(row['first'])):
+            pending.update(last=row['last'], end=row['end'])
+        else:
+            if pending:
+                yield dict(pending, ip=range_label(pending['first'], pending['last']))
+            pending = row
+    if pending:
+        yield dict(pending, ip=range_label(pending['first'], pending['last']))
 
 
 def policy_names(config):
     return [entry['name'] for section in ('proxies', 'proxy-groups') for entry in (config.get(section) or [])
             if isinstance(entry, dict) and isinstance(entry.get('name'), str)]
+
+
+def live_pool(config):
+    names = {g.get('name') for g in config.get('proxy-groups', [])}
+    name = next((n for n in (routing.PROXY, '🤖 AI', 'AI') if n in names), None)
+    if not name:
+        return {}
+    try:
+        info = json.loads(legacy.controller_request('/proxies/' + quote(name, safe='')))
+        return {'all': info.get('all', []), 'now': info.get('now', '')}
+    except (OSError, ValueError):
+        return {}
 
 
 def model(config):
@@ -77,7 +128,7 @@ def model(config):
     options = {}
     for key, value in config.items():
         locked = fixed.get(key)
-        if locked is not True:
+        if locked is not True and key not in (routing.NOTES, routing.DISABLED):
             options[key] = ({k: v for k, v in value.items() if k not in locked}
                             if locked and isinstance(value, dict) else value)
     return {
@@ -87,7 +138,10 @@ def model(config):
         'exits': [{key: node[key] for key in ('name', 'type', 'server', 'port', 'username', 'password',
                                               'dialer-proxy', 'tls') if key in node}
                   for node in nodes if node.get('type') in EDITABLE_TYPES],
-        'bindings': [{k: row[k] for k in ('id', 'ip', 'target')} for row in bindings(config)],
+        'bindings': [dict(id=r['id'], ip=r['ip'], target=r['target'], note=(config.get(routing.NOTES) or {}).get(r['ip'], ''))
+                     for r in bindings(config)],
+        'deviceExits': routing.exits(config), 'defaultPolicy': routing.default_policy(config),
+        'disabledGroups': config.get(routing.DISABLED, []),
         'targets': policy_names(config),
         'groups': [{'name': group['name'], 'members': group.get('proxies') or []} for group in groups],
         'options': options, 'fixed': fixed,
@@ -126,7 +180,11 @@ def rename_policy(config, old, new):
             if pos and tokens[pos].strip() == old:
                 tokens[pos] = new
                 rules[index] = ','.join(tokens)
+    if old in config.get(routing.DISABLED, []):
+        config[routing.DISABLED] = [new if n == old else n for n in config[routing.DISABLED]]
     for group in config.get('proxy-groups', []):
+        if group.get('default-selected') == old:
+            group['default-selected'] = new
         if 'proxies' in group:
             group['proxies'] = [new if name == old else name for name in group['proxies']]
     for entry in [*config.get('proxies', []), *config.get('proxy-groups', []), *config.get('listeners', []),
@@ -135,6 +193,33 @@ def rename_policy(config, old, new):
             for key in ('dialer-proxy', 'proxy'):
                 if mapping.get(key) == old:
                     mapping[key] = new
+
+
+def migrate_groups(config, selections=None):
+    """Rename legacy managed groups and pin unambiguous group-wide bindings."""
+    groups = {g['name']: g for g in config.get('proxy-groups', [])}
+    selections = selections or {}
+    renamed = False
+    for old, new in [('AI-RELAY', routing.RELAY), ('🔗 AI-RELAY', routing.RELAY),
+                     ('AI', routing.PROXY), ('🤖 AI', routing.PROXY)]:
+        if old not in groups:
+            continue
+        if new in policy_names(config):
+            raise ValueError(f'无法将 {old} 改名为 {new}：名称已被使用')
+        renamed = True
+        group = groups.pop(old)
+        group['name'] = new
+        groups[new] = group
+        rename_policy(config, old, new)
+        if selections.get(old):
+            group['default-selected'] = selections[old]
+    exits = routing.exits(config)
+    current = selections.get('🤖 AI') or selections.get('AI')
+    selected = current if current in exits else (exits[0] if len(exits) == 1 else None)
+    if renamed and selected:
+        for row in reversed(list(bindings(config))):
+            if row['target'] == routing.PROXY:
+                edit_binding(config, dict(id=row['id'], ip=row['ip'], target=selected))
 
 
 def edit_exit(config, edit):
@@ -168,6 +253,17 @@ def edit_exit(config, edit):
             del node[key]
     if edit.get('tls') or 'tls' in node:
         node['tls'] = bool(edit.get('tls'))
+    if edit.get('deviceExit'):
+        groups = config.setdefault('proxy-groups', [])
+        pool = next((g for g in groups if g['name'] == routing.PROXY), None)
+        if pool is None:
+            if routing.PROXY in policy_names(config):
+                raise ValueError('Proxy 已被节点占用')
+            pool = {'name': routing.PROXY, 'type': 'select', 'proxies': []}
+            groups.append(pool)
+        members = pool.setdefault('proxies', [])
+        if name not in members:
+            members.append(name)
     if 'groups' in edit:
         for group in config.get('proxy-groups', []):
             members = group.get('proxies', [])
@@ -183,9 +279,16 @@ def edit_group(config, edit):
     if not name or ',' in name or (name != original and name in set(policy_names(config)) | BUILTINS):
         raise ValueError('请输入唯一的策略组名称')
     group = next((g for g in groups if g.get('name') == original), None) if original else {}
+    if original in routing.REQUIRED and name != original:
+        raise ValueError('固定策略组必须保留原名')
     if group is None:
         raise ValueError('策略组已变化，请重新打开')
     members, providers = edit['proxies'], edit['use']
+    if original == routing.PROXY:
+        removed = set(routing.exits(config)) - set(members)
+        if any(r['target'] in removed for r in bindings(config)):
+            raise ValueError('请先为使用该出口的设备更换绑定')
+
     if name in members or (original and original in members):
         raise ValueError('策略组不能包含自身')
     if original and name != original:
@@ -203,56 +306,56 @@ def edit_group(config, edit):
 def edit_binding(config, edit):
     rows = list(bindings(config))
     previous = next((r for r in rows if r['id'] == edit.get('id')), None)
+    if edit.get('id') is not None and previous is None:
+        raise ValueError('该网段绑定已变化，请重新选择')
     rules = config.setdefault('rules', [])
+    notes = config.get(routing.NOTES, {})
+    old_note = notes.pop(previous['ip'], '') if previous else ''
+    subs = config.get('sub-rules') or {}
+    old_key = previous['sub'] if previous else None
     if edit.get('remove'):
         if previous is None:
-            raise ValueError('请选择已有绑定')
+            raise ValueError('请选择要移除的网段绑定')
         del rules[previous['id']:previous['end']]
-        return
-    try:
-        ip = ipaddress.ip_address(edit['ip'].strip())
-    except ValueError:
-        raise ValueError('请输入单个 IPv4 或 IPv6 地址') from None
-    target = edit['target']
-    if config.get('mode', 'rule').lower() != 'rule':
-        raise ValueError('请先在配置项中将运行模式设为 rule')
-    if target not in policy_names(config) and target not in ('DIRECT', 'REJECT') and not (previous and target == previous['target']):
-        raise ValueError('请选择已有出口或代理组')
-    if any(row != previous and row['ip'] == str(ip) for row in rows):
-        raise ValueError('这个来源 IP 已有绑定，请编辑原绑定')
-    cidr = f'{ip}/{ip.max_prefixlen}'
-    if previous and previous['target'] == target and previous['ip'] == str(ip):
-        return
-    if previous and previous['sub'] is None:
-        tokens = rules[previous['id']].split(',')
-        tokens[1:3] = [cidr, target]
-        rules[previous['id']] = ','.join(tokens)
-        return
-
-    subs = config.setdefault('sub-rules', {})
-    key = previous['sub'] if previous else None
-    if not previous or previous['target'] != target:
-        body = subs[key][:-1] if previous else PRIVATE_RULES
-        # Several clients may share the same named sub-rule. Give just this
-        # client its own copy when changing its exit, retaining all exceptions.
-        all_rules = [*rules, *(rule for group in subs.values() for rule in group)]
-        shared = key and sum(r.partition(',')[0].strip().upper() == 'SUB-RULE' and r.rsplit(',', 1)[-1].strip() == key
-                             for r in all_rules) > 1
-        if not key or shared:
-            base = 'WORKSTATION-EXIT-' + str(ip).replace('.', '-').replace(':', '-')
-            key = base
-            suffix = 2
-            while key in subs:
-                key = f'{base}-{suffix}'
-                suffix += 1
-        subs[key] = [*body, f'MATCH,{target}']
-    dispatch = f'SUB-RULE,(SRC-IP-CIDR,{cidr}),{key}'
-    if previous:
-        rules[previous['id']] = dispatch
-        if previous['end'] == previous['id'] + 2:
-            rules[previous['id'] + 1] = f'SRC-IP-CIDR,{cidr},REJECT'
     else:
-        rules[:0] = [dispatch, f'SRC-IP-CIDR,{cidr},REJECT']
+        first, last = address_range(edit['ip'])
+        label = range_label(first, last)
+        target = edit['target']
+        if config.get('mode', 'rule').lower() != 'rule':
+            raise ValueError('请先在配置项中将运行模式设为 rule')
+        if target not in routing.exits(config):
+            raise ValueError('请选择 Proxy 组内的具体出口')
+        if any(row['ip'] == label and row != previous for row in rows):
+            raise ValueError('这个网段已有绑定，请编辑原绑定')
+        note = str(edit.get('note', old_note)).strip()
+        if note:
+            notes[label] = note
+        if not previous or (previous['ip'], previous['target']) != (label, target):
+            body = subs[old_key][:-1] if old_key else ([] if previous else PRIVATE_RULES)
+            guarded = previous['reject'] if previous else True
+            # Keep shared legacy sub-rules and their original exceptions intact.
+            key = 'Gateway-Range-' + hashlib.sha256(f'{label} {target}'.encode()).hexdigest()[:16]
+            desired = [*body, f'MATCH,{target}']
+            while key in subs and subs[key] != desired:
+                key += '_'
+            subs[key] = desired
+            config['sub-rules'] = subs
+            new_rules = []
+            for net in ipaddress.summarize_address_range(first, last):
+                new_rules.append(f'SUB-RULE,(SRC-IP-CIDR,{net}),{key}')
+                if guarded:
+                    new_rules.append(f'SRC-IP-CIDR,{net},REJECT')
+            start = previous['id'] if previous else rows[0]['id'] if rows else 0
+            stop = previous['end'] if previous else start
+            rules[start:stop] = new_rules
+    if notes:
+        config[routing.NOTES] = notes
+    else:
+        config.pop(routing.NOTES, None)
+    if old_key and old_key.startswith('Gateway-Range-'):
+        references = [*rules, *(r for group in subs.values() for r in group)]
+        if not any(r.startswith('SUB-RULE,') and r.rsplit(',', 1)[-1].strip() == old_key for r in references):
+            del subs[old_key]
 
 
 def edit_option(config, edit):
@@ -356,15 +459,25 @@ def draft(data):
         raise ValueError(f'YAML 格式有误{where}') from None
     if not isinstance(config, dict):
         raise ValueError('请填写 Clash YAML 配置')
+    original = deepcopy(config)
+    migrate_groups(config)
     if data.get('upload'):
         legacy.preserve_gateway_settings(config, state.config())
         return {'content': yaml.safe_dump(config, allow_unicode=True, sort_keys=False), 'model': model(config)}
     edit = data.get('edit')
     if not edit:
-        return {'model': model(config)}
+        result = {'model': model(config)}
+        if config != original:
+            result['content'] = yaml.safe_dump(config, allow_unicode=True, sort_keys=False)
+        return result
+    if edit['kind'] == 'default-exit':
+        target = edit['target']
+        group = routing.pool(config)
+        live = [] if target in group.get('proxies', []) else live_pool(config).get('all', [])
+        routing.set_default(config, target, live)
+        return {'model': model(config), 'content': yaml.safe_dump(config, allow_unicode=True, sort_keys=False)}
     change = {'provider': edit_provider, 'exit': edit_exit, 'binding': edit_binding,
-              'option': edit_option, 'rule': edit_rule, 'group': edit_group}[edit['kind']]
-    original = deepcopy(config)
+              'option': edit_option, 'rule': edit_rule, 'group': edit_group, 'toggle-group': lambda cfg, e: routing.toggle(cfg, e['name'], e['enabled'])}[edit['kind']]
     change(config, edit)
     if config != original:
         text = yaml.safe_dump(config, allow_unicode=True, sort_keys=False)

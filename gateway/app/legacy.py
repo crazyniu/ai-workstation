@@ -15,6 +15,7 @@ from urllib.parse import quote, urlparse
 
 import yaml
 import egress
+import routing_groups as routing
 import state
 
 DATA = Path(os.environ.get("DATA_DIR", "/data")) / "dashboard"
@@ -167,6 +168,31 @@ def apply_proxy_config(data):
             if (data.get("refresh_providers") is True or previous_providers.get(name) != provider
                     or not cache or not (MIHOMO_DIR / cache).is_file()):
                 refresh_providers.add(name)
+        pool = routing.pool(parsed)
+        selected = pool.get('default-selected') if pool.get('type') == 'select' else None
+        if selected and not refresh_providers and routing.pool(current):
+            old_pool = routing.pool(current)
+            previous_default = old_pool.pop('default-selected', None)
+            next_default = pool.pop('default-selected')
+            only_selector = parsed == current
+            if previous_default is not None:
+                old_pool['default-selected'] = previous_default
+            pool['default-selected'] = next_default
+            if only_selector:
+                route = '/proxies/' + quote(routing.PROXY, safe='')
+                active = json.loads(controller_request(route))
+                if selected not in active.get('all', []):
+                    raise ValueError('AI 默认出口已不在 Proxy 组内')
+                if selected != active.get('now'):
+                    controller_request(route, method='PUT', body={'name': selected})
+                if previous_default != selected:
+                    try:
+                        state.write_config(parsed)
+                    except OSError:
+                        if active.get('now') != selected:
+                            controller_request(route, method='PUT', body={'name': active['now']})
+                        raise
+                return {'ok': True, 'filename': filename, 'message': 'AI 默认出口已应用。', 'refreshed_providers': []}
         if parsed == current and not refresh_providers:
             # Do not restart proxy connections for a repeated save. Check the
             # live controller before reporting that the current config is in use.
@@ -272,6 +298,8 @@ def apply_proxy_config(data):
                 except Exception as exc:
                     raise ValueError(f"节点订阅 {name} 刷新失败") from exc
                 refreshed_providers.append({"name": name, "nodes": count})
+            if selected:
+                controller_request('/proxies/' + quote(routing.PROXY, safe=''), method='PUT', body={'name': selected})
         except Exception as exc:
             state.atomic(MIHOMO_CONFIG,old)
             for destination, previous in changed_resources.items():
