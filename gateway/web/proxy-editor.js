@@ -207,12 +207,14 @@ function setupProxyEditor() {
   };
   $('#open-range-settings').onclick = () => openProxyWindow(false, true);
   setupProxyBrowser();
-  $('#ai-default-exit').onchange = event => {
+  $('#ai-default-exit').onchange = async event => {
     const target = event.target.value;
-    guard(async () => {
+    const keyboardFocus = event.target.matches(':focus-visible');
+    await guard(async () => {
       try { await updateProxyDraft({kind:'default-exit', target}); }
       finally { renderProxyBrowser(); }
     });
+    if (keyboardFocus) $('#ai-default-exit input:checked')?.focus({preventScroll:true});
   };
   $('#config-code').onclick = () => { showProxyMode(false); editor.focus?.(); };
   $('#proxy-entry-cancel').onclick = () => $('#proxy-entry').close();

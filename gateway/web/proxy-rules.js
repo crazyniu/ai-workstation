@@ -332,11 +332,17 @@ function renderProxyBrowser() {
     const dynamic = pool?.use?.length || pool?.['include-all'] || pool?.['include-all-providers'] || pool?.['include-all-proxies'];
     const members = [...new Set([...(pool?.proxies || []), ...(dynamic ? liveSelector.all || [] : [])])];
     const selected = pool?.['default-selected'] || liveSelector.now || members[0];
-    selector.replaceChildren(...members.map(n => new Option(n, n)));
-    selector.value = selected || '';
-    selector.disabled = members.length === 0 || pool?.type !== 'select';
-    selector.dataset.stateDisabled = String(selector.disabled);
-    $('#general-default-policy').textContent = proxyModel.defaultPolicy || '未设置 MATCH';
+    defaults.hidden = members.length === 0;
+    defaults.disabled = pool?.type !== 'select';
+    selector.replaceChildren(...members.map(name => {
+      const label = element('label'), input = element('input');
+      input.type = 'radio';
+      input.name = 'ai-default-exit';
+      input.value = name;
+      input.checked = name === selected;
+      label.append(input, name);
+      return label;
+    }));
   }
 
   const advanced = proxyTab === 'options', isRules = proxyTab === 'rules';

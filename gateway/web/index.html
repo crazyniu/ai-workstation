@@ -10,7 +10,7 @@
   <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180">
   <link rel="stylesheet" href="/vendor/winbox/winbox.min.css?v=9d6b72dc5f03">
-  <link rel="stylesheet" href="/style.css?v=8be633657ad3">
+  <link rel="stylesheet" href="/style.css?v=6da270b09b3e">
   <link rel="stylesheet" href="/loading.css?v=e549cd70c0dd">
   <link rel="stylesheet" href="/favicon.css?v=941afb91f398">
 </head>
@@ -209,10 +209,10 @@
         <button type="button" id="config-code" aria-pressed="false">YAML 源码</button>
       </nav><div class="proxy-canvas"><div id="proxy-fields">
             <section id="proxy-browser">
-              <div id="routing-defaults" class="routing-defaults">
-                <label>AI 默认出口<select id="ai-default-exit"></select></label>
-                <div><span>默认分组</span><strong id="general-default-policy"></strong></div>
-              </div>
+              <fieldset id="routing-defaults" class="routing-defaults">
+                <legend>AI 默认出口</legend>
+                <div id="ai-default-exit"></div>
+              </fieldset>
               <div class="proxy-browser-heading"><div><h3 id="proxy-browser-title" tabindex="-1"></h3><span id="proxy-count" class="muted" role="status"></span></div><button id="add-proxy-item"></button></div>
               <button id="proxy-rule-mode" class="text-button" hidden></button>
               <nav id="proxy-path" aria-label="配置路径" hidden></nav>
@@ -244,8 +244,8 @@
   </div>
   <script src="/assets/config-editor.bundle.js?v=e91ff9456f76"></script>
   <script src="/vendor/winbox/winbox.min.js?v=cd0b4efd9450"></script>
-  <script src="/proxy-rules.js?v=c987a2d9d9f7"></script>
-  <script src="/proxy-editor.js?v=2d65ad9efb23"></script>
+  <script src="/proxy-rules.js?v=a0051df27fc8"></script>
+  <script src="/proxy-editor.js?v=93ebdcb4ce55"></script>
   <script src="/build-info.js?v=98bb99b2069d"></script>
   <script src="/app.js?v=00411235231c"></script>
 </body>
