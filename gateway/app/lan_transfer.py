@@ -64,25 +64,45 @@ def listing(path):
     return sorted(entries, key=lambda e: (e['type'] != 'folder', e['name'].casefold()))
 
 
+def prepare_share():
+    if SHARE.is_symlink():
+        raise RequestError(409, '共享目录不能是符号链接')
+    SHARE.mkdir(mode=0o700, exist_ok=True)
+
+
+def clear_share():
+    for item in SHARE.iterdir():
+        if item.is_dir() and not item.is_symlink():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
+
+
 def upload(handler, path):
+    length = int(handler.headers.get('Content-Length', '-1'))
+    offset, total, ident = 0, length, uuid.uuid4().hex
+    interval = handler.headers.get('Content-Range')
+    if interval is not None:
+        match = re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)', interval)
+        if not match:
+            raise RequestError(400, '无效的 Content-Range')
+        offset, end, total = map(int, match.groups())
+        ident = handler.headers.get('Upload-Id', '')
+        if end - offset + 1 != length:
+            raise RequestError(400, '分块范围与长度不符')
+    return write_upload(path, handler.rfile, length, offset, total, ident)
+
+
+def write_upload(path, source, length, offset, total, ident):
     if path.exists():
         raise FileExistsError
-    length = int(handler.headers.get('Content-Length', '-1'))
     if length < 0:
         raise RequestError(411, '上传需要 Content-Length')
     if length > MAX_REQUEST:
         raise RequestError(413, '单次请求上限为 32 MiB，请分块上传')
-    offset, total = 0, length
-    ident = uuid.uuid4().hex
-    interval = handler.headers.get('Content-Range')
-    if interval is not None:
-        match = re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)', interval)
-        ident = handler.headers.get('Upload-Id', '')
-        if not match or not re.fullmatch(r'[0-9a-f]{32}', ident):
-            raise RequestError(400, '分块需要有效的 Content-Range 和 Upload-Id')
-        offset, end, total = map(int, match.groups())
-        if not offset <= end < total or end - offset + 1 != length:
-            raise RequestError(400, '分块范围与长度不符')
+    if (offset < 0 or offset + length > total or (length == 0 and total != 0)
+            or not re.fullmatch(r'[0-9a-f]{32}', ident)):
+        raise RequestError(400, '分块参数无效')
     if shutil.disk_usage(SHARE).free < length + DISK_RESERVE:
         raise RequestError(507, '网关磁盘可用空间不足')
     # Bind the partial file to its destination and intended size.
@@ -94,7 +114,7 @@ def upload(handler, path):
         with part.open('ab' if offset else 'wb') as stream:
             remaining = length
             while remaining:
-                chunk = handler.rfile.read(min(remaining, 1024 * 1024))
+                chunk = source.read(min(remaining, 1024 * 1024))
                 if not chunk:
                     raise RequestError(400, '上传中断，请重试')
                 stream.write(chunk)
@@ -132,22 +152,19 @@ def handle(handler):
     try:
         if not is_local(handler) or not handler.same_origin():
             raise RequestError(403, '请通过网关的局域网地址访问')
+        if operation == 'mcp':
+            from transfer_mcp import handle_mcp
+            return handle_mcp(handler)
         query = parse_qs(route.query, keep_blank_values=True, errors='strict')
         paths = query.get('path', [''])
         if len(paths) != 1:
             raise RequestError(400, '请指定一个路径')
         with LOCK:
-            if SHARE.is_symlink():
-                raise RequestError(409, '共享目录不能是符号链接')
-            SHARE.mkdir(mode=0o700, exist_ok=True)
+            prepare_share()
             if (method, operation) == ('DELETE', 'all'):
                 if query:
                     raise RequestError(400, '清空全部无需路径')
-                for item in SHARE.iterdir():
-                    if item.is_dir() and not item.is_symlink():
-                        shutil.rmtree(item)
-                    else:
-                        item.unlink()
+                clear_share()
                 return handler.reply(200, {'ok': True})
             path = share_path(paths[0], allow_root=(method, operation) == ('GET', 'list'))
             if (method, operation) == ('GET', 'list'):

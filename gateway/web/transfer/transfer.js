@@ -176,16 +176,12 @@ $('clear').onclick = () => {
   });
 };
 
-let promptText = '';
-const promptReady = fetch('./ai.txt').then(async res => {
-  if (!res.ok) throw new Error('无法读取 AI 提示词');
-  promptText = (await res.text()).replaceAll('http://192.168.1.250', location.origin);
-}).catch(() => {});
+const promptText = JSON.stringify({mcpServers: {'lan-transfer': {
+  type: 'http', url: location.origin + base + 'mcp'
+}}});
 $('copy').onclick = async () => {
-  if (!promptText) await promptReady;
-  if (!promptText) { toast('无法读取 AI 提示词，请刷新页面', true); return; }
   if (navigator.clipboard) {
-    try { await navigator.clipboard.writeText(promptText); toast('已复制 AI 提示词'); return; }
+    try { await navigator.clipboard.writeText(promptText); toast('已复制 MCP 配置'); return; }
     catch { /* Plain HTTP and browser permissions may require manual selection. */ }
   }
   $('prompt').value = promptText;
@@ -197,7 +193,7 @@ $('copy').onclick = async () => {
   try { copied = document.execCommand('copy'); } catch { /* Manual selection remains available. */ }
   if (copied) {
     $('manual').close();
-    toast('已复制 AI 提示词');
+    toast('已复制 MCP 配置');
   } else {
     toast('自动复制未成功，请复制已选文字', true);
     $('prompt').oncopy = () => toast('已复制所选文字');

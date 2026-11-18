@@ -146,7 +146,7 @@ async function guard(work,target=null){
 }
 function openLinkEditor(card=null){cancelFaviconPreview();editing=card?.id||null;$('#link-title').textContent=card?'编辑链接':'添加链接';$('#link-name').value=card?.name||'';$('#link-url').value=card?.url||'';$('#link-icon').value=card?(card.icon||'link'):'auto';$('#icon-search').value='';drawIconChoices();$('#link-newtab').checked=card?.open_in_new_tab??true;$('#link-dialog').showModal();previewFavicon(0);}
 function desktopItems(){
-  const builtins=[{name:'Clash',icon:'clash',page:'proxy'},{name:'AdGuard Home',icon:'adguard',url:'/adguard/'},{name:'Tailscale',icon:'tailscale',page:'tailscale'},{name:'工作站',icon:'workstation',url:desktopPrefs.workstation_url},{name:'局域网互传',icon:'files',url:'/transfer/'},{name:'设置',icon:'settings',page:'overview'}].map(item=>({...item,id:'builtin:'+item.icon,fixed:true}));
+  const builtins=[{name:'Clash',icon:'clash',url:'/ui/'},{name:'AdGuard Home',icon:'adguard',url:'/adguard/'},{name:'Tailscale',icon:'tailscale',page:'tailscale'},{name:'工作站',icon:'workstation',url:desktopPrefs.workstation_url},{name:'局域网互传',icon:'files',url:'/transfer/'},{name:'设置',icon:'settings',page:'overview'}].map(item=>({...item,id:'builtin:'+item.icon,fixed:true}));
   const items=[...builtins,...cards],lookup=new Map(items.map(item=>[item.id,item]));
   return [...new Set([...desktopPrefs.order,...lookup.keys()])].map(id=>lookup.get(id)).filter(Boolean);
 }

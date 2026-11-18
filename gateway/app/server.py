@@ -296,6 +296,7 @@ class Handler(legacy.Handler):
             self.reply(200,{'filename':'gateway-backup-'+time.strftime('%Y%m%d')+'.tgz','data':base64.b64encode(stream.getvalue()).decode()});return
         self.reply(404,{'error':'接口不存在'})
     def do_POST(self):
+        if urllib.parse.urlsplit(self.path).path==lan_transfer.PREFIX+'mcp':return lan_transfer.handle(self)
         try:self.post()
         except legacy.ConfigConflict as exc:self.reply(409,{'error':str(exc)})
         except Exception as exc:self.reply(400,{'error':str(exc) if isinstance(exc,ValueError) else '操作失败，请检查输入及服务状态'})
