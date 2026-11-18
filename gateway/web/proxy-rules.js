@@ -156,6 +156,7 @@ function renderProxyBrowser() {
   ++domainRequest;
   const config = proxyModel.options, groups = config['proxy-groups'] || [];
   const isRules = proxyTab === 'rules', domains = proxyTab === 'group-domains';
+  $('#back-to-policy-groups').hidden = !domains;
   const searchable = !['exits','bindings'].includes(proxyTab);
   const search = searchable ? $('#proxy-search').value.trim().toLowerCase() : '';
   $('#proxy-results').removeAttribute('aria-busy');

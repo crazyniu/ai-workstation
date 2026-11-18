@@ -609,6 +609,7 @@ dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .proxy-layout { grid-template-columns: 154px minmax(0, 1fr); }
 .proxy-canvas { padding: 22px 24px; }
 .proxy-browser-heading { margin: 0 0 16px; }
+#back-to-policy-groups { margin-bottom: 10px; padding-inline-start: 0; }
 .proxy-browser-heading h3 { font-size: 18px; }
 .proxy-browser-heading button { flex-shrink: 0; }
 .proxy-filters { grid-template-columns: repeat(auto-fit, minmax(150px, 240px)); margin-bottom: 16px; }

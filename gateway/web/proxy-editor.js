@@ -210,6 +210,7 @@ function openProxyEntry(kind, item) {
 function setupProxyEditor() {
   for (const tab of $$('[data-proxy-tab]')) tab.onclick = () => navigateProxy(tab.dataset.proxyTab);
   $('#back-proxy').onclick = backProxy;
+  $('#back-to-policy-groups').onclick = backProxy;
   $('#back-proxy-entry').onclick = () => $('#proxy-entry').close();
   setupProxyBrowser();
   $('#ai-default-exit').onchange = async event => {
