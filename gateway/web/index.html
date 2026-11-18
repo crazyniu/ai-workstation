@@ -10,7 +10,7 @@
   <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180">
   <link rel="stylesheet" href="/vendor/winbox/winbox.min.css?v=9d6b72dc5f03">
-  <link rel="stylesheet" href="/style.css?v=6da270b09b3e">
+  <link rel="stylesheet" href="/style.css?v=395ebcc0ea4e">
   <link rel="stylesheet" href="/loading.css?v=e549cd70c0dd">
   <link rel="stylesheet" href="/favicon.css?v=941afb91f398">
 </head>
@@ -22,6 +22,7 @@
       <span class="toolbar-divider"></span><a class="brand" href="/" aria-label="网关桌面">Gateway</a>
     </div>
     <div class="top-actions">
+      <button class="range-launch" data-page="ranges">网段 AI 出口</button>
       <button id="add" title="添加链接" aria-label="添加链接"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       <button id="open-personalization" title="个性化设置" aria-label="个性化设置"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m4 16 5-5 4 4 3-3 5 5"/><circle cx="16.5" cy="8.5" r="1.5"/></svg></button>
     </div>
@@ -51,7 +52,7 @@
         <button class="nav-overview" data-page="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>所有设置</span></button>
         <p class="nav-group">连接与访问</p>
         <button data-page="proxy"><img src="/icons/clash.svg" alt=""><span>代理配置</span></button>
-        <button data-page="ranges"><img src="/icons/server.svg" alt=""><span>IP 网段出口</span></button>
+        <button data-page="ranges"><img src="/icons/server.svg" alt=""><span>网段 AI 出口</span></button>
         <button data-page="dns"><img src="/icons/globe.svg" alt=""><span>DNS 与访问</span></button>
         <button data-page="tailscale"><img src="/icons/tailscale.svg" alt=""><span>Tailscale</span></button>
         <p class="nav-group">通用设置</p>
@@ -66,7 +67,7 @@
         <section id="settings-overview" data-section="overview">
           <div class="settings-group"><h2>连接与访问</h2><div class="settings-grid">
             <button data-page="proxy"><img src="/icons/clash.svg" alt=""><span>代理配置</span></button>
-        <button data-page="ranges"><img src="/icons/server.svg" alt=""><span>IP 网段出口</span></button>
+        <button data-page="ranges"><img src="/icons/server.svg" alt=""><span>网段 AI 出口</span></button>
             <button data-page="dns"><img src="/icons/globe.svg" alt=""><span>DNS 与访问</span></button>
             <button data-page="tailscale"><img src="/icons/tailscale.svg" alt=""><span>Tailscale</span></button>
             <a href="/adguard/" target="_blank" rel="noopener"><img src="/icons/adguard.svg" alt=""><span>广告过滤</span></a>
@@ -170,7 +171,7 @@
 
   <dialog id="proxy-entry" class="small-window" aria-labelledby="proxy-entry-title">
     <form id="proxy-entry-form" method="dialog" aria-labelledby="proxy-entry-title">
-      <header class="window-header"><h2 id="proxy-entry-title"></h2></header>
+      <header class="window-header"><button type="button" id="back-proxy-entry" class="editor-back" aria-label="返回列表">←</button><h2 id="proxy-entry-title"></h2></header>
       <div id="proxy-entry-fields" class="form-content"></div>
       <div class="window-actions"><button type="button" id="proxy-entry-cancel">取消</button><button class="primary" type="submit">写入配置草稿</button></div>
     </form>
@@ -193,19 +194,18 @@
     <div class="window-actions"><button id="wallpaper-cancel">取消</button><button class="primary" id="wallpaper-apply">应用</button></div>
   </dialog>
   <dialog id="proxy-window" aria-labelledby="proxy-window-title">
-    <header class="proxy-titlebar"><img src="/icons/clash.svg" alt="" width="26" height="26"><h2 id="proxy-window-title">Clash 配置编辑器</h2><button type="button" id="close-proxy" aria-label="关闭 Clash 配置编辑器">关闭</button></header>
+    <header class="proxy-titlebar"><button type="button" class="editor-back" id="back-proxy" aria-label="返回上一页" title="返回上一页">←</button><img src="/icons/clash.svg" alt="" width="26" height="26"><h2 id="proxy-window-title">Clash 配置编辑器</h2><button type="button" id="close-proxy" aria-label="关闭 Clash 配置编辑器">关闭</button></header>
     <div id="proxy-workspace">
       <div class="proxy-toolbar"><strong id="config-filename" role="status">config.yaml</strong>
         <div class="row wrap"><button id="upload-config">导入 YAML</button><button id="download-config">导出 YAML</button><a class="button-link" href="/ui/" target="_blank" rel="noopener">节点面板</a><button id="save-config" class="primary">保存并应用</button></div>
         <input id="config-file" type="file" accept=".yaml,.yml" hidden>
       </div>
       <div class="proxy-layout"><nav class="proxy-nav" aria-label="配置分类">
-        <button type="button" id="open-range-settings">IP 网段出口 ↗</button>
+        <button type="button" data-proxy-tab="bindings" aria-pressed="false">网段 AI 出口</button>
         <button type="button" data-proxy-tab="exits" aria-pressed="false">PROXY 出口池</button>
         <button type="button" data-proxy-tab="groups" aria-pressed="false">策略分组</button>
         <button type="button" data-proxy-tab="providers" aria-pressed="false">节点订阅</button>
         <button type="button" data-proxy-tab="rules" aria-pressed="false">分流规则</button>
-        <button type="button" data-proxy-tab="options" aria-pressed="false">全部配置项</button>
         <button type="button" id="config-code" aria-pressed="false">YAML 源码</button>
       </nav><div class="proxy-canvas"><div id="proxy-fields">
             <section id="proxy-browser">
@@ -214,15 +214,12 @@
                 <div id="ai-default-exit"></div>
               </fieldset>
               <div class="proxy-browser-heading"><div><h3 id="proxy-browser-title" tabindex="-1"></h3><span id="proxy-count" class="muted" role="status"></span></div><button id="add-proxy-item"></button></div>
-              <button id="proxy-rule-mode" class="text-button" hidden></button>
-              <nav id="proxy-path" aria-label="配置路径" hidden></nav>
-              <div class="proxy-filters">
+              <div class="proxy-filters" id="proxy-filters">
                 <label id="rule-policy-label" hidden>执行策略<select id="rule-policy-filter"></select></label>
-                <label id="proxy-scope-label">规则来源<select id="proxy-scope"></select></label>
-                <label>搜索<input id="proxy-search" type="search" placeholder="输入名称或地址" autocomplete="off"></label>
+                <label id="proxy-search-label">搜索<input id="proxy-search" type="search" placeholder="输入名称或地址" autocomplete="off"></label>
               </div>
               <div id="proxy-results"></div>
-              <div id="proxy-pager" hidden><button id="proxy-prev">上一页</button><span id="proxy-page"></span><button id="proxy-next">下一页</button></div>
+              <div id="proxy-pager"><label>每页<select id="proxy-page-size" aria-label="每页显示数量"><option>10</option><option selected>20</option><option>50</option><option>100</option></select>条</label><button id="proxy-prev">上一页</button><span id="proxy-page"></span><button id="proxy-next">下一页</button></div>
             </section>
           </div>
           <div id="config-editor" hidden><textarea id="config-content" aria-label="Clash YAML 配置" spellcheck="false"></textarea></div>
@@ -244,8 +241,8 @@
   </div>
   <script src="/assets/config-editor.bundle.js?v=e91ff9456f76"></script>
   <script src="/vendor/winbox/winbox.min.js?v=cd0b4efd9450"></script>
-  <script src="/proxy-rules.js?v=a0051df27fc8"></script>
-  <script src="/proxy-editor.js?v=93ebdcb4ce55"></script>
+  <script src="/proxy-rules.js?v=433a43ee9963"></script>
+  <script src="/proxy-editor.js?v=2aa7de7ab494"></script>
   <script src="/build-info.js?v=98bb99b2069d"></script>
   <script src="/app.js?v=00411235231c"></script>
 </body>

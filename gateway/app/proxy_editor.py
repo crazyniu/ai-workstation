@@ -10,6 +10,7 @@ import yaml
 import legacy
 import state
 import routing_groups as routing
+import group_domains
 
 from workstation_dns import PRIVATE_RULES
 
@@ -181,6 +182,9 @@ def rename_policy(config, old, new):
             if pos and tokens[pos].strip() == old:
                 tokens[pos] = new
                 rules[index] = ','.join(tokens)
+    exclusions = config.get(routing.DOMAIN_EXCLUSIONS, {})
+    if old in exclusions:
+        exclusions[new] = exclusions.pop(old)
     if old in config.get(routing.DISABLED, []):
         config[routing.DISABLED] = [new if n == old else n for n in config[routing.DISABLED]]
     for group in config.get('proxy-groups', []):
@@ -221,6 +225,17 @@ def migrate_groups(config, selections=None):
                 edit_binding(config, dict(id=row['id'], ip=row['ip'], target=selected))
 
 
+def edit_exit_note(config, edit):
+    node = next((n for n in config.get('proxies', []) if n.get('name') == edit['name']), None)
+    if node is None:
+        raise ValueError('请选择已有出口')
+    note = edit['note'].strip()
+    if note:
+        node[routing.EXIT_NOTE] = note
+    else:
+        node.pop(routing.EXIT_NOTE, None)
+
+
 def edit_exit(config, edit):
     name = edit['name'].strip()
     old = edit.get('original')
@@ -242,6 +257,8 @@ def edit_exit(config, edit):
         if old != name:
             rename_policy(config, old, name)
     node.update(name=name, type=protocol, server=server, port=port)
+    if 'note' in edit:
+        edit_exit_note(config, edit)
     for key in ('username', 'password', 'dialer-proxy'):
         value = edit.get(key, '')
         if key == 'dialer-proxy' and value and value == name:
@@ -446,6 +463,30 @@ def edit_rule(config, edit):
                          'action': 'add' if index is None else 'set', 'value': value, 'position': position})
 
 
+def edit_subscribed_domain(config, edit):
+    group, provider = edit['target'], edit['provider']
+    scope = config
+    for part in edit['path']:
+        scope = scope[part]
+    parts, pos = routing.policy_slot(scope[edit['index']])
+    if pos != 2 or [p.strip() for p in parts[:3]] != ['RULE-SET', provider, group]:
+        raise ValueError('规则集引用已变化，请重新打开')
+    if not edit.get('remove') and (edit['type'], edit['operand'].strip()) == (edit['originalType'], edit['originalDomain']):
+        return
+    group_domains.exclude(config, group, provider, edit['originalType'], edit['originalDomain'])
+    if edit.get('remove'):
+        return
+    # A shared provider may be used in multiple scopes. Apply the local replacement at
+    # each reference for this group, without changing the provider or other policies.
+    scopes = [(['rules'], config.get('rules', []))]
+    scopes += [(['sub-rules', key], rules) for key, rules in (config.get('sub-rules') or {}).items()]
+    for path, rules in scopes:
+        for index in reversed(range(len(rules))):
+            parts, pos = routing.policy_slot(rules[index])
+            if pos == 2 and [p.strip() for p in parts[:3]] == ['RULE-SET', provider, group]:
+                edit_rule(config, dict(edit, path=path, index=None, position=index + 1))
+
+
 def draft(data):
     text = data['content']
     if len(text.encode()) > 2 * 1024 * 1024:
@@ -463,6 +504,8 @@ def draft(data):
     if data.get('upload'):
         legacy.preserve_gateway_settings(config, state.config())
         return {'content': yaml.safe_dump(config, allow_unicode=True, sort_keys=False), 'model': model(config)}
+    if 'domainPage' in data:
+        return group_domains.domain_page(config, data['domainPage'])
     edit = data.get('edit')
     if not edit:
         result = {'model': model(config)}
@@ -475,8 +518,8 @@ def draft(data):
         live = [] if target in group.get('proxies', []) else live_pool(config).get('all', [])
         routing.set_default(config, target, live)
         return {'model': model(config), 'content': yaml.safe_dump(config, allow_unicode=True, sort_keys=False)}
-    change = {'provider': edit_provider, 'exit': edit_exit, 'binding': edit_binding,
-              'option': edit_option, 'rule': edit_rule, 'group': edit_group, 'toggle-group': lambda cfg, e: routing.toggle(cfg, e['name'], e['enabled'])}[edit['kind']]
+    change = {'provider': edit_provider, 'exit': edit_exit, 'note': edit_exit_note, 'binding': edit_binding,
+              'option': edit_option, 'rule': edit_rule, 'subscription-domain': edit_subscribed_domain, 'group': edit_group, 'toggle-group': lambda cfg, e: routing.toggle(cfg, e['name'], e['enabled'])}[edit['kind']]
     change(config, edit)
     if config != original:
         text = yaml.safe_dump(config, allow_unicode=True, sort_keys=False)
