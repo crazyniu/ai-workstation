@@ -3,7 +3,7 @@
 const domainTypes = {DOMAIN:'完整域名', 'DOMAIN-SUFFIX':'域名及子域名', 'DOMAIN-KEYWORD':'域名关键词', 'DOMAIN-WILDCARD':'通配域名'};
 const ruleLabels = {...domainTypes, 'IP-CIDR':'IPv4 网段', 'IP-CIDR6':'IPv6 网段', GEOIP:'IP 地区', GEOSITE:'域名分类',
   'RULE-SET':'规则集', MATCH:'兜底规则'};
-const hiddenPolicyGroups = new Set(['GLOBAL', '🌐 GLOBAL', '⚡ AUTO', '📥 订阅下载', '🔗 PROXY-RELAY', '🤖 PROXY']);
+const hiddenPolicyGroups = new Set(['GLOBAL', 'AUTO', '订阅下载', 'PROXY-RELAY', 'PROXY']);
 const sectionNames = {bindings:'固定出口', exits:'代理池', groups:'策略分组', providers:'节点订阅', rules:'分流规则'};
 const policyLabel = name => ({DIRECT:'直连',REJECT:'拒绝','REJECT-DROP':'静默丢弃'})[name] || name;
 let resultPage = 0, rulePolicy = '', domainRequest = 0, searchTimer;
@@ -88,7 +88,11 @@ function tableRows(headers, rows) {
   const body = table.createTBody();
   for (const row of rows) {
     const tr = body.insertRow();
-    for (const column of row.cells) tr.insertCell().textContent = column;
+    row.cells.forEach((column,i) => {
+      const cell = tr.insertCell();
+      if (row.checkbox && i === 1) cell.append(row.checkbox());
+      else cell.textContent = column;
+    });
     tr.insertCell().append(...row.actions());
   }
   return table;
@@ -158,6 +162,7 @@ function renderProxyBrowser() {
   const config = proxyModel.options, groups = config['proxy-groups'] || [];
   const isRules = proxyTab === 'rules', domains = proxyTab === 'group-domains';
   $('#back-to-policy-groups').hidden = !domains;
+  $('#proxy-pager').hidden = proxyTab === 'providers';
   const searchable = !['exits','bindings'].includes(proxyTab);
   const search = searchable ? $('#proxy-search').value.trim().toLowerCase() : '';
   $('#proxy-results').removeAttribute('aria-busy');
@@ -195,12 +200,24 @@ function renderProxyBrowser() {
     empty = '暂无策略分组';
     add.textContent = '添加分组';
     add.onclick = () => openProxyEntry('group');
-    rows = groups.filter(g => !hiddenPolicyGroups.has(g.name)).map(g => {
+    rows = groups.filter(g => !hiddenPolicyGroups.has(g.name.replace(/^[^\p{L}\p{N}]+/u,'').trim().toUpperCase())).map(g => {
       const enabled = !proxyModel.disabledGroups.includes(g.name);
-      return {cells:[g.name, enabled ? '已启用' : '已关闭'], actions:() => [
-        button('编辑域名',()=>navigateProxy('group-domains',g.name),'text-button'),
-        button(enabled ? '关闭' : '启用',()=>guard(()=>updateProxyDraft({kind:'toggle-group',name:g.name,enabled:!enabled})),'text-button')
-      ]};
+      return {
+        cells:[g.name, enabled ? '已启用' : '已关闭'],
+        checkbox:() => {
+          const box = element('input');
+          box.type = 'checkbox';
+          box.checked = enabled;
+          box.setAttribute('aria-label', '启用 ' + g.name);
+          box.onchange = () => {
+            const next = box.checked;
+            box.checked = enabled;
+            guard(() => updateProxyDraft({kind:'toggle-group',name:g.name,enabled:next}));
+          };
+          return box;
+        },
+        actions:() => [button('编辑域名',()=>navigateProxy('group-domains',g.name),'text-button')]
+      };
     });
     if (groups.some(g => g.name === '🤖 PROXY')) {
       rows.unshift({cells:['🤖 AI','AI 默认出口'], actions:() => [
@@ -237,8 +254,13 @@ function renderProxyBrowser() {
     });
   }
   if (search) rows = rows.filter(row => row.cells.join(' ').toLowerCase().includes(search));
-  drawPager(rows.length);
-  showList(headers,rows.slice(resultPage * pageSize(),(resultPage + 1) * pageSize()),search ? '没有匹配项' : empty);
+  if (proxyTab === 'providers') {
+    $('#proxy-count').textContent = rows.length + ' 项';
+  } else {
+    drawPager(rows.length);
+    rows = rows.slice(resultPage * pageSize(),(resultPage + 1) * pageSize());
+  }
+  showList(headers,rows,search ? '没有匹配项' : empty);
 }
 
 function setupProxyBrowser() {
