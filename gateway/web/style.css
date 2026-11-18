@@ -562,3 +562,34 @@ dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 #link-dialog[open] form, #personalization-dialog[open] { display: flex; flex-direction: column; max-height: min(850px, calc(100dvh - 32px)); }
 #link-dialog .form-content, #personalization-dialog .personalization-content { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 #link-dialog .window-actions, #personalization-dialog .window-actions { flex: none; }
+
+/* The configuration editor has its own workspace above the desktop. */
+#proxy-window { width: min(1120px, calc(100vw - 40px)); height: min(760px, calc(100dvh - 54px)); overflow: hidden; }
+#proxy-window[open] { display: flex; flex-direction: column; }
+.proxy-titlebar, .proxy-toolbar, .web-release-row { display: flex; align-items: center; gap: 12px; }
+.proxy-titlebar { flex: none; background: var(--chrome); padding: 12px 20px; border-bottom: 1px solid var(--line); }
+.proxy-titlebar h2 { flex: 1; font-size: 18px; margin: 0; }
+#proxy-workspace, .proxy-canvas, .proxy-layout { min-height: 0; min-width: 0; }
+#proxy-workspace { flex: 1; display: flex; flex-direction: column; }
+.proxy-toolbar { flex: none; justify-content: space-between; flex-wrap: wrap; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+.proxy-toolbar strong { font-size: 13px; font-weight: 550; color: var(--muted); }
+.proxy-toolbar .row { gap: 6px; }
+.proxy-layout { flex: 1; display: grid; grid-template-columns: 148px minmax(0,1fr); }
+.proxy-nav { overflow: auto; padding: 12px 8px; border-inline-end: 1px solid var(--line); background: var(--chrome); }
+.proxy-nav button { display: block; width: 100%; border: 0; background: transparent; color: var(--muted); text-align: start; padding: 9px 12px; }
+.proxy-nav button[aria-pressed=true] { color: var(--blue); background: var(--selected); font-weight: 600; }
+.proxy-canvas { padding: 18px 22px; overflow: auto; overscroll-behavior: contain; }
+.proxy-canvas #proxy-fields > section { padding-top: 0; }
+.proxy-canvas #config-editor { margin: 0; }
+.proxy-canvas .proxy-row { padding-block: 10px; }
+.web-release-row { justify-content: space-between; }
+.web-release-row h3, .web-release-row p { margin: 4px 0; }
+#confirm-copy { white-space: pre-line; overflow-wrap: anywhere; max-height: 50dvh; overflow: auto; }
+@media (max-width: 680px) {
+  #proxy-window { width: calc(100vw - 12px); max-width: calc(100vw - 12px); height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); }
+  .proxy-layout { display: flex; flex-direction: column; }
+  .proxy-nav { display: flex; flex: none; gap: 2px; border: 0; border-bottom: 1px solid var(--line); padding: 5px; }
+  .proxy-nav button { width: auto; white-space: nowrap; }
+  .proxy-canvas { padding: 14px; }
+  .proxy-toolbar { padding: 9px 14px; }
+}

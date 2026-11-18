@@ -6,6 +6,7 @@ import yaml
 import legacy
 from state import ROOT,DASH,CONFIG,LOCK,read,save,atomic,settings,command,config,write_config,password_hash,password_valid,validate_password,domain_config,local_domain,lan_ip,lan_networks
 import updates
+import web_release
 import favicon
 import proxy_editor
 MAX_BODY=36*1024*1024
@@ -147,7 +148,7 @@ def tailscale_scheduler():
 
 def submit(kind,work):
     with JOB_LOCK:
-        if any(j['status']=='running' for j in JOBS.values()):raise ValueError('有任务正在执行，请等待完成')
+        if web_release.running() or any(j['status']=='running' for j in JOBS.values()):raise ValueError('有任务正在执行，请等待完成')
         ident=uuid.uuid4().hex;JOBS[ident]={'id':ident,'kind':kind,'status':'running','started':time.time()}
         if len(JOBS)>64:
             del JOBS[next(iter(JOBS))]
@@ -195,8 +196,7 @@ def validate_appearance(value):
 def valid_card_icon(icon):
     if icon=='auto':return True
     if not re.fullmatch(r'[a-z][a-z0-9-]{0,63}',icon):return False
-    web=Path('/opt/gateway/web')
-    if not web.is_dir():web=Path(__file__).resolve().parents[1]/'web'
+    web=web_release.ACTIVE/'web'
     catalog=read(web/'icons/catalog.json',[])
     if isinstance(catalog,dict):catalog=catalog.get('icons',[])
     allowed={'link','clash','adguard','tailscale','server','folder','globe'}
@@ -242,6 +242,7 @@ class Handler(legacy.Handler):
         except Exception as exc:self.reply(400,{'error':str(exc) if isinstance(exc,ValueError) else '暂时无法读取，请检查服务状态'})
     def get(self):
         path=urllib.parse.urlparse(self.path).path
+        if path=='/api/web-version':self.reply(200,{'tag':web_release.installed()});return
         if path=='/api/auth':
             with LOCK:value={'initialized':(DASH/'admin.json').exists(),'authenticated':self.access_allowed(),'login_required':self.login_required()}
             self.reply(200,value);return
@@ -272,6 +273,8 @@ class Handler(legacy.Handler):
             self.reply(200,{'services':r.stdout,'configured':read(DASH/'proxy-state.json',{}).get('configured',False),'domain':settings()['domain'],'address':lan_ip()});return
         if path=='/api/settings':self.reply(200,settings());return
         if path=='/api/tailscale':self.reply(200,tailscale_status());return
+        if path=='/api/web-release':self.reply(200,web_release.info());return
+        if path=='/api/web-release/job':self.reply(200,web_release.progress());return
         if path=='/api/updates':
             with JOB_LOCK:
                 job=next((j.copy() for j in JOBS.values() if j['status']=='running'),None) or read(DASH/'last-job.json')
@@ -401,6 +404,12 @@ class Handler(legacy.Handler):
         if path=='/api/tailscale/settings':
             configure_tailscale_routes()
             self.reply(200,{'ok':True,'note':'内网子网已自动配置'});return
+        if path=='/api/web-release/check':self.reply(200,web_release.info(refresh=True));return
+        if path=='/api/web-release/install':
+            with JOB_LOCK:
+                if any(j['status']=='running' for j in JOBS.values()):raise ValueError('请先等待当前任务完成')
+                job=web_release.begin(data.get('tag'))
+            self.reply(202,job);return
         if path=='/api/updates/check':self.reply(202,submit('check-updates',updates.check));return
         if path=='/api/updates/install':
             component=data.get('component')

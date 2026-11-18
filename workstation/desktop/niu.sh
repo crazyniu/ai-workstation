@@ -18,7 +18,11 @@ latest_tag() {
 
 update_apt() {
     "${apt[@]}" -o APT::Update::Error-Mode=any update
-    "${apt[@]}" --with-new-pkgs upgrade -y
+    if (( $# )); then
+        "${apt[@]}" install --only-upgrade -y "$1"
+    else
+        "${apt[@]}" --with-new-pkgs upgrade -y
+    fi
 }
 
 update_node() {
@@ -65,13 +69,8 @@ update_novnc() {
     fi
 }
 
-update_ai_clis() {
-    local packages=()
-    if command -v codex >/dev/null; then packages+=(@openai/codex@latest); fi
-    if command -v claude >/dev/null; then packages+=(@anthropic-ai/claude-code@latest); fi
-    if (( ${#packages[@]} == 0 )); then return; fi
-    npm install --global --prefix "$cli_prefix" --include=optional --no-audit --no-fund \
-        "${packages[@]}"
+update_ai_cli() {
+    npm install --global --prefix "$cli_prefix" --include=optional --no-audit --no-fund "$1@latest"
 }
 
 update_mcp() {
@@ -108,38 +107,72 @@ run_update() {
 }
 
 update_software() (
-    if [[ $(id -u) == 0 ]]; then
+    if (( EUID == 0 )); then
         echo 'Run software updates as the workstation desktop user.' >&2
         exit 1
     fi
-    cd "$base"
-    failed=()
+    choices=()
+    declare -A apt_packages=(['Google Chrome']=google-chrome-stable [Chromium]=chromium
+                             ['VS Code']=code ['Claude Desktop']=claude-desktop [KasmVNC]=kasmvncserver)
+    choices+=('All APT packages')
+    for app in 'Google Chrome' Chromium 'VS Code' 'Claude Desktop' KasmVNC; do
+        if [[ $(dpkg-query -W -f='${db:Status-Status}' "${apt_packages[$app]}" 2>/dev/null) == installed ]]; then
+            choices+=("$app")
+        fi
+    done
+    command -v node >/dev/null && choices+=('Node.js and npm')
+    command -v uv >/dev/null && choices+=('uv and installed tools')
+    command -v codex >/dev/null && choices+=('Codex CLI')
+    command -v claude >/dev/null && choices+=('Claude Code')
+    [[ -f $base/mcp/package.json ]] && choices+=('MCP servers')
+    [[ -f $base/novnc/package.json ]] && choices+=('noVNC')
+    command -v code >/dev/null && choices+=('VS Code extensions')
+    PS3='Choose software (0 to return): '
+    select selection in 'Update all listed software' "${choices[@]}"; do
+        [[ $REPLY != 0 ]] || return 0
+        [[ -n $selection ]] || continue
+        break
+    done
+    [[ -n ${selection:-} ]] || return 0
+    if [[ $selection == 'Update all listed software' ]]; then
+        confirm_action 'Update all the software listed above?' || return 0
+        targets=("${choices[@]}")
+    else
+        confirm_action "Update $selection?" || return 0
+        targets=("$selection")
+    fi
+
     mkdir -p "$cli_prefix"
     exec 9<"$cli_prefix"
     flock -n 9 || { echo 'Another workstation update is running.' >&2; exit 1; }
-
     work=$(mktemp -d)
     trap 'rm -rf -- "$work"' EXIT
     cd "$work"
-    sudo -v
     case $(dpkg --print-architecture) in
         amd64) node_arch=x64; uv_arch=x86_64 ;;
         arm64) node_arch=arm64; uv_arch=aarch64 ;;
-        *) echo 'Unsupported workstation architecture.' >&2; exit 1 ;;
     esac
-    run_update 'system packages, Chrome or Chromium, VS Code, and Claude Desktop' update_apt
-    command -v node >/dev/null && run_update 'Node.js, npm, and npx (current Node.js major)' update_node
-    run_update 'Codex CLI and Claude Code CLI' update_ai_clis
-    [[ -f $base/mcp/package.json ]] && run_update 'workstation MCP packages' update_mcp
-    command -v uv >/dev/null && run_update 'uv, uvx, and user-installed uv tools' update_uv
-    [[ -f $base/novnc/package.json ]] && run_update 'noVNC' update_novnc
-    command -v code >/dev/null && run_update 'VS Code extensions' code --update-extensions
+    failed=()
+    for target in "${targets[@]}"; do
+        case "$target" in
+            'All APT packages') run_update "$target" update_apt ;;
+            'Google Chrome'|Chromium|'VS Code'|'Claude Desktop'|KasmVNC)
+                # A full APT upgrade already covers every installed desktop package.
+                if [[ $selection == "$target" ]]; then run_update "$target" update_apt "${apt_packages[$target]}"; fi ;;
+            'Node.js and npm') run_update "$target" update_node ;;
+            'uv and installed tools') run_update "$target" update_uv ;;
+            'Codex CLI') run_update "$target" update_ai_cli @openai/codex ;;
+            'Claude Code') run_update "$target" update_ai_cli @anthropic-ai/claude-code ;;
+            'MCP servers') run_update "$target" update_mcp ;;
+            noVNC) run_update "$target" update_novnc ;;
+            'VS Code extensions') run_update "$target" code --update-extensions ;;
+        esac
+    done
     if (( ${#failed[@]} )); then
-        printf '\nCould not finish these updates:\n' >&2
-        printf '  %s\n' "${failed[@]}" >&2
+        printf 'Could not finish: %s\n' "${failed[*]}" >&2
         exit 1
     fi
-    echo 'Workstation update complete. Reopen applications to use their updated versions.'
+    echo 'Update complete.'
 )
 
 orca_home=$HOME
@@ -610,7 +643,7 @@ def size_text(size):
 for path, (_, _, size) in targets.items():
     print(f"{size_text(size):>12}  {path}")
 print("Total on disk:", size_text(sum(item[2] for item in targets.values())))
-print("Clear these caches, including temporary pasted images?  1. Confirm  0. Cancel", flush=True)
+print("Clear these caches, including temporary pasted images?  1. Confirm  0 or Enter. Cancel", flush=True)
 with os.fdopen(3) as menu_input:
     if menu_input.readline().strip() != "1":
         print("Cancelled.")
@@ -660,7 +693,7 @@ confirm_action() {
     while read -rp 'Choose 1 or 0: ' answer; do
         case "$answer" in
             1) return 0 ;;
-            0) return 1 ;;
+            0|'') return 1 ;;
         esac
     done
     return 1
@@ -687,8 +720,7 @@ menu() {
         read -rp 'Choose a number: ' choice || return 0
         case "$choice" in
             0) return 0 ;;
-            1) confirm_action 'Update installed workstation software?' || continue
-               run_action update_software ;;
+            1) run_action update_software ;;
             2|3)
                 if ! orca_installed; then echo 'Orca Server is not installed.'; continue; fi
                 if [[ "$choice" == 2 ]]; then
@@ -703,7 +735,7 @@ menu() {
                if (( action_status == 0 )); then exec "$self"; fi ;;
             5) run_action reset_claude
                if (( action_status != 0 )); then continue; fi
-               confirm_action 'Permanently apply the Claude cleanup shown above?' || continue
+               confirm_action 'Delete the Claude Code settings and user data shown above?' || continue
                run_action reset_claude apply ;;
             6) run_action clean_caches ;;
             7) run_action manage_lan_ports ;;

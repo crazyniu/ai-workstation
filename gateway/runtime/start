@@ -1,6 +1,7 @@
 #!/bin/bash
 set -Eeuo pipefail
 export DATA_DIR=${DATA_DIR:-/data}
+[[ -L /opt/gateway/current ]] || ln -s . /opt/gateway/current
 export SAFE_PATHS=$DATA_DIR
 if [[ ${GATEWAY_INSTALL_MODE:-container} != native && -n ${GATEWAY_LOCALE:-} ]]; then
   zone=${GATEWAY_TIMEZONE:-UTC}
@@ -21,7 +22,7 @@ mkdir -p "$DATA_DIR" /run/gateway /run/tailscale /var/log/supervisor
 if [[ -n ${GATEWAY_LAN_ADDRESS:-} ]]; then
   iface=${GATEWAY_LAN_INTERFACE:-$(ip -j -d link show | python3 -c 'import json,sys;print(next(x["ifname"] for x in json.load(sys.stdin) if x.get("linkinfo",{}).get("info_kind")=="macvlan"))')}
   if [[ -n ${GATEWAY_ISOLATED_CLIENTS:-} ]]; then
-    GATEWAY_RUNTIME_INTERFACE="$iface" python3 /opt/gateway/app/egress.py firewall
+    GATEWAY_RUNTIME_INTERFACE="$iface" python3 /opt/gateway/current/app/egress.py firewall
   fi
   ip addr replace "$GATEWAY_LAN_ADDRESS" dev "$iface"
   ip link set "$iface" up
@@ -30,7 +31,7 @@ else
   iface=$(ip -4 route show default | awk '{for(i=1;i<=NF;i++)if($i=="dev"){print $(i+1);exit}}')
 fi
 export GATEWAY_RUNTIME_INTERFACE=$iface
-python3 /opt/gateway/app/state.py
+python3 /opt/gateway/current/app/state.py
 python3 /opt/gateway/runtime/account.py
 unset GATEWAY_CONTAINER_PASSWORD GATEWAY_ADMIN_PASSWORD DEV_PASSWORD VNC_PASSWORD ROOT_PASSWORD
 if [[ ${GATEWAY_MODE:-true} == true ]]; then
@@ -42,7 +43,7 @@ if [[ ${GATEWAY_MODE:-true} == true ]]; then
   for proto in tcp udp; do
     iptables -t nat -C PREROUTING -i "$iface" -p "$proto" --dport 53 -j REDIRECT --to-ports 5353 2>/dev/null || iptables -t nat -I PREROUTING 1 -i "$iface" -p "$proto" --dport 53 -j REDIRECT --to-ports 5353
   done
-  lan=$(PYTHONPATH=/opt/gateway/app python3 -c 'from state import lan_networks; print(lan_networks()[0])')
+  lan=$(PYTHONPATH=/opt/gateway/current/app python3 -c 'from state import lan_networks; print(lan_networks()[0])')
   if [[ -n $lan ]]; then
     ip rule show | grep -q "5200:.*to $lan lookup main" || ip rule add pref 5200 to "$lan" lookup main
     iptables -t nat -C POSTROUTING -s "$lan" -o tailscale0 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s "$lan" -o tailscale0 -j MASQUERADE

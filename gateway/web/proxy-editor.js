@@ -1,17 +1,14 @@
 'use strict';
 
-let proxyModel, proxyTab = 'connections', pendingUpload = false;
-const entryTitles = {provider: '节点订阅', exit: '代理出口', binding: '来源 IP 绑定'};
+let proxyModel, proxyTab = 'exits', pendingUpload = false, proxyGeneration = 0;
+const entryTitles = {provider: '节点订阅', exit: '代理出口', binding: '来源 IP 绑定', group: '策略组'};
 
 function showProxyMode(visual) {
   $('#proxy-fields').hidden = !visual;
   $('#config-editor').hidden = visual;
   for (const tab of $$('[data-proxy-tab]')) tab.setAttribute('aria-pressed', String(visual && tab.dataset.proxyTab === proxyTab));
-  const connections = proxyTab === 'connections';
-  for (const pane of $$('[data-proxy-pane]')) pane.hidden = !connections;
-  $('#proxy-subscription').hidden = !visual || !connections;
-  $('#proxy-browser').hidden = connections;
-  if (visual && !connections) renderProxyBrowser();
+  $('#proxy-subscription').hidden = !visual || proxyTab !== 'providers';
+  if (visual && proxyModel) renderProxyBrowser();
   $('#config-code').setAttribute('aria-pressed', String(!visual));
 }
 
@@ -25,57 +22,69 @@ function proxyRow(list, title, detail, actions) {
   list.append(row);
 }
 
-function drawProxyModel(model) {
-  proxyModel = model;
-  const providers = $('#proxy-providers'), exits = $('#proxy-exits'), bindings = $('#proxy-bindings');
-  for (const list of [providers, exits, bindings]) list.replaceChildren();
-  const edit = (kind, item) => button('编辑', () => openProxyEntry(kind, item), 'text-button');
-  for (const item of model.providers) {
-    let host = '';
-    try { host = new URL(item.url).host; } catch {}
-    proxyRow(providers, item.name, host, [edit('provider', item)]);
-  }
-  for (const item of model.exits) {
-    const protocol = item.type === 'http' && item.tls ? 'HTTPS' : item.type.toUpperCase();
-    proxyRow(exits, item.name, protocol + ' · ' + item.server + ' · ' + item.port, [edit('exit', item)]);
-  }
-  for (const item of model.bindings) {
-    const remove = button('解绑', () => guard(() => updateProxyDraft({kind: 'binding', id: item.id, remove: true})), 'text-button');
-    proxyRow(bindings, item.ip, item.target, [edit('binding', item), remove]);
-  }
-  if (!model.providers.length) providers.append(element('p', '暂无 HTTP 订阅', 'muted'));
-  if (!model.exits.length) exits.append(element('p', '暂无 HTTP 或 SOCKS5 出口', 'muted'));
-  if (!model.bindings.length) bindings.append(element('p', '暂无来源 IP 绑定', 'muted'));
+async function openProxyWindow(force = false) {
+  const dialog = $('#proxy-window'), workspace = $('#proxy-workspace');
+  if (dialog.open && !force) return;
+  if (!dialog.open) dialog.showModal();
+  const request = ++proxyGeneration;
+  workspace.inert = true;
+  const done = beginLoading(workspace);
+  try {
+    const [config, settings] = await Promise.all([api('/proxy/config'), api('/settings')]);
+    if (request !== proxyGeneration) return;
+    prefs = settings;
+    pendingUpload = false;
+    revision = config.revision;
+    savedConfig = config.content;
+    editor.setValue(config.content);
+    updateConfigState();
+    await openProxyVisual();
+    if (request !== proxyGeneration) return;
+    $('#subscription-url').value = prefs.subscription.url || '';
+    $('#subscription-interval').value = prefs.subscription.interval_hours || 0;
+    $('#subscription-status').textContent = prefs.subscription.error || '';
+    $('#refresh-subscription').disabled = !prefs.subscription.url;
+    workspace.inert = false;
+  } catch (error) {
+    if (request === proxyGeneration) { savedConfig = null; dialog.close(); toast(error.message, true); }
+  } finally { done(); }
+}
+
+async function closeProxyWindow() {
+  if (busy || !await discardChanges()) return;
+  ++proxyGeneration;
+  savedConfig = null;
+  $('#proxy-window').close();
 }
 
 async function openProxyVisual(visual = true) {
-  const request = navigation, content = editor.getValue();
+  const request = proxyGeneration, content = editor.getValue();
   try {
     const result = await post('/proxy/draft', {content, upload: pendingUpload});
-    if (request !== navigation || content !== editor.getValue()) return;
+    if (request !== proxyGeneration || content !== editor.getValue()) return;
     if (pendingUpload) { editor.setValue(result.content); pendingUpload = false; }
-    drawProxyModel(result.model);
+    proxyModel = result.model;
     showProxyMode(visual);
   } catch (error) {
-    if (request !== navigation || content !== editor.getValue()) return;
+    if (request !== proxyGeneration || content !== editor.getValue()) return;
     showProxyMode(false);
     toast(error.message, true);
   }
 }
 
 async function updateProxyDraft(edit) {
-  const request = navigation, content = editor.getValue();
+  const request = proxyGeneration, content = editor.getValue();
   const result = await post('/proxy/draft', {content, edit});
-  if (request !== navigation || content !== editor.getValue()) return false;
+  if (request !== proxyGeneration || content !== editor.getValue()) return false;
   editor.setValue(result.content);
-  drawProxyModel(result.model);
-  if (proxyTab !== 'connections') renderProxyBrowser();
+  proxyModel = result.model;
+  if (!$('#proxy-fields').hidden) renderProxyBrowser();
   updateConfigState();
   return true;
 }
 
 function updateConfigState() {
-  if (currentPage !== 'proxy' || savedConfig === null) return;
+  if (!$('#proxy-window').open || savedConfig === null) return;
   $('#config-filename').textContent = configDirty() ? 'config.yaml · 等待应用' : 'config.yaml · 当前正在使用';
 }
 
@@ -152,6 +161,12 @@ function openProxyEntry(kind, item) {
         }
         fields.append(choices);
       }
+    } else if (kind === 'group') {
+      field('name', '策略组名称', item?.name).required = true;
+      const types = [...new Set(['select', 'url-test', 'fallback', 'load-balance', item?.type].filter(Boolean))];
+      field('type', '策略类型', item?.type || 'select', 'text', types.map(t => [t, t]));
+      field('proxies', '成员（每行一个，按顺序）', (item?.proxies || []).join('\n'), 'textarea');
+      field('use', '节点订阅（每行一个）', (item?.use || []).join('\n'), 'textarea');
     } else {
       field('ip', '来源 IP', item?.ip).required = true;
       const targets = new Set([...proxyModel.exits.map(n => n.name), ...proxyModel.targets, 'DIRECT', 'REJECT', item?.target].filter(Boolean));
@@ -164,6 +179,10 @@ function openProxyEntry(kind, item) {
       if (kind === 'exit') {
         if (item) edit.original = item.name;
         edit.groups = data.getAll('groups');
+      }
+      if (kind === 'group') {
+        if (item) edit.original = item.name;
+        for (const key of ['proxies', 'use']) edit[key] = edit[key].split('\n').map(s => s.trim()).filter(Boolean);
       }
       if (kind === 'binding' && item) edit.id = item.id;
       return edit;
@@ -181,9 +200,8 @@ function setupProxyEditor() {
   setupProxyBrowser();
   $('#config-code').onclick = () => { showProxyMode(false); editor.focus?.(); };
   $('#proxy-entry-cancel').onclick = () => $('#proxy-entry').close();
-  $('#add-provider').onclick = () => openProxyEntry('provider');
-  $('#add-exit').onclick = () => openProxyEntry('exit');
-  $('#add-binding').onclick = () => openProxyEntry('binding');
+  $('#close-proxy').onclick = closeProxyWindow;
+  $('#proxy-window').oncancel = event => { event.preventDefault(); closeProxyWindow(); };
   $('#download-config').onclick = () => {
     const link = element('a'), blob = new Blob([editor.getValue()], {type: 'application/yaml;charset=utf-8'});
     const url = URL.createObjectURL(blob);
