@@ -267,7 +267,7 @@ class Handler(legacy.Handler):
                 cards=legacy.read_cards();value={'cards':cards,'desktop':desktop_settings(cards)}
             self.reply(200,value);return
         if path=='/api/proxy/config':
-            content=CONFIG.read_bytes();self.reply(200,{'filename':'config.yaml','content':content.decode(),'revision':legacy.revision(content)});return
+            content=CONFIG.read_bytes();self.reply(200,{'filename':'config.yaml','content':content.decode(),'revision':legacy.revision(content),'selector':proxy_editor.live_pool(yaml.safe_load(content) or {})});return
         if path=='/api/status':
             r=command(updates.SUPERVISOR+['status'],check=False)
             self.reply(200,{'services':r.stdout,'configured':read(DASH/'proxy-state.json',{}).get('configured',False),'domain':settings()['domain'],'address':lan_ip()});return

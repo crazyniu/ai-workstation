@@ -10,6 +10,7 @@ import sys
 import yaml
 
 import state
+from routing_groups import apply_switches, policy_slot
 
 RUNTIME_NAME = '.gateway-effective.yaml'
 DIRECT_MARK = 6667
@@ -83,14 +84,6 @@ table inet workstation_boundary {{
     subprocess.run(['nft', '-f', '-'], input=rules, text=True, check=True)
 
 
-def policy_slot(rule):
-    fields = rule.split(',')
-    index = len(fields) - 1
-    while index > 1 and fields[index].strip() in ('no-resolve', 'src', 'dst'):
-        index -= 1
-    return fields, index
-
-
 def parent_groups(groups, names):
     result = set(names)
     while True:
@@ -103,6 +96,7 @@ def parent_groups(groups, names):
 
 def effective(source):
     config = copy.deepcopy(source)
+    apply_switches(config)
     clients = isolated_clients()
     nodes = {p['name']: p for p in config.get('proxies') or []}
     groups = {g['name']: g for g in config.get('proxy-groups') or []}

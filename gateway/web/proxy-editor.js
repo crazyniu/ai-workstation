@@ -1,6 +1,6 @@
 'use strict';
 
-let proxyModel, proxyTab = 'exits', pendingUpload = false, proxyGeneration = 0;
+let liveSelector = {}, proxyModel, proxyTab = 'bindings', pendingUpload = false, proxyGeneration = 0;
 const entryTitles = {provider: '节点订阅', exit: '代理出口', binding: '来源 IP 绑定', group: '策略组'};
 
 function showProxyMode(visual) {
@@ -34,6 +34,7 @@ async function openProxyWindow(force = false) {
     if (request !== proxyGeneration) return;
     prefs = settings;
     pendingUpload = false;
+    liveSelector = config.selector || {};
     revision = config.revision;
     savedConfig = config.content;
     editor.setValue(config.content);
@@ -62,7 +63,7 @@ async function openProxyVisual(visual = true) {
   try {
     const result = await post('/proxy/draft', {content, upload: pendingUpload});
     if (request !== proxyGeneration || content !== editor.getValue()) return;
-    if (pendingUpload) { editor.setValue(result.content); pendingUpload = false; }
+    if (result.content !== undefined) { editor.setValue(result.content); pendingUpload = false; updateConfigState(); }
     proxyModel = result.model;
     showProxyMode(visual);
   } catch (error) {
@@ -145,32 +146,23 @@ function openProxyEntry(kind, item) {
       field('username', '用户名', item?.username).autocomplete = 'off';
       field('password', '密码', item?.password, 'password').autocomplete = 'off';
       const dialers = new Set([...proxyModel.targets, item?.['dialer-proxy']].filter(name => name && name !== item?.name));
-      field('dialer-proxy', '前置代理', item?.['dialer-proxy'] || '', 'text', [['', '无'], ...[...dialers].map(n => [n, n])]);
+      field('dialer-proxy', '前置代理', item ? item['dialer-proxy'] || '' : (dialers.has('Proxy-Reply') ? 'Proxy-Reply' : ''), 'text', [['', '无'], ...[...dialers].map(n => [n, n])]);
       field('tls', '使用 TLS', item?.tls, 'checkbox');
-      if (proxyModel.groups.length) {
-        const choices = element('details', undefined, 'proxy-groups');
-        choices.append(element('summary', '所属代理组'));
-        for (const group of proxyModel.groups) {
-          const label = element('label', undefined, 'check'), input = element('input');
-          input.type = 'checkbox';
-          input.name = 'groups';
-          input.value = group.name;
-          input.checked = group.members.includes(item?.name);
-          label.append(input, group.name);
-          choices.append(label);
-        }
-        fields.append(choices);
-      }
     } else if (kind === 'group') {
-      field('name', '策略组名称', item?.name).required = true;
+      const name = field('name', '策略组名称', item?.name);
+      name.required = true;
+      name.readOnly = ['Proxy', 'Proxy-Reply'].includes(item?.name);
       const types = [...new Set(['select', 'url-test', 'fallback', 'load-balance', item?.type].filter(Boolean))];
       field('type', '策略类型', item?.type || 'select', 'text', types.map(t => [t, t]));
       field('proxies', '成员（每行一个，按顺序）', (item?.proxies || []).join('\n'), 'textarea');
       field('use', '节点订阅（每行一个）', (item?.use || []).join('\n'), 'textarea');
     } else {
       field('ip', '来源 IP', item?.ip).required = true;
-      const targets = new Set([...proxyModel.exits.map(n => n.name), ...proxyModel.targets, 'DIRECT', 'REJECT', item?.target].filter(Boolean));
-      field('target', '出口', item?.target || '', 'text', [['', '选择出口'], ...[...targets].map(n => [n, n])]).required = true;
+      const targets = proxyModel.deviceExits;
+      field('target', '固定出口', item?.target || '', 'text',
+        [['', '选择 Proxy 出口'], ...targets.map(n => [n, n])]).required = true;
+      field('note', '设备备注', item?.note || '');
+
     }
     return data => {
       const edit = Object.fromEntries(data);
@@ -178,7 +170,7 @@ function openProxyEntry(kind, item) {
       if (kind === 'provider') edit.new = !item;
       if (kind === 'exit') {
         if (item) edit.original = item.name;
-        edit.groups = data.getAll('groups');
+        edit.deviceExit = true;
       }
       if (kind === 'group') {
         if (item) edit.original = item.name;
@@ -198,6 +190,13 @@ function setupProxyEditor() {
     else showProxyMode(true);
   };
   setupProxyBrowser();
+  $('#ai-default-exit').onchange = event => {
+    const target = event.target.value;
+    guard(async () => {
+      try { await updateProxyDraft({kind:'default-exit', target}); }
+      finally { renderProxyBrowser(); }
+    });
+  };
   $('#config-code').onclick = () => { showProxyMode(false); editor.focus?.(); };
   $('#proxy-entry-cancel').onclick = () => $('#proxy-entry').close();
   $('#close-proxy').onclick = closeProxyWindow;

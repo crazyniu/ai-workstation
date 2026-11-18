@@ -3,11 +3,13 @@ import hashlib
 import ipaddress
 import re
 from copy import deepcopy
-from urllib.parse import urlsplit
+import json
+from urllib.parse import quote, urlsplit
 
 import yaml
 import legacy
 import state
+import routing_groups as routing
 
 from workstation_dns import PRIVATE_RULES
 
@@ -56,6 +58,18 @@ def policy_names(config):
             if isinstance(entry, dict) and isinstance(entry.get('name'), str)]
 
 
+def live_pool(config):
+    names = {g.get('name') for g in config.get('proxy-groups', [])}
+    name = next((n for n in (routing.PROXY, '🤖 AI', 'AI') if n in names), None)
+    if not name:
+        return {}
+    try:
+        info = json.loads(legacy.controller_request('/proxies/' + quote(name, safe='')))
+        return {'all': info.get('all', []), 'now': info.get('now', '')}
+    except (OSError, ValueError):
+        return {}
+
+
 def model(config):
     for section, shape in (('rules', list), ('sub-rules', dict), ('proxies', list),
                            ('proxy-groups', list), ('rule-providers', dict), ('proxy-providers', dict)):
@@ -77,7 +91,7 @@ def model(config):
     options = {}
     for key, value in config.items():
         locked = fixed.get(key)
-        if locked is not True:
+        if locked is not True and key not in (routing.NOTES, routing.DISABLED):
             options[key] = ({k: v for k, v in value.items() if k not in locked}
                             if locked and isinstance(value, dict) else value)
     return {
@@ -87,7 +101,10 @@ def model(config):
         'exits': [{key: node[key] for key in ('name', 'type', 'server', 'port', 'username', 'password',
                                               'dialer-proxy', 'tls') if key in node}
                   for node in nodes if node.get('type') in EDITABLE_TYPES],
-        'bindings': [{k: row[k] for k in ('id', 'ip', 'target')} for row in bindings(config)],
+        'bindings': [dict(id=r['id'], ip=r['ip'], target=r['target'], note=(config.get(routing.NOTES) or {}).get(r['ip'], ''))
+                     for r in bindings(config)],
+        'deviceExits': routing.exits(config), 'defaultPolicy': routing.default_policy(config),
+        'disabledGroups': config.get(routing.DISABLED, []),
         'targets': policy_names(config),
         'groups': [{'name': group['name'], 'members': group.get('proxies') or []} for group in groups],
         'options': options, 'fixed': fixed,
@@ -126,7 +143,11 @@ def rename_policy(config, old, new):
             if pos and tokens[pos].strip() == old:
                 tokens[pos] = new
                 rules[index] = ','.join(tokens)
+    if old in config.get(routing.DISABLED, []):
+        config[routing.DISABLED] = [new if n == old else n for n in config[routing.DISABLED]]
     for group in config.get('proxy-groups', []):
+        if group.get('default-selected') == old:
+            group['default-selected'] = new
         if 'proxies' in group:
             group['proxies'] = [new if name == old else name for name in group['proxies']]
     for entry in [*config.get('proxies', []), *config.get('proxy-groups', []), *config.get('listeners', []),
@@ -135,6 +156,31 @@ def rename_policy(config, old, new):
             for key in ('dialer-proxy', 'proxy'):
                 if mapping.get(key) == old:
                     mapping[key] = new
+
+
+def migrate_groups(config, selections=None):
+    """Rename legacy managed groups and pin unambiguous group-wide bindings."""
+    groups = {g['name']: g for g in config.get('proxy-groups', [])}
+    selections = selections or {}
+    for old, new in [('AI-RELAY', routing.RELAY), ('🔗 AI-RELAY', routing.RELAY),
+                     ('AI', routing.PROXY), ('🤖 AI', routing.PROXY)]:
+        if old not in groups:
+            continue
+        if new in policy_names(config):
+            raise ValueError(f'无法将 {old} 改名为 {new}：名称已被使用')
+        group = groups.pop(old)
+        group['name'] = new
+        groups[new] = group
+        rename_policy(config, old, new)
+        if selections.get(old):
+            group['default-selected'] = selections[old]
+    exits = routing.exits(config)
+    current = selections.get('🤖 AI') or selections.get('AI')
+    selected = current if current in exits else (exits[0] if len(exits) == 1 else None)
+    if selected:
+        for row in list(bindings(config)):
+            if row['target'] == routing.PROXY:
+                edit_binding(config, dict(id=row['id'], ip=row['ip'], target=selected))
 
 
 def edit_exit(config, edit):
@@ -168,6 +214,17 @@ def edit_exit(config, edit):
             del node[key]
     if edit.get('tls') or 'tls' in node:
         node['tls'] = bool(edit.get('tls'))
+    if edit.get('deviceExit'):
+        groups = config.setdefault('proxy-groups', [])
+        pool = next((g for g in groups if g['name'] == routing.PROXY), None)
+        if pool is None:
+            if routing.PROXY in policy_names(config):
+                raise ValueError('Proxy 已被节点占用')
+            pool = {'name': routing.PROXY, 'type': 'select', 'proxies': []}
+            groups.append(pool)
+        members = pool.setdefault('proxies', [])
+        if name not in members:
+            members.append(name)
     if 'groups' in edit:
         for group in config.get('proxy-groups', []):
             members = group.get('proxies', [])
@@ -183,9 +240,16 @@ def edit_group(config, edit):
     if not name or ',' in name or (name != original and name in set(policy_names(config)) | BUILTINS):
         raise ValueError('请输入唯一的策略组名称')
     group = next((g for g in groups if g.get('name') == original), None) if original else {}
+    if original in routing.REQUIRED and name != original:
+        raise ValueError('固定策略组必须保留原名')
     if group is None:
         raise ValueError('策略组已变化，请重新打开')
     members, providers = edit['proxies'], edit['use']
+    if original == routing.PROXY:
+        removed = set(routing.exits(config)) - set(members)
+        if any(r['target'] in removed for r in bindings(config)):
+            raise ValueError('请先为使用该出口的设备更换绑定')
+
     if name in members or (original and original in members):
         raise ValueError('策略组不能包含自身')
     if original and name != original:
@@ -208,6 +272,9 @@ def edit_binding(config, edit):
         if previous is None:
             raise ValueError('请选择已有绑定')
         del rules[previous['id']:previous['end']]
+        if routing.NOTES in config:
+            config[routing.NOTES].pop(previous['ip'], None)
+            if not config[routing.NOTES]: del config[routing.NOTES]
         return
     try:
         ip = ipaddress.ip_address(edit['ip'].strip())
@@ -216,10 +283,19 @@ def edit_binding(config, edit):
     target = edit['target']
     if config.get('mode', 'rule').lower() != 'rule':
         raise ValueError('请先在配置项中将运行模式设为 rule')
-    if target not in policy_names(config) and target not in ('DIRECT', 'REJECT') and not (previous and target == previous['target']):
-        raise ValueError('请选择已有出口或代理组')
+    if target not in routing.exits(config):
+        raise ValueError('请选择 Proxy 分组中的具体 HTTP、HTTPS 或 SOCKS5 出口')
     if any(row != previous and row['ip'] == str(ip) for row in rows):
         raise ValueError('这个来源 IP 已有绑定，请编辑原绑定')
+    notes = config.get(routing.NOTES, {})
+    old_note = notes.pop(previous['ip'], '') if previous else ''
+    note = str(edit.get('note', old_note)).strip()
+    if note:
+        notes[str(ip)] = note
+    if notes:
+        config[routing.NOTES] = notes
+    else:
+        config.pop(routing.NOTES, None)
     cidr = f'{ip}/{ip.max_prefixlen}'
     if previous and previous['target'] == target and previous['ip'] == str(ip):
         return
@@ -356,15 +432,25 @@ def draft(data):
         raise ValueError(f'YAML 格式有误{where}') from None
     if not isinstance(config, dict):
         raise ValueError('请填写 Clash YAML 配置')
+    original = deepcopy(config)
+    migrate_groups(config)
     if data.get('upload'):
         legacy.preserve_gateway_settings(config, state.config())
         return {'content': yaml.safe_dump(config, allow_unicode=True, sort_keys=False), 'model': model(config)}
     edit = data.get('edit')
     if not edit:
-        return {'model': model(config)}
+        result = {'model': model(config)}
+        if config != original:
+            result['content'] = yaml.safe_dump(config, allow_unicode=True, sort_keys=False)
+        return result
+    if edit['kind'] == 'default-exit':
+        target = edit['target']
+        group = routing.pool(config)
+        live = [] if target in group.get('proxies', []) else live_pool(config).get('all', [])
+        routing.set_default(config, target, live)
+        return {'model': model(config), 'content': yaml.safe_dump(config, allow_unicode=True, sort_keys=False)}
     change = {'provider': edit_provider, 'exit': edit_exit, 'binding': edit_binding,
-              'option': edit_option, 'rule': edit_rule, 'group': edit_group}[edit['kind']]
-    original = deepcopy(config)
+              'option': edit_option, 'rule': edit_rule, 'group': edit_group, 'toggle-group': lambda cfg, e: routing.toggle(cfg, e['name'], e['enabled'])}[edit['kind']]
     change(config, edit)
     if config != original:
         text = yaml.safe_dump(config, allow_unicode=True, sort_keys=False)
