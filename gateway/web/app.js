@@ -1,6 +1,6 @@
 'use strict';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-let initialized=false,cards=[],revision=null,editing=null,busy=false,status={},prefs={};
+let initialized=false,cards=[],revision=null,editing=null,busy=false,status={};
 let desktopPrefs={workstation_url:'https://192.168.1.251:6080/',order:[]},draggingIcon=null;
 let currentPage=null,navigation=0,savedConfig=null,settingsWindow=null;
 let tailscaleRequest=null,tailscaleNavigation=0,settingsLoadingDone=null,wallpaperRead=0,wallpaperLoadingDone=null;
@@ -142,11 +142,11 @@ async function guard(work,target=null){
   const done=beginLoading(loadingRegion(target));
   busy=true;const controls=$$('button,input,select,textarea').filter(el=>!el.disabled&&!el.closest('#auth-dialog, #confirm-dialog, #desktop-toast')&&!['close-settings','close-link'].includes(el.id));
   controls.forEach(el=>el.disabled=true);editor.setDisabled(true);
-  try{await work();}catch(e){toast(e.message,true);}finally{busy=false;controls.filter(el=>el.isConnected).forEach(el=>el.disabled=el.dataset.stateDisabled==='true');editor.setDisabled(false);done();$('#refresh-subscription').disabled=!prefs.subscription?.url;}
+  try{await work();}catch(e){toast(e.message,true);}finally{busy=false;controls.filter(el=>el.isConnected).forEach(el=>el.disabled=el.dataset.stateDisabled==='true');editor.setDisabled(false);done();}
 }
 function openLinkEditor(card=null){cancelFaviconPreview();editing=card?.id||null;$('#link-title').textContent=card?'编辑链接':'添加链接';$('#link-name').value=card?.name||'';$('#link-url').value=card?.url||'';$('#link-icon').value=card?(card.icon||'link'):'auto';$('#icon-search').value='';drawIconChoices();$('#link-newtab').checked=card?.open_in_new_tab??true;$('#link-dialog').showModal();previewFavicon(0);}
 function desktopItems(){
-  const builtins=[{name:'Clash',icon:'clash',url:'/ui/'},{name:'AdGuard Home',icon:'adguard',url:'/adguard/'},{name:'Tailscale',icon:'tailscale',page:'tailscale'},{name:'工作站',icon:'workstation',url:desktopPrefs.workstation_url},{name:'局域网互传',icon:'files',url:'/transfer/'},{name:'设置',icon:'settings',page:'overview'}].map(item=>({...item,id:'builtin:'+item.icon,fixed:true}));
+  const builtins=[{name:'Clash',icon:'clash',url:'/ui/#/overview'},{name:'AdGuard Home',icon:'adguard',url:'/adguard/'},{name:'Tailscale',icon:'tailscale',page:'tailscale'},{name:'工作站',icon:'workstation',url:desktopPrefs.workstation_url},{name:'局域网互传',icon:'files',url:'/transfer/'},{name:'设置',icon:'settings',page:'overview'}].map(item=>({...item,id:'builtin:'+item.icon,fixed:true}));
   const items=[...builtins,...cards],lookup=new Map(items.map(item=>[item.id,item]));
   return [...new Set([...desktopPrefs.order,...lookup.keys()])].map(id=>lookup.get(id)).filter(Boolean);
 }
@@ -225,7 +225,7 @@ async function openSettings(page='overview',{force=false}={}){
     else {const title=section.querySelector('h2');title.tabIndex=-1;title.focus({preventScroll:true});}
   }
   try{
-    const loaded=await api('/settings');if(request!==navigation)return;prefs=loaded;
+    const prefs=await api('/settings');if(request!==navigation)return;
     if(page==='dns'){$('#domain').value=prefs.domain;$('#domain-address').textContent='当前地址：'+status.address+' · http://'+prefs.domain;}
     if(page==='tailscale')await loadTailscale();
     if(page==='updates'){loadWebRelease().catch(e=>toast(e.message,true));const webJob=await api('/web-release/job');if(webJob.status==='running'){await followWebRelease(webJob);return;}const task=await loadUpdates();if(task?.status==='running'){await job(task,{request});if(request===navigation)await loadUpdates();}}
@@ -327,7 +327,6 @@ $('#save-config').onclick=()=>guard(async()=>{
   if(!$('#proxy-fields').hidden)await openProxyVisual();
   toast(result.message||'配置已应用。');await loadStatus();
 });
-$('#subscription-form').onsubmit=e=>{e.preventDefault();guard(async()=>{if(!await discardChanges())return;await post('/subscription',{url:$('#subscription-url').value,interval_hours:Number($('#subscription-interval').value)});await openSettings('proxy',{force:true});await loadStatus();toast('订阅已导入。');});};$('#refresh-subscription').onclick=()=>guard(async()=>{if(!await discardChanges())return;await post('/subscription/refresh');await openSettings('proxy',{force:true});toast('订阅已刷新。');});
 $('#domain-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/settings/domain',{domain:$('#domain').value});await loadStatus();await openSettings('dns',{force:true});toast('域名已保存。');});};
 $$('[data-ts]').forEach(b=>b.onclick=()=>guard(async()=>{
   const action=b.dataset.ts;

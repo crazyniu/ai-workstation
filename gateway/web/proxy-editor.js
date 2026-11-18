@@ -8,7 +8,6 @@ function showProxyMode(visual) {
   $('#config-editor').hidden = visual;
   $('#proxy-config-page').hidden = visual;
   for (const tab of $$('[data-proxy-tab]')) tab.setAttribute('aria-pressed', String(visual && tab.dataset.proxyTab === (proxyTab === 'group-domains' ? 'groups' : proxyTab)));
-  $('#proxy-subscription').hidden = !visual || proxyTab !== 'providers';
   if (visual && proxyModel) renderProxyBrowser();
   $('#config-code').setAttribute('aria-pressed', String(!visual));
 }
@@ -49,14 +48,17 @@ async function openProxyWindow(force = false, ranges = false) {
     resetProxyBrowser();
     proxyTab = ranges ? 'bindings' : 'groups';
     proxyWindow = createGatewayWindow(dialog, 'Clash 配置编辑器', '/icons/clash.svg', closeProxyWindow);
+    const back = button('←', backProxy, 'editor-back proxy-header-back');
+    back.title = '返回上一页';
+    back.setAttribute('aria-label', back.title);
+    proxyWindow.window.querySelector('.wb-header').append(back);
   }
   const request = ++proxyGeneration;
   workspace.inert = true;
   const done = beginLoading(workspace);
   try {
-    const [config, settings] = await Promise.all([api('/proxy/config'), api('/settings')]);
+    const config = await api('/proxy/config');
     if (request !== proxyGeneration) return;
-    prefs = settings;
     pendingUpload = false;
     liveSelector = config.selector || {};
     revision = config.revision;
@@ -65,10 +67,6 @@ async function openProxyWindow(force = false, ranges = false) {
     updateConfigState();
     await openProxyVisual(proxyTab !== 'yaml');
     if (request !== proxyGeneration) return;
-    $('#subscription-url').value = prefs.subscription.url || '';
-    $('#subscription-interval').value = prefs.subscription.interval_hours || 0;
-    $('#subscription-status').textContent = prefs.subscription.error || '';
-    $('#refresh-subscription').disabled = !prefs.subscription.url;
     workspace.inert = false;
   } catch (error) {
     if (request === proxyGeneration) { destroyProxyWindow(); toast(error.message, true); }
@@ -123,7 +121,7 @@ function updateConfigState() {
   if (!$('#proxy-window').open || savedConfig === null) return;
   const dirty = configDirty();
   $('#config-filename').textContent = dirty ? 'config.yaml · 等待应用' : 'config.yaml · 当前正在使用';
-  $('#config-code').textContent = dirty ? '配置 · 待应用' : '配置';
+  $('#config-code').textContent = dirty ? '配置信息 · 待应用' : '配置信息';
 }
 
 function proxyDialog(title, build) {
@@ -225,7 +223,6 @@ function openProxyEntry(kind, item) {
 
 function setupProxyEditor() {
   for (const tab of $$('[data-proxy-tab]')) tab.onclick = () => navigateProxy(tab.dataset.proxyTab);
-  $('#back-proxy').onclick = backProxy;
   $('#back-to-policy-groups').onclick = backProxy;
   $('#back-proxy-entry').onclick = () => $('#proxy-entry').close();
   setupProxyBrowser();
