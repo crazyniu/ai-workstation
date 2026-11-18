@@ -40,14 +40,15 @@ def checked(path, digest):
 
 
 def download(url, path, headers=()):
-    partial = path.with_name(path.name + '.partial')
-    cmd = ['curl', '--fail', '--silent', '--show-error', '--location',
-           '--proto', '=https', '--proto-redir', '=https', '--retry', '3',
-           '--connect-timeout', '20', '--max-time', '900', '-o', str(partial)]
-    for header in headers:
-        cmd.extend(['-H', header])
-    subprocess.run(cmd + [url], check=True)
-    partial.replace(path)
+    with tempfile.TemporaryDirectory(dir=path.parent) as folder:
+        partial = pathlib.Path(folder) / 'download'
+        cmd = ['curl', '--fail', '--silent', '--show-error', '--location',
+               '--proto', '=https', '--proto-redir', '=https', '--retry', '3',
+               '--connect-timeout', '20', '--max-time', '900', '-o', str(partial)]
+        for header in headers:
+            cmd.extend(['-H', header])
+        subprocess.run(cmd + [url], check=True)
+        partial.replace(path)
 
 
 def fetch(image, cache, output, arch="amd64", variant=None):

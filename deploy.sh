@@ -26,9 +26,6 @@ esac
 compose() { docker compose --env-file .env -f "$compose_file" "$@"; }
 if [ ! -f .env ]; then cp .env.example .env; chmod 600 .env; fi
 compose config --quiet
-if [ "$ai_install" = true ]; then
-  python3 scripts/ai-install-plan.py "$compose_file" "$1"
-fi
 if ! existing_containers=$(compose ps --all --quiet); then
   printf 'Unable to check existing containers. Deployment was not started.\n' >&2
   exit 1
@@ -38,6 +35,9 @@ if [ -n "$existing_containers" ]; then
     'deploy.sh only creates a new environment. Use the same Compose file with start or restart for existing containers.' \
     'Before replacing a container, export its internal data and follow the documented restore procedure.' >&2
   exit 1
+fi
+if [ "$ai_install" = true ]; then
+  python3 scripts/ai-install-plan.py "$compose_file" "$1"
 fi
 # Intentional field splitting: service is either empty or the literal gateway.
 compose pull $service

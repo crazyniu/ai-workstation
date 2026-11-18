@@ -6,8 +6,6 @@ import json
 import os
 from pathlib import Path
 import platform
-import pwd
-import grp
 import shutil
 import socket
 import subprocess
@@ -26,6 +24,8 @@ def run(*command, **kwargs):
 def preflight(role, config, system=Path('/')):
     if platform.system() != 'Linux':
         raise ValueError('Native installation requires Linux. Use Docker Desktop on Windows/macOS.')
+    import grp
+    import pwd
     # Userland architecture, including 32-bit userland on a 64-bit kernel.
     arch = architecture(subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip())
     release = dict(line.split('=', 1) for line in (system/'etc/os-release').read_text().splitlines() if '=' in line)

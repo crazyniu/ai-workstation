@@ -19,6 +19,8 @@ def main():
     if os.getuid() != 0:
         raise ValueError('The entrypoint needs root to start SSH; applications run as dev')
     native = os.environ.get('WORKSTATION_INSTALL_MODE') == 'native'
+    if os.environ.get('WORKSTATION_LAN_GUARD') == 'required':
+        subprocess.run(['python3', '/etc/workstation/network-guard.py', '--ready'], check=True)
     dev_password = secret('DEV_PASSWORD', required=True, default='' if native else 'dev')
     vnc_auth = os.environ.get('VNC_AUTH', 'password')
     if vnc_auth not in ('password', 'none'):
@@ -37,6 +39,8 @@ def main():
     home.mkdir(parents=True, exist_ok=True)
     os.chown(home, 1100, 1100)
     home.chmod(0o700)
+    if not native:
+        subprocess.run(['python3', '/etc/workstation/desktop-permissions.py'], check=True)
     for name in ('DEV_PASSWORD', 'ROOT_PASSWORD', 'VNC_PASSWORD', 'GATEWAY_CONTAINER_PASSWORD', 'GATEWAY_ADMIN_PASSWORD'):
         os.environ.pop(name, None)
     child_env = dict(os.environ, HOME=str(home), USER='dev', LOGNAME='dev')
@@ -55,8 +59,6 @@ def main():
     if not key.exists():
         subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(key)], check=True)
     Path('/run/sshd').mkdir(parents=True, exist_ok=True)
-    for name in ('DEV_PASSWORD', 'ROOT_PASSWORD', 'VNC_PASSWORD', 'GATEWAY_CONTAINER_PASSWORD', 'GATEWAY_ADMIN_PASSWORD'):
-        os.environ.pop(name, None)
     config = '/etc/workstation/supervisord.conf' if native else '/etc/supervisor/supervisord.conf'
     os.execv('/usr/bin/supervisord', ['supervisord', '-n', '-c', config])
 

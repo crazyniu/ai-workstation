@@ -10,7 +10,7 @@ trap 'rm -rf "$stage"' EXIT
 apt-get update
 apt-get install -y --no-install-recommends \
     ca-certificates curl gnupg python3 python3-tomlkit git gh locales tzdata supervisor openssh-server \
-    util-linux procps iproute2 tar unzip xz-utils zstd gcc libc6-dev \
+    util-linux procps iproute2 rsync tar unzip xz-utils zstd gcc libc6-dev \
     xfce4-session xfwm4 xfce4-panel xfdesktop4 xfce4-settings xfce4-terminal thunar dbus-x11 \
     tigervnc-standalone-server tigervnc-tools x11-utils x11-xserver-utils \
     arc-theme papirus-icon-theme fonts-inter fonts-noto-cjk fonts-dejavu-core \
@@ -23,7 +23,7 @@ fi
 localedef -i en_SG -f UTF-8 en_SG.UTF-8
 useradd --uid 1100 --user-group --create-home --shell /bin/bash dev
 if [[ ${WORKSTATION_INSTALL_MODE:-container} == container ]]; then
-    apt-get install -y --no-install-recommends sudo
+    apt-get install -y --no-install-recommends sudo acl nftables
     usermod -aG sudo dev
     passwd --lock root
     passwd --lock dev

@@ -548,8 +548,8 @@ class ImportTests(DataTest):
     @patch.object(legacy, 'controller_request', return_value=b'{"proxies":[{"name":"fresh"}]}')
     def test_explicit_subscription_refresh_still_fetches_unchanged_providers(self, controller, run):
         value = self.existing_providers()
-        h = self.handler(yaml.safe_dump(value))
-        result = h.apply_content(yaml.safe_dump(value))
+        with patch.object(server, 'fetch_subscription', return_value=yaml.safe_dump(value)):
+            result = server.refresh_subscription('https://example.invalid/sub', 0)
         self.assertEqual([p['name'] for p in result['refreshed_providers']], ['A', 'B'])
         self.assertEqual(sum(c.kwargs.get('method') == 'PUT' for c in controller.call_args_list), 3)
 

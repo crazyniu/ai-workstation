@@ -10,6 +10,11 @@ services:
       net.ipv4.ip_forward: '1'
       net.ipv4.conf.all.rp_filter: '0'
     environment:
+      GATEWAY_LOCALE: ${GATEWAY_LOCALE:-C.UTF-8}
+      GATEWAY_TIMEZONE: ${GATEWAY_TIMEZONE:-UTC}
+      GATEWAY_WORKSTATION_URL: ${WORKSTATION_URL:-}
+      GATEWAY_WORKSTATION_ADDRESS: ${WORKSTATION_ADDRESS:-192.168.1.251}
+      NOVNC_TLS: ${NOVNC_TLS:-1}
       GATEWAY_MODE: 'true'
       GATEWAY_LAN_ADDRESS: ${GATEWAY_ADDRESS:-192.168.1.250}/${LAN_PREFIX:-24}
       GATEWAY_LAN_ROUTER: ${LAN_ROUTER:-192.168.1.1}
@@ -18,22 +23,48 @@ services:
       GATEWAY_CONTAINER_PASSWORD: ${GATEWAY_PASSWORD:-root}
       GATEWAY_HOST_ADDRESS: ${HOST_ADDRESS:-}
       GATEWAY_BRIDGE_ROUTER: ${CONTROL_ROUTER:-172.30.100.1}
+      GATEWAY_ISOLATED_CLIENTS: ${WORKSTATION_ADDRESS:-192.168.1.251}
       GATEWAY_BLOCK_DIRECT_CLIENTS: ${WORKSTATION_ADDRESS:-192.168.1.251}
     networks:
       control:
         ipv4_address: ${CONTROL_ADDRESS:-172.30.100.2}
       gateway_lan: {}
-  workstation:
+  workstation-network:
     image: ${WORKSTATION_IMAGE:-ghcr.io/crazyniu/ai-workstation:latest}
     hostname: ai-workstation
     restart: unless-stopped
+    entrypoint: [python3, /etc/workstation/network-guard.py]
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: [no-new-privileges:true]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: '1'
+      net.ipv6.conf.default.disable_ipv6: '1'
+    environment:
+      WORKSTATION_GATEWAY: ${GATEWAY_ADDRESS:-192.168.1.250}
+      WORKSTATION_LAN: ${LAN_SUBNET:-192.168.1.0/24}
+    dns: ["${GATEWAY_ADDRESS:-192.168.1.250}"]
+    networks:
+      workstation_lan:
+        ipv4_address: ${WORKSTATION_ADDRESS:-192.168.1.251}
+    healthcheck:
+      test: [CMD, python3, /etc/workstation/network-guard.py, --ready]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+  workstation:
+    image: ${WORKSTATION_IMAGE:-ghcr.io/crazyniu/ai-workstation:latest}
+    network_mode: service:workstation-network
+    restart: unless-stopped
     shm_size: 512mb
-    # Routing belongs to Docker/the gateway; apps cannot alter it or send raw frames.
+    # The desktop shares the filtered namespace, without either networking capability.
     cap_drop: [NET_ADMIN, NET_RAW]
     security_opt:
       - no-new-privileges:false
       - seccomp=./workstation/security/seccomp-chrome.json
     environment:
+      WORKSTATION_LAN_GUARD: required
       DEV_PASSWORD: ${WORKSTATION_PASSWORD:-dev}
       VNC_PASSWORD: ${VNC_PASSWORD:-root}
       VNC_AUTH: ${VNC_AUTH:-password}
@@ -46,12 +77,11 @@ services:
       WORKSTATION_TIMEZONE: ${WORKSTATION_TIMEZONE:-Asia/Singapore}
       HTTP_PROXY: http://${GATEWAY_ADDRESS:-192.168.1.250}:7890
       HTTPS_PROXY: http://${GATEWAY_ADDRESS:-192.168.1.250}:7890
-      NO_PROXY: ${WORKSTATION_NO_PROXY:-localhost,127.0.0.1,home.arpa,.home.arpa,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12}
-    dns: ["${GATEWAY_ADDRESS:-192.168.1.250}"]
-    networks:
-      workstation_lan:
-        ipv4_address: ${WORKSTATION_ADDRESS:-192.168.1.251}
+      NO_PROXY: ${WORKSTATION_NO_PROXY:-localhost,127.0.0.1}
     depends_on:
+      workstation-network:
+        condition: service_healthy
+        restart: true
       gateway:
         condition: service_healthy
 networks:

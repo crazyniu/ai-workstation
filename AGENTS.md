@@ -15,7 +15,15 @@ The workstation defaults to Singapore/English and supports country, language
 and timezone initialization through WORKSTATION_* settings or internal
 `/etc/workstation/region.json`.
 
+For Linux LAN deployments the workstation role includes `workstation-network`.
+This helper uses the workstation image and holds its LAN address and firewall
+capability. Keep the desktop in that namespace with NET_ADMIN and NET_RAW
+dropped. Preserve the editable Clash source and compile the enforced runtime
+policy on startup, reload and restore. The helper contains no user data.
+
 ## Installation requests
+
+For each new AI installation, ask the user to confirm the country before deploying. Pass that answer through `AI_INSTALL_COUNTRY`. SG uses English and Asia/Singapore, TW uses Traditional Chinese and Asia/Taipei, and US uses English and America/Los_Angeles. Preserve existing region settings on upgrades.
 
 Each AI request installs or upgrades only the named role. For a new gateway at
 `192.168.1.250`, run `./deploy.sh ai gateway` with

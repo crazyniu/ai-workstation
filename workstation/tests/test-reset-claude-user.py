@@ -6,7 +6,6 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -34,16 +33,13 @@ class ResetTests(unittest.TestCase):
         return path
 
     def invoke(self, apply=False, env=None, running=False, home=None):
-        args = [str(SCRIPT), '--home', str(home or self.home)]
-        if apply:
-            args.append('--apply')
         environment = {k: v for k, v in os.environ.items()
                        if k not in RESET.AUTH_ENV and k != 'CLAUDE_CONFIG_DIR'}
         environment.update(env or {})
         output = io.StringIO()
-        with patch.object(sys, 'argv', args), patch.dict(os.environ, environment, clear=True), \
+        with patch.dict(os.environ, environment, clear=True), \
                 patch.object(RESET, 'active_claude', return_value=running), redirect_stdout(output):
-            RESET.main()
+            RESET.main(home or self.home, apply)
         return output.getvalue()
 
     def test_preserves_mcp_credentials_plugins_skills_proxy_and_project_files(self):

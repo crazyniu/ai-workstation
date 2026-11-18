@@ -10,6 +10,8 @@ os.umask(0o077)
 home = Path('/home/dev')
 password = sys.stdin.buffer.readline()
 subprocess.run(['cp', '-an', '/opt/workstation/home-template/.', str(home)], check=True)
+if os.environ.get('WORKSTATION_INSTALL_MODE') != 'native':
+    subprocess.run(['python3', '/etc/workstation/desktop-permissions.py'], check=True)
 for name in ('upgrade-ai.sh', 'upgrade-ai.desktop'):
     (home / 'Desktop' / name).unlink(missing_ok=True)
 # Remove obsolete desktop shortcuts when restoring a HOME from the old image.

@@ -19,9 +19,6 @@ latest_tag() {
 update_apt() {
     "${apt[@]}" -o APT::Update::Error-Mode=any update
     "${apt[@]}" --with-new-pkgs upgrade -y
-    if ! command -v rsync >/dev/null; then
-        "${apt[@]}" install -y --no-install-recommends rsync
-    fi
 }
 
 update_node() {
@@ -102,13 +99,11 @@ run_update() {
     local label=$1 status
     shift
     printf '\nUpdating %s...\n' "$label"
-    set +e
-    (set -e; "$@")
-    status=$?
-    set -e
+    run_action "$@"
+    status=$action_status
     if (( status != 0 )); then
         failed+=("$label")
-        printf 'Update failed for %s (exit %d).\n' "$label" "$status" >&2
+        printf 'Update failed for %s.\n' "$label" >&2
     fi
 }
 
@@ -267,7 +262,11 @@ GITHUB_BLOB
 )
 
 reset_claude() {
-    python3 - "$@" <<'CLAUDE_RESET_PY'
+    local python=(python3)
+    if [[ $(id -u) == 0 ]]; then
+        python=(runuser -u dev -- env HOME="$orca_home" python3)
+    fi
+    "${python[@]}" - "$@" <<'CLAUDE_RESET_PY'
 """Reset local Claude Code identity while preserving MCP and shared tooling.
 
 Reference: liseami/CCBaga bdfb90ceadfc5fae6772ffff597bddecb0b73cc3,
@@ -298,7 +297,6 @@ No new credential backups are created. Actual project directories are untouched.
 # SOFTWARE.
 #
 
-import argparse
 import fcntl
 import json
 import os
@@ -483,12 +481,8 @@ def atomic_write(path, data):
             os.unlink(temp)
 
 
-def main():
-    parser = argparse.ArgumentParser(prog="Claude Code cleanup", description=__doc__)
-    parser.add_argument('--apply', action='store_true', help='permanently remove local Claude Code identity/history')
-    parser.add_argument('--home', type=Path, default=Path.home(), help='target HOME; defaults to the current user')
-    args = parser.parse_args()
-    home = args.home.absolute()
+def main(home, apply):
+    home = home.absolute()
     if '..' in home.parts or home.is_symlink() or not home.is_dir() or home.resolve() == Path('/'):
         raise ValueError('Expected a real user HOME directory')
     home = home.resolve()
@@ -503,17 +497,17 @@ def main():
     fd = os.open(home, os.O_RDONLY | os.O_DIRECTORY)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        if args.apply and active_claude(uid):
+        if apply and active_claude(uid):
             raise ValueError('Close all Claude Code processes before applying')
-        if args.apply and AUTH_ENV.intersection(os.environ):
+        if apply and AUTH_ENV.intersection(os.environ):
             raise ValueError('Unset inherited Claude auth variables first: ' + ', '.join(sorted(AUTH_ENV.intersection(os.environ))))
         changes, removals = plan(home, config)
-        print('APPLY' if args.apply else 'PREVIEW (no changes)')
+        print('APPLY' if apply else 'PREVIEW (no changes)')
         for path, _ in changes:
             print('sanitize', path.relative_to(home))
         for path in removals:
             print('remove', path.relative_to(home))
-        if args.apply:
+        if apply:
             for path, data in changes:
                 if active_claude(uid):
                     raise ValueError('Claude restarted; stopped after partial cleanup')
@@ -535,7 +529,7 @@ def main():
 
 if __name__ == '__main__':
     try:
-        main()
+        main(Path.home(), sys.argv[1:] == ['apply'])
     except (OSError, ValueError) as error:
         print('Refused: '+str(error), file=sys.stderr)
         sys.exit(1)
@@ -560,7 +554,7 @@ run_action() {
     action_status=$?
     set -e
     if (( action_status != 0 )); then
-        echo 'Action did not complete.' >&2
+        printf 'Action did not complete (exit %d).\n' "$action_status" >&2
     fi
 }
 
@@ -592,7 +586,7 @@ menu() {
             5) run_action reset_claude
                if (( action_status != 0 )); then continue; fi
                confirm_action 'Permanently apply the Claude cleanup shown above?' || continue
-               run_action reset_claude --apply ;;
+               run_action reset_claude apply ;;
             *) echo 'Choose one of the listed numbers.' ;;
         esac
     done

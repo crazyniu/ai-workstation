@@ -11,6 +11,18 @@
 
 新容器的管理员为 `root/root`，网关网页密码为 `root`。工作站桌面用户为 `dev/dev`，VNC 密码为 `root`。升级保留用户已有的配置和身份。
 
+## 首次安装先确认国家
+
+部署所选角色前，先向用户询问国家并等待答复。使用用户已确认的选项时，例如美国，执行 `AI_INSTALL_COUNTRY=US ./deploy.sh ai workstation`；PowerShell 中先设置 `$env:AI_INSTALL_COUNTRY='US'`。交互式安装可直接在终端选择。非交互安装缺少确认时会停止。升级沿用已有地区设置。
+
+| 国家 | 系统语言 | 时区 |
+| --- | --- | --- |
+| 新加坡 SG | 英语 | Asia/Singapore |
+| 台湾 TW | 繁体中文 | Asia/Taipei |
+| 美国 US | 英语 | America/Los_Angeles |
+
+其他国家另行确认语言代码和 IANA 时区，分别通过 `AI_INSTALL_LANGUAGE` 和 `AI_INSTALL_TIMEZONE` 传入。地区只应用于本次选择的容器；代理出口由网络设置决定。
+
 ## 0. 先确定角色、宿主机和网络拓扑
 
 `250` 指网关角色，`251` 指工作站角色，不代表宿主机地址，也不要求这两个角色位于同一设备。首次部署先记录下表，再连接对应 Docker context；外部环境可能是 **工作站 251 在宿主机 A、网关 250 在宿主机 B**。宿主机地址、网卡名、磁盘及容器名按现场填写。
@@ -75,9 +87,11 @@ Docker 的 `data-root` 属于宿主存储设置。**默认不迁移 Docker 数�
 
 需要把某个工作站的境内外公网流量和 DNS 都固定到同一个现有代理节点时，使用[独立出口与 DNS 配置流程](docs/workstation-egress.md)。该流程仅处理指定来源的规则和 AdGuard 客户端，保留其他设备的 DNS 和分流；必须先满足 LAN 透明网关和直连保护前提。
 
-工作站 Compose 移除 `NET_ADMIN` 和 `NET_RAW`，将路由维护留给 Docker 或宿主机；工作站内的 root 也不能修改原网络命名空间的路由或发送原始二层帧。网关保留透明代理所需的 `NET_ADMIN`。需要访问 macvlan 宿主时，由宿主侧设置专用路由，不给工作站增加网络管理权限。
+Linux LAN 的工作站角色包含 `workstation` 和 `workstation-network` 两个服务，使用同一工作站镜像。后者持有 251 地址及 NET_ADMIN，先装载 nftables 规则。前者共享该网络命名空间，移除 NET_ADMIN 和 NET_RAW，启动 SSH 和桌面前等待本命名空间的隔离规则就绪。核对地址时查看辅助容器。部署不添加业务卷、Docker socket 或宿主防火墙规则。
 
-默认网关和 DNS 指向 250 仅决定正常路径。要求强制代理时，还须核实网关规则固定到最终出口，代理不可用时拒绝公网直连，以及额外 bridge、IPv6、DNS 和 UDP 是否存在备用出口。工作站若另接 Docker bridge，按该部署实际需要在宿主侧限制转发，不能仅凭默认路由认为 bridge 无法上网。先测正常访问，再在可恢复的窗口短暂停止代理核心并测失败行为；重启后复查。广告过滤与公网出口分别验收，不因出口问题直接关闭过滤。
+251 可回复来自管理端的 SSH、VNC 和网页桌面连接，可向 250 查询 DNS 或使用代理。主动连接内网、链路本地、组播等目标会被阻止。250 同时限制 251 通过网关代理访问本地目标。两台宿主分别部署时，两端都需要支持隔离的镜像与 Compose；升级一个角色并不能更新对端。可从普通 LAN 客户端和 251 分别验收，以区分入站管理与工作站主动访问。
+
+固定软件或来源的出口应选具体代理节点。验收时区分匹配到的规则、代理组当前选择和实际节点。只在用户指定的维护窗口测试节点失效和 UDP 拒绝，正常运行时保留其他设备的连接。portable、独立 bridge 和原生安装的网络权限见[平台说明](docs/platforms.md)。
 
 以上能力由新建容器的安全配置决定；已有容器只执行 `restart` 不会更新能力集合。按已有环境流程保存内部数据并验证恢复，再应用新的容器配置；不要对有数据的部署直接运行 `compose up --force-recreate`。
 
@@ -100,7 +114,7 @@ WORKSTATION_LANGUAGE=en
 WORKSTATION_TIMEZONE=Asia/Singapore
 
 # 例如台湾繁体中文：TW / zh / Asia/Taipei
-# 例如美国英文（纽约）：US / en / America/New_York
+# 例如美国英文（洛杉矶）：US / en / America/Los_Angeles
 ```
 
 通常使用镜像中 `/usr/share/i18n/locales` 支持的语言/国家组合。台湾英语 `TW / en / Asia/Taipei` 使用明确的组合：`en_US.UTF-8` 提供英语界面，`zh_TW.UTF-8` 提供台湾日期、货币、地址等地区格式；`LC_ALL` 留空以允许分类设置，`LANGUAGE=en_US:en` 和 `LC_MESSAGES=en_US.UTF-8` 保持英语消息。glibc 没有 `en_TW`，不生成虚构的 locale。其他无效代码、缺失的 locale 或时区会让初始化明确失败。以 `WORKSTATION_*` 三项为输入，初始化统一设置语言、地区分类、`TZ`、`/etc/default/locale`、PAM 环境、登录 Shell 和桌面会话；不要另设互相矛盾的 `LANG` / `TZ`。此行为要求镜像已包含对应版本的 `/etc/workstation/region.py`；核对所选镜像的构建/发布版本，不把当前源码改动说成已有 `latest` 镜像功能。
@@ -162,7 +176,7 @@ chmod 600 .env
 | 容器、镜像与网络 | 核对目标角色的容器 ID、镜像摘要、LAN 地址和状态；251 的 IPv4 在 `workstation-network`，业务容器共享它的网络。 |
 | 内部数据 | 在各自宿主机检查实际容器的 `Mounts` 与镜像 `Config.Volumes`，确认没有外置业务挂载或匿名业务卷。设备映射按所选 Compose 单独核对。 |
 | 网关 Web | 实际打开主页并登录，检查控制面板及服务入口；`/healthz` 成功只说明健康接口可用。 |
-| DNS | 客户端明确向网关查询 `home.arpa`，结果为本次网关 IP；再查询外部域名。确认需要使用本地域名的客户端实际采用该 DNS，而不是被加密 DNS 绕过。 |
+| DNS | 普通 LAN 客户端明确向网关查询 `home.arpa`，结果为本次网关 IP；再查询外部域名。确认需要使用本地域名的客户端实际采用该 DNS，而不是被加密 DNS 绕过。 |
 | 代理与出口 | 用户导入配置并选择节点后，从工作站或测试客户端经实际代理发起 HTTPS 请求，检查成功响应和所用出口；按需要核对直连 / 代理分流。干净镜像默认直连，不能据此宣称个人代理已就绪。 |
 | SSH 与桌面 | 使用工作站普通用户 `dev` 实际登录 SSH；用 VNC 客户端连接桌面，确认画面、输入和终端可用。启动 Claude / Codex 的真实桌面入口，确认没有立即退出或连接错误。 |
 | 工作站地区与语言 | 普通用户登录后检查 `locale`、`/etc/timezone` 和 `date`，核对 XFCE 会话与桌面菜单语言。默认应为 `en_SG.UTF-8` / `en_SG:en` / `Asia/Singapore`。重启同一容器后再次确认自定义值生效，HOME、MCP 与登录身份保持。 |

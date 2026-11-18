@@ -5,7 +5,7 @@
 
 面向家庭网络与远程开发的网关与工作站环境：一个带桌面式 Web 后台的网关，一个可通过浏览器、SSH / VNC 使用的 Linux 开发工作站。
 
-工作站默认新加坡英文，可配置国家、语言和时区。两个角色既可同机运行，也可分别部署在宿主机 A/B；独立部署入口、网络前提和初始化参数见 [AI 安装指南](AI-INSTALL.md)。
+手动部署的工作站默认使用新加坡英文。AI 首次安装网关或工作站时，先确认国家，再设置容器的系统语言和时区。两个角色既可同机运行，也可分别部署在宿主机 A/B；独立部署入口、网络前提和初始化参数见 [AI 安装指南](AI-INSTALL.md)。
 
 ## 让 AI 安装或升级容器
 
@@ -15,7 +15,7 @@
 
 ```text
 按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只安装网关 192.168.1.250。
-在仓库根目录执行 ./deploy.sh ai gateway，只用 ghcr.io/crazyniu/ai-workstation-gateway:latest，不额外安装软件。
+先问我安装国家，得到确认后用 AI_INSTALL_COUNTRY 传入国家代码，再在仓库根目录执行 ./deploy.sh ai gateway，只用 ghcr.io/crazyniu/ai-workstation-gateway:latest，不额外安装软件。
 容器 SSH 用 root/root，网关网页密码用 root。地址已占用或已有网关时停止。
 ```
 
@@ -23,7 +23,7 @@
 
 ```text
 按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只安装工作站 192.168.1.251。
-在仓库根目录执行 ./deploy.sh ai workstation，只用 ghcr.io/crazyniu/ai-workstation:latest，不额外安装软件。
+先问我安装国家，得到确认后用 AI_INSTALL_COUNTRY 传入国家代码，再在仓库根目录执行 ./deploy.sh ai workstation，只用 ghcr.io/crazyniu/ai-workstation:latest，不额外安装软件。
 容器管理员用 root/root，桌面用户用 dev/dev，VNC 密码用 root。地址已占用、已有工作站或网关 192.168.1.250 不可用时停止。
 ```
 
@@ -64,8 +64,61 @@ Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop �
 - 网关内置工作站网页入口，可修改地址；内置图标与自定义链接统一排序，保存、导入和表单校验通过全局提示反馈。
 - 网关默认使用密码登录，可信私网可在账户设置中关闭；工作站提供 HTTPS noVNC 网页桌面，支持双向文字剪贴板。
 - 网关统一管理代理配置、DNS、子网访问、组件升级与备份恢复。
-- LAN 部署中，工作站的桌面和 CLI 默认经网关代理访问外网，局域网地址绕过显式代理；bridge 部署使用配置的私有代理端点，代理留空时沿用宿主机正常出口。
+- LAN 部署中，工作站的桌面和 CLI 默认经网关代理访问外网，251 的网络由同一工作站镜像启动的 `workstation-network` 管理，禁止主动访问内网设备，仅向 250 开放 DNS 和代理端口；bridge 部署使用配置的私有代理端点，代理留空时沿用宿主机正常出口。
+- 在 250 的 Clash 规则里，把软件或来源 IP 绑定到具体 HTTP、HTTPS 或 SOCKS5 出口。该节点连接失败或不支持 UDP 时，命中的流量被拒绝。手动选用的其他节点和独立规则按其自身策略执行。详见[工作站网络策略](docs/workstation-egress.md)。
 - 配置、HOME 和账号身份全部保存在各自容器内部。公开镜像包含程序和默认模板，个人订阅、身份和业务数据由用户自行配置。
+
+## 让 AI 帮你检测 IP 泄漏
+
+复制下面的提示词，发送给能连接目标环境的 AI 助手。将示例地址替换为实际部署地址；检测结果以当次实测为准。该提示词涵盖 HTTPS 出口、STUN / WebRTC、IPv6、DNS 和 Claude 连接，并要求保留现有配置与数据。
+
+```text
+请检查本项目工作站是否存在绕过代理、暴露真实公网 IP 的情况。
+目标工作站示例为 192.168.1.251，网关示例为 192.168.1.250，
+实际宿主机、容器或原生服务、访问入口和预期代理出口请先现场核实。
+先读取 README.md、AGENTS.md、AI-INSTALL.md 和 docs/platforms.md。
+本次仅检测，保持已有服务、代理、路由、防火墙、浏览器配置和用户数据原状；
+使用当前可用的原生工具操作桌面和浏览器，确认测试运行在目标工作站。
+
+1. 盘点实际网络：记录接口、地址、默认路由、策略路由、DNS、代理环境变量，
+   以及浏览器、Claude Desktop / Claude Code 的运行状态与适用代理策略。
+   区分工作站、网关、宿主机和控制端，核对多网卡、Docker / VPN 等额外路径。
+
+2. 在工作站通过两个独立 HTTPS 查询服务测出口 IP，区分系统默认路径和
+   应用实际使用的代理路径。与预期代理出口、可安全取得的宽带出口基线比较，
+   并结合实时转发链判断；仅看到两个查询结果相同，证据仍不完整。
+
+3. 从工作站实际发送 STUN Binding 请求，至少测试 Google STUN 的 19302
+   和 Cloudflare STUN 的 3478 端口。记录当次解析地址，校验响应事务 ID，
+   读取映射公网地址；对各可用接口分别检测。保持测试连接一段时间，
+   同步核对网关实时连接的源 IP、协议、目标、命中规则和代理链。
+
+4. 在目标工作站的实际浏览器中执行 WebRTC ICE 候选收集，记录浏览器版本、
+   代理与 WebRTC 策略，区分 host、srflx、relay、mDNS、私网地址和公网地址。
+   将候选中的公网 IPv4 / IPv6 与 HTTPS 出口、预期代理出口逐项比较。
+   网络层 STUN 探测和浏览器完整 WebRTC 测试分别报告；缺少浏览器访问时，
+   浏览器项记为 NOT RUN，同时继续完成可执行的网络检查。
+
+5. 检查公网 IPv6 地址、IPv6 路由、DNS 的实际解析路径和 UDP/443 的转发链。
+   有 IPv6 时分别验证其出口；DNS 结合查询、日志或限定范围的抓包取证，
+   系统配置和检测页的解析服务商标签只作线索。区分 DNS 泄漏与公网 IP 泄漏。
+
+6. 对正在运行的 Claude 及其子进程观察网络连接，记录观察时长、采样方式，
+   尽量通过 PID、socket、源端口和时间关联转发记录。区分主动测试产生的
+   STUN 请求与应用自身活动；未观察到连接仅代表观察窗口内的结果。
+   登录、语音等未触发场景单列为未验证，记录需要用户配合的具体步骤。
+
+7. 检查规则顺序、子规则、源地址强制代理、UDP 支持和直连回退策略。
+   特别确认前面的工作站子规则是否优先于后面的通用 STUN / QUIC 拒绝规则。
+   区分“已拦截”“经预期代理转发”“绕过代理直连”；STUN 可连通本身不能
+   证明泄漏，超时也不能单独证明拦截。代理故障时的行为仅检查现有证据，
+   停服务或切换出口的故障演练另列为未验证。
+
+最后输出检测表：检查项、实际结果、关键证据、PASS / FAIL / NOT RUN，
+并给出“确认泄漏 / 本次未发现泄漏 / 证据不足”的结论和适用范围。
+发现问题时定位具体路径、规则与影响，并给出最小修复建议。
+保留私有检测报告；公开文档使用脱敏示例，凭据、个人配置和原始日志留在私有位置。
+```
 
 ## 每个容器的软件
 
@@ -89,13 +142,13 @@ Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop �
 | 桌面与连接 | Debian `13`、XFCE、Thunar 文件管理器、XFCE Terminal、TigerVNC、noVNC `1.7.0`、websockify、OpenSSH Server |
 | 浏览器与编辑器 | Google Chrome `156.0.8078.47`、Visual Studio Code `1.143.1` |
 | AI CLI | Codex `0.164.0`、Claude Code `2.1.309` |
-| 开发运行时 | Python 3（Ubuntu 软件包，`3.14` 系列）、Node.js `24.22.1`、npm / npx、GCC |
-| 开发与进程管理 | Git、GitHub CLI、curl、Supervisor；Ubuntu 系统 Python `3.14` 用于系统服务 |
+| 开发运行时 | Python 3（Debian 系统包）、Node.js `24.22.1`、npm / npx、GCC |
+| 开发与进程管理 | Git、GitHub CLI、curl、Supervisor；系统 Python 3 用于系统服务 |
 | 本地 MCP | Context7 `4.4.4`、Playwright `0.0.83`、Chrome DevTools `1.12.0` |
 | 远程 MCP | GitHub MCP 连接配置，使用个人账号授权 |
 | AI desktop app | Claude Desktop. **niu.sh** updates it alongside system packages, desktop applications, runtimes, AI CLIs, and local MCP servers. |
 
-工作站通过 `python3` 使用 Ubuntu 提供的 Python `3.14` 系列，补丁版本随系统软件包更新。MCP 配置同时提供给 Codex 和 Claude，浏览器工具使用容器内的 Chrome。详细清单与使用方式见 [工作站说明](workstation/README.md)。
+工作站容器使用 Debian 提供的 Python 3，补丁版本随系统软件包更新。MCP 配置同时提供给 Codex 和 Claude，浏览器工具使用容器内的 Chrome。详细清单与使用方式见 [工作站说明](workstation/README.md)。
 
 ## 首次部署
 
@@ -162,7 +215,7 @@ WORKSTATION_LANGUAGE=en
 WORKSTATION_TIMEZONE=Asia/Singapore
 ```
 
-国家使用大写两位代码，语言使用小写语言代码，两者通常组合为 `en_SG.UTF-8`；时区独立使用 IANA 名称。例如台湾繁体中文为 `TW / zh / Asia/Taipei`，美国英文（纽约）为 `US / en / America/New_York`。台湾英语使用 `TW / en / Asia/Taipei`：英语界面采用 `en_US.UTF-8`，台湾日期、货币等地区格式采用 `zh_TW.UTF-8`，无需不存在的 `en_TW`。初始化按需生成所需 locale，并将配置应用到 SSH 登录和 XFCE 会话。
+国家使用大写两位代码，语言使用小写语言代码，两者通常组合为 `en_SG.UTF-8`；时区独立使用 IANA 名称。例如台湾繁体中文为 `TW / zh / Asia/Taipei`，美国英文（洛杉矶）为 `US / en / America/Los_Angeles`。台湾英语使用 `TW / en / Asia/Taipei`：英语界面采用 `en_US.UTF-8`，台湾日期、货币等地区格式采用 `zh_TW.UTF-8`，无需不存在的 `en_TW`。初始化按需生成所需 locale，并将配置应用到 SSH 登录和 XFCE 会话。
 
 已有容器可通过内部 `/etc/workstation/region.json` 覆盖地区配置，再重启同一容器；提供的字段优先于容器环境变量。修改 `.env` 后重启不会更新已有容器的环境变量定义。配置文件写法、参数校验和验收命令见 [AI 安装指南](AI-INSTALL.md#21-工作站国家语言和时区初始化)。地区设置控制容器内部语言、格式和时间，公网出口由网关和代理配置决定。
 

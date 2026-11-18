@@ -9,11 +9,8 @@ import tomllib
 
 
 def servers():
-    def local(name, args=None, env=None):
-        result = {"command": "/usr/local/bin/workstation-mcp", "args": [name, *(args or [])]}
-        if env:
-            result["env"] = env
-        return result
+    def local(name, args=()):
+        return {"command": "/usr/local/bin/workstation-mcp", "args": [name, *args]}
     return {
         "context7": local("context7"),
         "playwright": local("playwright", ["--executable-path", "/usr/bin/google-chrome-stable", "--headless", "--isolated", "--sandbox"]),
@@ -63,14 +60,10 @@ def configure(home, only=None):
             continue
         additions.append(f"[mcp_servers.{json.dumps(name)}]")
         for key, value in server.items():
-            if key != "env":
-                additions.append(f"{key} = {json.dumps(value)}")
+            additions.append(f"{key} = {json.dumps(value)}")
         additions.append("startup_timeout_sec = 60")
         if name == "github":
             additions.append('bearer_token_env_var = "GITHUB_PAT_TOKEN"')
-        if server.get("env"):
-            additions.append(f"[mcp_servers.{json.dumps(name)}.env]")
-            additions.extend(f"{key} = {json.dumps(value)}" for key, value in server["env"].items())
         additions.append("")
     if additions:
         original = original.rstrip() + "\n\n# Workstation MCP defaults; GitHub requires your own token.\n" + "\n".join(additions)

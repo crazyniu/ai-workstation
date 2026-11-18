@@ -17,13 +17,13 @@
 | 编辑器 | Visual Studio Code `1.143.1-1792691907` | 项目编辑与开发 |
 | AI 桌面端 | Claude Desktop | Anthropic 官方 Linux 应用 |
 | AI CLI | Codex `0.164.0`、Claude Code `2.1.309` | 终端及桌面入口，使用个人模型账号 |
-| Python | Python 3（Ubuntu 软件包，`3.14` 系列） | 脚本、工具与系统服务运行 |
+| Python | Python 3（Debian 系统包） | 脚本、工具与系统服务运行 |
 | JavaScript 开发 | Node.js `24.22.1`、npm / npx | JavaScript 开发与本地 MCP 服务 |
 | 开发工具 | Git、GitHub CLI、GCC、curl | 版本管理、GitHub、C 编译与下载 |
-| 系统服务 | Supervisor、D-Bus、Ubuntu 系统 Python `3.14` | 会话、SSH/VNC 和工作站启动服务 |
+| 系统服务 | Supervisor、D-Bus、系统 Python 3 | 会话、SSH/VNC 和工作站启动服务 |
 | 桌面资源 | Arc、Papirus、Inter、Noto CJK、DejaVu、Mesa | 主题、图标、中西文字体与软件图形渲染 |
 
-Chrome、VS Code、AI CLI、Claude Desktop 和 Node.js 的固定版本以 [`versions.env`](versions.env) 及 [`Dockerfile`](Dockerfile) 为准；Python 和其他 Ubuntu 软件包按构建时的软件源安装，补丁版本随系统更新。
+Chrome、VS Code、AI CLI、Claude Desktop 和 Node.js 的固定版本以 [`versions.env`](versions.env) 及 [`Dockerfile`](Dockerfile) 为准；Python 和其他系统软件包按构建时的软件源安装，补丁版本随系统更新。
 
 ### MCP 工具
 
@@ -57,7 +57,7 @@ The Orca actions appear in the desktop menu when the user's server is installed 
 
 ### Python 环境
 
-工作站使用 Ubuntu 提供的 Python `3.14` 系列，解释器位于 `/usr/bin/python3`。在桌面终端或 SSH 会话中通过 `python3` 运行脚本，具体补丁版本可直接查询：
+工作站容器使用 Debian 提供的 Python 3，解释器位于 `/usr/bin/python3`。在桌面终端或 SSH 会话中通过 `python3` 运行脚本，具体补丁版本可直接查询：
 
 ```sh
 python3 --version
@@ -117,7 +117,7 @@ Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` �
 
 ### noVNC 网页桌面
 
-访问 `https://工作站地址:6080/`，网页自动连接与 VNC 相同的桌面。noVNC `1.7.0` 源码包及 SHA256 固定在 `web-desktop/versions.env`，websockify 来自 Ubuntu 软件源。左侧剪贴板面板支持双向文字传递，中文与多行代码需要结合实际浏览器验收；文字剪贴板不等同于图片或文件传输。
+访问 `https://工作站地址:6080/`，网页自动连接与 VNC 相同的桌面。noVNC `1.7.0` 源码包及 SHA256 固定在 `web-desktop/versions.env`，websockify 来自系统软件源。左侧剪贴板面板支持双向文字传递，中文与多行代码需要结合实际浏览器验收；文字剪贴板不等同于图片或文件传输。
 
 可信内网需要免证书提示时，显式设置 `NOVNC_TLS=0`，改用 `http://工作站地址:6080/`；配合 `VNC_AUTH=none` 即为免密码 HTTP 桌面。此连接不加密，文字通过 noVNC 左侧剪贴板面板传递；依赖安全上下文的浏览器 API 会受限。默认仍为 `NOVNC_TLS=1` 的 HTTPS。自定义 `NOVNC_ALLOWED_ORIGINS` 必须与实际入口的协议和端口一致。
 
@@ -127,7 +127,7 @@ Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` �
 
 ### 国家、语言与分开部署（供安装 AI 使用）
 
-在私有 `.env` 或 `docker run -e` 中设置 `WORKSTATION_COUNTRY=SG`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=Asia/Singapore`。默认生成 `en_SG.UTF-8`，同步用于 SSH 登录和 XFCE。其他示例为 `TW / zh / Asia/Taipei`、`US / en / America/New_York`。台湾英语 `TW / en / Asia/Taipei` 使用 `en_US.UTF-8` 英语消息与 `zh_TW.UTF-8` 台湾地区格式，清空 `LC_ALL` 以让分类设置生效；glibc 无 `en_TW`。其他组合须是镜像 glibc 支持的 locale，无效输入会中止初始化。不要通过额外的 `LANG` / `TZ` 覆盖这套参数。
+在私有 `.env` 或 `docker run -e` 中设置 `WORKSTATION_COUNTRY=SG`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=Asia/Singapore`。默认生成 `en_SG.UTF-8`，同步用于 SSH 登录和 XFCE。AI 安装先确认国家，台湾使用 `TW / zh / Asia/Taipei`，美国使用 `US / en / America/Los_Angeles`。台湾英语 `TW / en / Asia/Taipei` 使用 `en_US.UTF-8` 英语消息与 `zh_TW.UTF-8` 台湾地区格式，清空 `LC_ALL` 以让分类设置生效；glibc 无 `en_TW`。其他组合须是镜像 glibc 支持的 locale，无效输入会中止初始化。不要通过额外的 `LANG` / `TZ` 覆盖这套参数。
 
 新加坡采用 IANA 时区 `Asia/Singapore`，全年为 UTC+8。
 
@@ -148,11 +148,19 @@ Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` �
 新镜像安装 `/usr/local/bin/niu.sh`；以普通用户 `dev` 打开菜单，输入 **5** 预览，关闭 Claude 后输入 **1** 确认或 **0** 取消。命令清理 Code 本地登录、用户/设备标识、会话、历史和旧配置备份，保留当前 MCP 配置及 OAuth 凭据、插件、技能、通用代理和真实项目文件。脚本不会随容器启动自动执行，也不清理浏览器登录或服务器端会话。范围、进程检查、继承认证变量及自定义配置目录约束见 [AI 安装指南](../AI-INSTALL.md#22-手动重置-claude-code-用户信息)。
 
 
+## 桌面目录权限与 LAN 隔离
+
+桌面应用以 `dev` 运行。容器启动时将桌面内 root 所有的目录交还给 `dev`，给已有的用户目录设置可继承的 POSIX 默认 ACL。普通方式新建的子目录会继承桌面用户权限。显式 `0700`、额外挂载和不可变属性有各自的权限语义。修复目录权限无需删除项目、修改普通文件的执行位或开放全员写入。
+
+Linux LAN 模板通过同镜像的 `workstation-network` 管理 251 的网络。桌面可以回复管理员连接，可通过 250 访问公网；主动访问 NAS、路由器、其他工作站以及 250 管理页面受阻。工作站业务容器始终移除 NET_ADMIN、NET_RAW。见[网络规则、故障行为与迁移](../docs/workstation-egress.md)。
+
 ## 数据、备份与恢复
 
 在仓库根目录操作，确保正在使用原部署的 `.env`、Compose 项目名和 Docker context。`deploy.sh` 只用于首次创建，已有容器会被它拒绝；日常启停用 `docker compose start` / `stop` / `restart`。两个方案均先停止工作站，备份存放在仓库外的私有目录，完成后可以重新启动原容器。
 
 下列命令按同机的根 Compose 编写。独立部署时，在工作站宿主机 A 执行，并为每条 `docker compose` 命令添加 `--env-file .env -f compose.workstation.yaml`（LAN）或 `--env-file .env -f workstation/compose.yaml`（bridge），保持原项目身份。
+
+切换旧版 LAN 工作站的网络部署时，先保留原 Compose 与可恢复快照，并在获准的窗口释放原容器的 251 地址。在原项目下使用目标工作站镜像执行 `docker compose up -d --wait --no-deps workstation-network`（独立部署带上对应 Compose 文件），确认就绪后再创建和恢复业务容器；下面示例中的 `--no-deps` 不会自动创建辅助服务。辅助容器没有业务数据。回退旧镜像时使用与其匹配的原 Compose，并先释放新版辅助容器占用的 251 地址。独立网桥部署沿用原来的网络。
 
 ### 完整私有快照与原版本恢复
 
