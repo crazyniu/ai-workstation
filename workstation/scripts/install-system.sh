@@ -5,6 +5,8 @@ source /opt/workstation/versions.env
 arch=$(dpkg --print-architecture)
 if [[ $(dpkg --print-architecture) == arm64 ]]; then VSCODE_VERSION=$VSCODE_ARM64_VERSION; fi
 export DEBIAN_FRONTEND=noninteractive
+stage=$(mktemp -d)
+trap 'rm -rf "$stage"' EXIT
 apt-get update
 apt-get install -y --no-install-recommends \
     ca-certificates curl gnupg python3 python3-tomlkit git gh locales tzdata supervisor openssh-server \
@@ -34,7 +36,11 @@ if [[ $arch == amd64 ]]; then
     curl -fsSL --retry 4 https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/workstation-chrome.gpg
     echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/workstation-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main' > /etc/apt/sources.list.d/workstation-chrome.list
     apt-get update
-    apt-get install -y --no-install-recommends "google-chrome-stable=$CHROME_VERSION" "code=$VSCODE_VERSION"
+    # Google's APT index lists only the current stable release.
+    package="google-chrome-stable_${CHROME_VERSION}_amd64.deb"
+    curl -fsSL --retry 4 "https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/$package" -o "$stage/$package"
+    printf '%s  %s\n' "$CHROME_AMD64_SHA256" "$stage/$package" | sha256sum --check --status
+    apt-get install -y --no-install-recommends "$stage/$package" "code=$VSCODE_VERSION"
 else
     # Google does not publish Chrome for Linux ARM64. Debian Chromium uses
     # the same sandbox, DevTools protocol and MCP executable contract.
@@ -55,8 +61,6 @@ if [[ ${WORKSTATION_INSTALL_MODE:-container} == container ]]; then
     printf 'deb [arch=%s signed-by=%s] %s/apt/stable stable main\n' "$arch" "$key" "$repo" \
         > /etc/apt/sources.list.d/claude-desktop.list
     apt-get update
-    stage=$(mktemp -d)
-    trap 'rm -rf "$stage"' EXIT
     package="claude-desktop_${CLAUDE_DESKTOP_VERSION}_${arch}.deb"
     (cd "$stage" && apt-get download "claude-desktop=$CLAUDE_DESKTOP_VERSION")
     digest=$CLAUDE_DESKTOP_AMD64_SHA256
