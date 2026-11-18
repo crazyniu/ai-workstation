@@ -4,6 +4,10 @@
 
 The image is a project showcase. The running release determines the current interface, labels, and features. It contains no account credentials and serves as presentation material; functional verification is recorded separately.
 
+## Architecture diagram
+
+[Workstation and gateway architecture](workstation-gateway-architecture.png) is an AI-generated diagram of the Linux LAN deployment and its optional workstation isolation. Addresses and connection directions follow the deployment configuration.
+
 ## Gateway interface captures
 
 - [Desktop operation feedback](gateway-global-toast-desktop.jpg) shows the global toast above the gateway settings window.

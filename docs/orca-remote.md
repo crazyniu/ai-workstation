@@ -43,7 +43,11 @@ Linux 端无需安装 Orca 桌面 GUI。managed server 保持私有回环监听�
 
 ## 从 251 控制 Mac
 
-如果 251 已通过 WebSocket 配对 Mac，251 会主动连接配对记录中的 Mac 地址和 TCP 端口。默认 LAN 配置允许这条连接。启用 `--isolate-lan` 会阻止这种回连，即使 Mac 仍然可以用 SSH 登录 251。使用显式代理且客户端遵循 `NO_PROXY` 时，可在私有 `.env` 的 `WORKSTATION_NO_PROXY` 加上 Mac 的确切地址。Mac 端的 Orca 服务还需监听配对端口，并具备相应的电脑控制权限。
+251 会主动连接已配对 Mac 的 WebSocket 地址。Orca 1.4.259 的 `orca serve` 默认尝试 TCP 6768，端口占用时可以另选端口。使用 `orca serve --port 6768` 启动的服务器会固定使用该端口，占用时会报告错误。Mac 桌面端已经共享服务时，沿用其配对记录显示的端口，保持单一服务实例。参见 [Orca 官方服务器说明](https://orca.dev/docs/remote-servers)。
+
+默认 LAN 允许这条连接。使用隔离部署时，在 251 的 **niu.sh → 7 → 1** 选择这台 Mac 的已配对端点。菜单从 `dev` 的配对记录提取同网段 IPv4 和端口，只放行到该设备的 TCP 连接。Mac 地址或服务端口发生变化时，重新选择新端点并移除旧规则。Mac 上的 Orca 共享和电脑控制权限仍需有效。
+
+首次创建隔离容器，可在工作站宿主的私有 `.env` 设置 `WORKSTATION_INITIAL_ORCA_ENDPOINT=<Mac 的 IPv4>:<实际端口>`，首次启动会在 SSH、桌面和应用启动前应用它。已有规则时以保存的规则为准。从旧容器迁移时也可恢复 `/etc/workstation/lan-ports.json`。参见[工作站端口放行](workstation-egress.md#放行-orca-或其他设备端口)。
 
 ## CLI、编排技能与登录
 
