@@ -17,15 +17,15 @@ and timezone initialization through WORKSTATION_* settings or internal
 
 ## Installation requests
 
-AI installations deploy both complete project images. The gateway LAN IP is
-`192.168.1.250` and the workstation LAN IP is `192.168.1.251`. On a supported
-Linux Docker Engine, use `./deploy.sh ai` for a new combined deployment. On
-separate LAN hosts use `./deploy.sh ai gateway` followed by `./deploy.sh ai workstation`.
-Complete both roles and all components shipped in their images. Diagnose recoverable
-failures and continue. Obtain the user's explicit consent before changing the
-addresses, image, version, component list, deployment mode or other agreed settings.
-Report any real blocker and the specific decision needed. Ordinary manual portable
-defaults do not authorize an AI installer to substitute loopback ports for LAN IPs.
+Each AI request installs or upgrades only the named role. For a new gateway at
+`192.168.1.250`, run `./deploy.sh ai gateway` with
+`ghcr.io/crazyniu/ai-workstation-gateway:latest`. For a new workstation at
+`192.168.1.251`, run `./deploy.sh ai workstation` with
+`ghcr.io/crazyniu/ai-workstation:latest`. Use the published project image and
+its shipped services. Do not install additional software or substitute images,
+IP addresses, host packages or deployment modes. Report any blocking conflict.
+For an upgrade, identify the existing target, back up its private state and
+follow the role-specific migration procedure in AI-INSTALL.md.
 
 Read [AI-INSTALL.md](AI-INSTALL.md), [README.md](README.md), and `.env.example`
 before installing or changing a deployment. Inspect the actual host and existing
@@ -36,7 +36,7 @@ migration or replacement plan. Do not infer permission to delete other services.
 Docker runtime configuration, HOME and identities live inside each container.
 Native state uses the dedicated directories in docs/platforms.md; preserve host
 root credentials, SSH/nginx configuration and existing services. Default new
-container administrator credentials are root/root; applications run as dev. Restart
+container administrator credentials are root/root. Workstation desktop credentials are dev/dev. Gateway Web and workstation VNC use the password root. Restart
 preserves them; deletion or recreation removes them. Do not add business bind
 mounts or data volumes to the default deployment. Keep credentials, personal
 configuration, logs and private snapshots outside Git and public images.

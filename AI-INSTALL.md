@@ -1,31 +1,15 @@
-# 给 AI 的安装指南
+# 给 AI 的容器安装与升级指南
 
-本指南供执行安装的 AI 使用。根据 [仓库地址](https://github.com/crazyniu/ai-workstation) 在用户指定的主机上安装网关和工作站。先读取当前版本的 [README](README.md)、[compose.yaml](compose.yaml)、[.env.example](.env.example) 和 [deploy.sh](deploy.sh)，再按下述流程执行。仓库配置描述预期行为，实际安装结果必须以目标主机和真实客户端验证为准。
+从 [README 的四条指令](README.md#让-ai-安装或升级容器) 选择本次操作。每条只授权安装或升级一个角色，250 和 251 都是容器的局域网地址。
 
-## AI 安装约定
-
-默认安装以下两个完整镜像。地址是各自的局域网 IP。
-
-| 角色 | 镜像 | 默认地址 |
+| 目标 | GitHub 发布镜像 | 首次安装入口 |
 | --- | --- | --- |
-| 网关 | `ghcr.io/crazyniu/ai-workstation-gateway:latest` | `192.168.1.250` |
-| 工作站 | `ghcr.io/crazyniu/ai-workstation:latest` | `192.168.1.251` |
+| 250 网关 · `192.168.1.250` | `ghcr.io/crazyniu/ai-workstation-gateway:latest` | `./deploy.sh ai gateway` |
+| 251 工作站 · `192.168.1.251` | `ghcr.io/crazyniu/ai-workstation:latest` | `./deploy.sh ai workstation` |
 
-1. 按两个镜像的 Dockerfile、安装脚本和版本清单交付其中的全部软件、服务、桌面程序和 MCP。网关清单见 `gateway/components.lock.json`，工作站清单见 `workstation/versions.env` 和 `workstation/mcp/package-lock.json`。一个角色已经安装时，先核对该实例并保留数据，再继续另一个角色。
-2. 任何偏离既定方案的改动，先向用户说明原值、拟改值、原因和影响，取得对该项的明确同意后再执行。包括改 IP、改镜像或版本、增删或替换组件、更换网络模式或改用原生安装。现有环境变量、私有配置、旧部署和安装失败本身都不代表用户同意修改。
-3. 在授权范围内实际执行安装，遇到可恢复的失败自行诊断、修复并继续。两个角色及其软件全部就位后交付实际地址与结果。仅输出命令、仅拉取镜像或仅完成其中一端时，任务均未完成。遇到需要授权的变更、缺少访问权限或用户要求暂停时，明确说明阻塞项并等待用户，不自行回退、改方案或宣布完成。
+只使用表中对应的项目镜像和仓库自带的 Compose 配置。软件随镜像交付，禁止自行选型、另外装包、本地构建替代镜像或改用宿主机原生安装。镜像无法拉取、地址冲突、宿主缺少必要工具或 251 无法使用现有 250 网关时，报告具体阻塞。安装前发现已有目标容器时停止；升级找不到原容器时也停止。
 
-## 按平台执行
-
-1. **Linux Docker Engine**。先按[平台说明](docs/platforms.md)和下方步骤核对 CPU、网卡、网段、地址占用、TUN 及现有容器。同机首次安装用 `./deploy.sh ai`；同一 LAN 的两台 Linux 主机分别使用下表的网关、工作站入口。
-2. **Windows / macOS 控制端**。Docker context 指向支持 LAN 部署的 Linux Engine 时仍可按默认地址安装。PowerShell 同机双镜像入口为 `.\deploy.ps1 -Role ai`。本机 Docker Desktop 不支持本方案所需的 macvlan；说明其回环端口方案的实际地址，经用户同意后才使用 portable。
-3. **用户已批准的例外**。记录批准的具体差异，再使用对应的部署入口。用户只批准更改 LAN 地址或镜像时，将批准值填入私有配置；同机执行 `./deploy.sh all` 或 `.\deploy.ps1 -Role all`，分机在对应主机执行 `./deploy.sh gateway` 和 `./deploy.sh workstation`。仅对用户批准的 portable、bridge 或原生方案使用相应入口。其余角色、软件和配置仍按既定方案交付。若改用原生或替代镜像，逐项对照两份镜像清单，补齐受支持的组件；仍缺少的组件也须取得用户同意。
-4. **账号**：默认服务器管理员 `root / root`，网关 Web 只输入密码 `root`。工作站容器的应用由 `dev` 运行，默认密码 `dev`，可使用 sudo；VNC 密码 `root`。Linux 原生安装保留宿主现有 root 密码，工作站专用 SSH 为 `dev / root`；已有部署按实际账号配置保留。
-5. **验收**：必须核对选择的 CPU 版本、真实网页登录、DNS、代理、SSH、桌面应用、重启持久性。Windows/macOS 实机、特定 CPU 或 systemd 开机启动未执行时标为 NOT RUN，不能从锁文件或 CI 定义推定通过。
-
-经用户同意采用 portable 后，访问入口为：网关 `http://127.0.0.1:8080/`、工作站 `https://127.0.0.1:6080/`、SSH 2223/2222。同机工作站使用 `gateway:7890` 显式代理。异机按宿主可达地址配置代理，回环映射须通过隧道或明确修改绑定后才能跨机器访问。首次创建命令为 `./deploy.sh` / `.\deploy.ps1`，仅网关为 `gateway-portable`，仅工作站为 `workstation-bridge`。
-
-下文描述 Linux LAN Docker 的详细配置与迁移；原生安装和 Docker Desktop 继续使用平台文档中的对应管理及验收命令。
+新容器的管理员为 `root/root`，网关网页密码为 `root`。工作站桌面用户为 `dev/dev`，VNC 密码为 `root`。升级保留用户已有的配置和身份。
 
 ## 0. 先确定角色、宿主机和网络拓扑
 
@@ -37,23 +21,11 @@
 | 容器角色 | workstation，默认 `192.168.1.251` | gateway，默认 `192.168.1.250` |
 | 私有配置 | A 自己的 `.env`、密码和镜像版本 | B 自己的 `.env`、密码和镜像版本 |
 
-选择与实际环境对应的入口：
-
-| 拓扑 | 首次部署入口 | 前提 |
-| --- | --- | --- |
-| 两角色在同一宿主机、同一 LAN | `./deploy.sh ai`，使用 `compose.yaml` | 根 Compose 在同一 Docker Engine 内检查 gateway 健康状态 |
-| 两台宿主机、同一二层 LAN | B 执行 `./deploy.sh ai gateway`；A 执行 `./deploy.sh ai workstation` | 使用 `compose.gateway.yaml` / `compose.workstation.yaml`；分别设置各自的 `LAN_INTERFACE`；251 与 250 的地址属于同一 LAN，251 能直接到达 250 |
-| 两台宿主机、不同网段或经 VPN 互通 | 用户批准改变网络方案后，B 使用网关入口；A 执行 `./deploy.sh workstation-bridge` | A 使用 `workstation/compose.yaml` 的 bridge 网络，经 `WORKSTATION_HTTP_PROXY` / `WORKSTATION_HTTPS_PROXY` 指向可达的网关私有端点 |
-
-两个独立入口没有跨宿主机的 `depends_on`、共享 Docker bridge 或 Docker 服务名解析。分开部署时先验收 B 的网关，再启动 A；可用性必须通过 A 到网关的真实请求验证。
-
-**不同网段的边界：** macvlan 的默认网关必须在本地二层网络，不能直接把远处的 `250` 填进 A 的 IPAM 网关。bridge 模式保留 A 的正常路由；先核实已有私网/VPN/受控隧道确实能把流量送达网关容器的代理监听地址，再配置例如 `WORKSTATION_HTTP_PROXY=http://实际私有地址:7890` 和对应 HTTPS 代理。B 的宿主机地址不自动等于网关容器的代理端点；Docker 的 `172.*` bridge 地址也不自动能被 A 路由。bridge 模式不自动接管 DNS、UDP 或整机出口；有这些要求时单独确认路由设计。默认 SSH/VNC 端口仅绑定 A 的 `127.0.0.1`，通过到 A 的 SSH 隧道访问，不为此开放公网代理或 VNC。
-
-每台主机单独保存仓库与 `.env`。`deploy.sh` 在所有入口都执行相同的已有容器保护；后续命令必须继续使用本次实际选择的 Compose 文件与 `.env`，避免误用根 Compose 启动另一角色。
+在所选角色的 Linux Docker 宿主机上使用表中入口。同机也可分别安装；每个入口使用独立的 Compose 项目。工作站的默认路由和 DNS 指向现有的 250。已有部署升级时沿用其实际的容器定义、网络和地址，流程见第 5 节。
 
 ## 1. 确认目标，先只读盘点
 
-LAN 部署环境为 **Linux Docker Engine 与对应 CPU 镜像**，要求 **Docker Compose 2.33.1 或更新版本**、macvlan 及可用的物理 LAN 接口；网关还需要 `/dev/net/tun`。工作站 bridge 模式不需要 macvlan 或 TUN，但仍须使用支持镜像桌面与浏览器沙箱的 Linux Docker 环境。macOS / Windows 的 Docker Desktop 使用前述 portable 入口。确认正在操作用户指定的主机与 Docker context，远程终端不要误用本机 Docker。分开部署时，下列盘点在 A/B 上分别执行。
+LAN 部署环境为 **Linux Docker Engine 与对应 CPU 镜像**，要求 **Docker Compose 2.33.1 或更新版本**、macvlan 及可用的物理 LAN 接口；网关还需要 `/dev/net/tun`。macOS / Windows 控制端可通过 SSH 操作目标 Linux 宿主机。仅在本次所选角色的宿主机盘点。
 
 先查看以下信息，暂不创建、停止、删除或重建容器：
 
@@ -95,7 +67,7 @@ ls -l /dev/net/tun
 | 工作站 HOME | `/home/dev`；配置、项目、登录身份及 SSH 主机密钥留在容器内部 |
 | 工作站国家 / 语言 / 时区 | `WORKSTATION_COUNTRY=SG`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=Asia/Singapore`；初始化为新加坡英文 `en_SG.UTF-8` |
 
-现场网络必须匹配且地址空闲。地址被占用或网段不匹配时，先取得用户对新地址的同意；采用其他网段时，一并调整 `LAN_SUBNET`、`LAN_PREFIX`、`LAN_ROUTER`、角色地址和必要的 `WORKSTATION_NO_PROXY`，不要只替换一个 IP。分开部署时各宿主机使用自己的实际网络参数；工作站 bridge 模式的网关地址通过可达私有代理端点配置。保留 Compose 所需的设备与安全设置，不用 `privileged`、宿主网络或 Docker socket 代替正常配置。
+首次安装时确认目标地址属于现场 LAN 且空闲；有冲突时报告并停止。按实际网卡填写 `LAN_INTERFACE`，保留目标角色的 Compose 网络、设备及安全设置。
 
 Docker 的 `data-root` 属于宿主存储设置。**默认不迁移 Docker 数据目录、不改宿主网络、不向公网开放端口。** 如果 SSD 尚未用于 Docker，先报告实际位置、空间及影响；只有用户明确授权后，才另行安排涉及所有受影响容器的存储迁移和回退。容器内部保存业务数据，不代表这些字节脱离宿主 Docker 存储。
 
@@ -177,33 +149,17 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-编辑 `.env`，填入已经核实的 LAN 配置、镜像和初始密码。默认使用仓库提供的 GHCR 镜像；用户明确同意固定其他版本时，选择对应 Actions 已成功发布的 `sha-<完整提交号>` 标签，并记录实际拉取的镜像摘要。不要把未完成的构建或仓库中的示例值说成当前已验证发布。
+按实际网络填写私有 `.env`，保留表中的镜像、IP 和初始账号设置。网关使用 `GATEWAY_USER=root`、`GATEWAY_PASSWORD=root`、`WEB_PASSWORD=root`；工作站使用 `WORKSTATION_ROOT_PASSWORD=root`、`WORKSTATION_PASSWORD=dev`、`VNC_PASSWORD=root`、`VNC_AUTH=password`。不要在日志中输出私有配置。
 
-密码处理要求：
-
-- `.env` 只保存在目标部署的私有目录，权限为 `600`；不提交 Git，不写入公开日志、截图、命令参数或交付报告。
-- 不使用 `cat .env`、`set -x`、不带 `--quiet` 的 `docker compose config` 来展示配置。通过私密输入或本地安全编辑填写密码，日志只记录“已设置”。
-- 设置自己的 Web、网关 SSH、工作站 SSH 与 VNC 密码，工作站容器内 `dev` 的默认密码为 `dev`，其他默认密码为 `root`，向非本机开放前配置私有密码。VNC 密码受协议限制，为 **1–8 个 ASCII 字符**；通过私有 LAN、Tailscale 或 SSH 隧道使用。Compose 默认提供 root/root 管理登录；桌面程序继续由 dev 运行。
-- 网关 Web 密码仅用于新容器首次初始化，后续通过网页账户设置修改。个人代理订阅、Tailscale、Claude、Codex 和 GitHub 授权由用户配置，不导入其他部署的身份。
-
-同机首次部署在已盘点的 Linux Docker Engine 上执行。AI 入口使用 Python 3 读取 Compose 的有效配置，在拉取前核对镜像和地址，只输出角色、镜像及地址。
-
-```sh
-./deploy.sh ai
-```
-
-`deploy.sh` 在拉取镜像前检查本 Compose 项目是否已有容器，包括停止的容器。它拒绝执行时，保留原容器，回到已有环境评估；不要绕过防护改用 `compose up`。部署失败先检查相关容器状态和有限日志，查明原因后修复，不用删除数据、重置宿主 Docker 或反复重建代替诊断。
-
-若同一 Compose 项目只缺一个角色，先核对已有实例的镜像、地址和内部数据。该实例与计划一致时，沿用原项目和 Compose 文件，拉取缺失角色的镜像，用 `docker compose up -d --no-recreate --wait <缺失角色>` 补齐。已有实例与计划冲突时，先取得用户对变更的同意。
+执行表中所选角色的首次安装命令。入口在拉取前核对角色、镜像和地址，并拒绝覆盖已有的 Compose 容器。记录实际拉取的镜像摘要。
 
 ## 4. 在实际环境验收
 
-从真实 LAN 客户端和容器内部分别验证。macvlan 的宿主访问限制不等于 LAN 服务故障；先区分访问来源，再检查 control bridge 或宿主防火墙。只执行当前部署需要的检查，复用仍有效的结果。
+以下供用户按所选角色验收。macvlan 的宿主访问限制不等于 LAN 服务故障；先区分访问来源，再检查 control bridge 或宿主防火墙。只执行当前部署需要的检查，复用仍有效的结果。
 
 | 检查 | 必须确认的实际结果 |
 | --- | --- |
-| 容器、镜像与网络 | 同机部署应有 `gateway` 与 `workstation` 两个角色；分开部署时 B 只有 gateway、A 只有 workstation。包含停止容器一起核对，记录各自宿主总数、镜像 ID / digest、网络与健康状态，保留其他项目。 |
-| 镜像软件清单 | 分角色核对实际镜像摘要、软件包或可执行文件、服务及工作站 MCP 配置，记录已安装和缺失的项目。发现镜像与约定清单不符时，查明版本并补齐；更换镜像或删减清单需先取得用户同意。 |
+| 容器、镜像与网络 | 核对目标角色的容器 ID、镜像摘要、LAN 地址和状态；251 的 IPv4 在 `workstation-network`，业务容器共享它的网络。 |
 | 内部数据 | 在各自宿主机检查实际容器的 `Mounts` 与镜像 `Config.Volumes`，确认没有外置业务挂载或匿名业务卷。设备映射按所选 Compose 单独核对。 |
 | 网关 Web | 实际打开主页并登录，检查控制面板及服务入口；`/healthz` 成功只说明健康接口可用。 |
 | DNS | 客户端明确向网关查询 `home.arpa`，结果为本次网关 IP；再查询外部域名。确认需要使用本地域名的客户端实际采用该 DNS，而不是被加密 DNS 绕过。 |
@@ -229,18 +185,16 @@ nslookup example.com 192.168.1.250
 
 ### 4.1 Mac Orca 远程执行验收
 
-用户选择 Mac Orca 控制、Linux 工作站执行时，按 [Orca 远程执行说明](docs/orca-remote.md) 检查现有 dev 用户、实际 HOME、SSH、managed server 和配套 CLI。缺失的 managed server 优先由 Mac Orca SSH 连接自动部署，沿用已有服务管理方式。将 Mac 操作、远程账号授权、项目文件读写、智能体真实调用及重启恢复分别记录；个人部署结果和日志留在私有验收目录。
+用户选择 Mac Orca 控制、Linux 工作站执行时，按 [Orca 远程执行说明](docs/orca-remote.md) 检查现有 dev 用户、实际 HOME、SSH、managed server 和配套 CLI。Orca 部署须另行指定。将 Mac 操作、远程账号授权、项目文件读写、智能体真实调用及重启恢复分别记录；个人部署结果和日志留在私有验收目录。
 
 ## 5. 已有环境、升级与数据恢复
 
 **重启同一个容器保留内部数据；删除、`compose down`、强制重建或替换容器会失去原容器可写层。** `docker compose restart` 不会把新的镜像或已修改的 Compose 环境变量应用到已有容器。
 
-已有环境先确定容器 ID、角色、数据路径和身份，再选择继续使用、修复或有计划地迁移。未经明确授权，不删除旧容器、镜像、网络、缓存或原挂载数据，不执行全局 `prune`。清理应基于明确的无用清单，并在新环境的数据与业务复验完成后执行。
-
-替换镜像前停止相应业务、导出私有数据，按文档恢复并验证。完整私有快照用于恢复原软件环境；把应用状态迁入新公开镜像需要核对路径、UID/GID、权限和账号差异。仅复制一个 HOME 不代表迁移了全部系统账号、SSH 身份及服务配置。
-
-- [网关：数据、备份和升级](gateway/README.md#数据备份和升级)
-- [工作站：数据、备份与恢复](workstation/README.md#数据备份与恢复)
+1. 在目标 Docker 宿主机上核对容器 ID、地址、网络、挂载及启动定义。Compose 部署沿用原项目名、文件和私有环境配置；手工创建的旧容器按其实际定义制定迁移方案。目标不明确时停止。
+2. 先拉取表中目标角色的官方镜像，记录摘要。现有容器已运行同一镜像且配置相符时，直接报告已是最新版。
+3. 在替换前保存原定义和可回退的私有快照，备份目标角色的数据。250 保留 `/data`、代理订阅、Tailscale 身份、管理账号与 SSH 身份；251 按实际 HOME、UID/GID 备份项目、登录身份、SSH 密钥及内部配置。旧版 HOME 可能是 `/home/developer`。具体命令见[网关升级](gateway/README.md#网关应用状态升级)和[工作站迁移](workstation/README.md#应用状态迁入新的公开镜像)。
+4. 只切换目标角色和该版本 Compose 明确声明的同角色配套服务。将备份恢复到新容器后启动，保持目标地址和另一角色的运行状态；切换失败则停止新实例，用旧定义和升级前的数据恢复运行。无可用回退或无法映射原数据时，在替换前停止。
 
 私有备份和运行容器快照含身份及凭据，不进入公开源码、GHCR 镜像或附件。两个使用相同 LAN IP 或 Tailscale 身份的实例不可同时运行。迁移与清理范围超出用户已授权的首次安装时，先说明具体影响，再取得相应授权。
 
@@ -249,7 +203,7 @@ nslookup example.com 192.168.1.250
 用简短结果报告和验收清单交付：
 
 - **实际入口**：网关 Web / DNS 地址、工作站 SSH / VNC 地址、账号名及密码的私有保存方式；报告不包含密码。
-- **部署身份**：使用的仓库提交、镜像标签和摘要、两个角色各自的宿主机和 Compose 文件、容器名称 / ID / 状态，以及各宿主容器总数；解释保留的其他项目。
+- **部署身份**：使用的仓库提交、镜像标签和摘要、目标角色的宿主机和实际启动定义、容器名称 / ID / 状态，以及各宿主容器总数；解释保留的其他项目。
 - **数据位置**：确认业务数据在各自容器内部、实际挂载检查结果、宿主 Docker 存储位置及是否 SSD；说明本次是否改过宿主设置。
 - **验证结果**：逐项列出 PASS、FAIL、NOT RUN、需用户登录或不适用，并给出简短实际证据；不将待登录服务或未测模型调用写为 PASS。
 - **日常操作**：同容器启停 / 重启方式、内部数据生命周期及上述备份恢复链接；说明后续升级前必须处理数据。

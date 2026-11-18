@@ -7,40 +7,38 @@
 
 工作站默认新加坡英文，可配置国家、语言和时区。两个角色既可同机运行，也可分别部署在宿主机 A/B；独立部署入口、网络前提和初始化参数见 [AI 安装指南](AI-INSTALL.md)。
 
-## 让 AI 帮你安装
+## 让 AI 安装或升级容器
 
-点击下面代码块右上角的复制按钮，发送给能操作你主机的 AI 助手。也可以直接发送本仓库链接并说明“请按仓库的 AI-INSTALL.md 帮我安装”；仓库提供 [AI 安装指引](AI-INSTALL.md) 和 [Agent 入口](AGENTS.md)。
+选一段复制给能操作目标 Docker 宿主机的 AI。
+
+### 安装 250 网关
 
 ```text
-请帮我安装 https://github.com/crazyniu/ai-workstation 。
-先读取当前版本 README.md、AGENTS.md、AI-INSTALL.md 和 docs/platforms.md。
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只安装网关 192.168.1.250。
+在仓库根目录执行 ./deploy.sh ai gateway，只用 ghcr.io/crazyniu/ai-workstation-gateway:latest，不额外安装软件。
+容器 SSH 用 root/root，网关网页密码用 root。地址已占用或已有网关时停止。
+```
 
-请实际部署两个完整的项目镜像，网关使用 192.168.1.250，工作站使用 192.168.1.251。
-包含镜像中的全部软件、服务、桌面应用和 MCP，以各自 Dockerfile、安装脚本和版本清单为准。
-先只读核对 Docker 宿主、CPU、已有容器和数据、实际网卡、网段及两个地址是否可用。
-同一 Linux Docker Engine 首次部署用 ./deploy.sh ai。分开部署时，先在网关宿主机执行
-./deploy.sh ai gateway，再在工作站宿主机执行 ./deploy.sh ai workstation。两端都要交付。
+### 安装 251 工作站
 
-任何偏离默认方案的修改，先告诉我原值、拟改值、原因和影响，等我明确同意再做。
-包括改 IP、改镜像或版本、增删或替换软件、少装一个角色、改端口映射或改用原生安装。
-如果硬件不支持、地址被占用或发现已有配置冲突，不要自行换方案或把部分安装报告为完成。
-可恢复的下载或启动故障请自行诊断、修复并继续。除需要我决定或提供访问权限外，
-请执行到两个角色安装完成，不要只给我安装命令，也不要在第一台装完后就返回。
+```text
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只安装工作站 192.168.1.251。
+在仓库根目录执行 ./deploy.sh ai workstation，只用 ghcr.io/crazyniu/ai-workstation:latest，不额外安装软件。
+容器管理员用 root/root，桌面用户用 dev/dev，VNC 密码用 root。地址已占用、已有工作站或网关 192.168.1.250 不可用时停止。
+```
 
-默认服务器管理员账号/密码统一 root/root；网关网页登录只需密码 root。
-工作站桌面和应用使用 dev，默认密码 dev，VNC 默认密码 root。
-Linux 原生安装保留宿主已有 root 密码和现有 SSH 入口，不重置服务器身份。
-配置保存在私有 .env 或原生初始化文件，不回显或提交个人凭据。
-工作站默认 SG/en/Asia/Singapore，需要其他地区时按指南设置三项。
+### 升级 250 网关
 
-已有环境先说明实际状态并保留数据，不删除、重建或迁移其他服务。
-Docker 数据留在容器内部，不添加业务挂载；原生状态留在文档指定目录。
-不擅自迁移 Docker 存储、修改主路由器、接管宿主路由/DNS 或开放公网端口。
+```text
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只将现有网关 192.168.1.250 升级到 ghcr.io/crazyniu/ai-workstation-gateway:latest。
+核对原容器、启动配置和镜像摘要。按 gateway/README.md 备份后再替换网关，恢复配置、账号和身份。保留 251 原状，不额外安装软件。
+```
 
-完成后验证实际网页登录、DNS 查询、代理请求、SSH、网页/VNC 桌面与应用启动，
-核对工具 CPU/版本、重启后的数据和 SSH 指纹；需要账号登录的服务由我登录。
-区分构建/健康检查、模拟执行、真实客户端验收；缺环境的项目明确标为 NOT RUN。
-最后给我访问入口、账号、已通过/未验证项、服务管理命令和升级的数据注意事项。
+### 升级 251 工作站
+
+```text
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只将现有工作站 192.168.1.251 升级到 ghcr.io/crazyniu/ai-workstation:latest。
+核对原容器、启动配置和镜像摘要。按 workstation/README.md 备份后再替换工作站，恢复项目、桌面、账号和 SSH 身份。保留 250 原状，不额外安装软件。
 ```
 
 ![AI Workstation 与网关桌面展示](docs/images/gateway-home.png)
@@ -101,7 +99,7 @@ Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop �
 
 ## 首次部署
 
-AI 首次安装按上面的固定 LAN 地址部署两个镜像。同机使用 `./deploy.sh ai`，PowerShell 连接支持 LAN 部署的 Linux Engine 时使用 `.\deploy.ps1 -Role ai`。这两个入口用 Python 3 核对 Compose 实际解析的角色、镜像和地址。
+AI 首次安装只执行所选角色的入口。脚本在拉取镜像前用 Python 3 核对 Compose 实际使用的角色、镜像和 LAN 地址。
 
 手动选用 portable 模式时，Linux、Windows、macOS 都可以使用 Docker Linux 容器和 Compose 2.33.1+。
 
@@ -125,7 +123,8 @@ Linux 不安装 Docker 时使用 `python3 install-native.py` 预览，再按[原
 
 | 部署方式 | 首次创建命令 | Compose 文件 |
 | --- | --- | --- |
-| AI 默认安装（同机） | `./deploy.sh ai` / `.\deploy.ps1 -Role ai` | `compose.yaml` |
+| AI 安装 250 网关 | `./deploy.sh ai gateway` | `compose.gateway.yaml` |
+| AI 安装 251 工作站 | `./deploy.sh ai workstation` | `compose.workstation.yaml` |
 | 通用 Docker 端口映射 | `./deploy.sh` / `.\deploy.ps1` | `compose.portable.yaml` |
 | 同一 Linux 宿主机、同一 LAN | `./deploy.sh all` | `compose.yaml` |
 | 宿主机 B：独立网关 | `./deploy.sh gateway` | `compose.gateway.yaml` |

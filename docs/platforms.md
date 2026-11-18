@@ -32,7 +32,7 @@ CI 跨架构运行检查使用 portable 应用模式，不授予 NET_ADMIN，也
 
 ## 通用 Docker 安装
 
-AI 安装按 `AI-INSTALL.md` 部署完整的网关和工作站，默认局域网地址分别为 `192.168.1.250` 和 `192.168.1.251`。同机首次部署执行 `./deploy.sh ai`。下列 portable 与原生入口适用于手动选择，或用户已经同意使用这些方案的 AI 安装。
+AI 安装和升级按[四条单角色指令](../README.md#让-ai-安装或升级容器)执行，只使用本项目发布的容器。250 网关和 251 工作站各有独立入口。以下为手动部署方式。
 
 先安装并启动 Docker Engine / Docker Desktop，核实当前 context 指向目标主机、Engine 为 Linux，Compose 版本至少 2.33.1。首次安装：
 
