@@ -13,11 +13,19 @@
 #include <linux/filter.h>
 #include <linux/sched.h>
 #include <linux/seccomp.h>
+#if defined(__aarch64__)
+#define WORKSTATION_AUDIT_ARCH AUDIT_ARCH_AARCH64
+#elif defined(__x86_64__)
+#define WORKSTATION_AUDIT_ARCH AUDIT_ARCH_X86_64
+#else
+#error Unsupported workstation architecture
+#endif
+
 int main(int argc, char **argv) {
     (void)argc;
     struct sock_filter filter[] = {
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, arch)),
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, AUDIT_ARCH_X86_64, 1, 0),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, WORKSTATION_AUDIT_ARCH, 1, 0),
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS),
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
         BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, SYS_unshare, 0, 1),

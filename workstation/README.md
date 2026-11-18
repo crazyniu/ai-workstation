@@ -4,7 +4,7 @@
 
 此目录是统一仓库中的工作站构建上下文，网关、正式 Compose 和 GHCR 发布由仓库根目录统一管理。完整工作站支持 `linux/amd64` 和 `linux/arm64`，不限定 NAS。Linux 可原生安装；Windows/macOS 使用 Docker Linux 容器。平台差异和安装命令见[平台安装说明](../docs/platforms.md)。可复现的验证步骤及发布记录见 [验证记录](VALIDATION.md)。
 
-包含 Debian Linux、新加坡英文及新加坡时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot、Unity 和 GitHub 六项 MCP 配置。提供 Unity Personal 编辑器与 Hub 的可选安装入口。国家、语言和时区可在初始化时配置。基础镜像固定到官方多架构 index digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Debian 系统软件随 APT 仓库更新。
+包含 Debian Linux、新加坡英文及新加坡时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude Code CLI、Claude Desktop，以及 Context7、Playwright、Chrome DevTools 和 GitHub 四项 MCP 配置。国家、语言和时区可在初始化时配置。基础镜像固定到官方多架构 index digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Debian 系统软件随 APT 仓库更新。
 
 ## 已安装的软件
 
@@ -15,15 +15,15 @@
 | 远程连接 | TigerVNC、OpenSSH Server | VNC 桌面与 SSH 登录 |
 | 浏览器 | amd64：Google Chrome `156.0.8078.47-1`；arm64：Chromium | 桌面浏览器和浏览器 MCP 运行环境 |
 | 编辑器 | Visual Studio Code `1.143.1-1792691907` | 项目编辑与开发 |
-| 游戏开发 | Godot `4.7.2` | 编辑器、命令行与 Godot MCP |
+| AI 桌面端 | Claude Desktop | Anthropic 官方 Linux 应用 |
 | AI CLI | Codex `0.164.0`、Claude Code `2.1.309` | 终端及桌面入口，使用个人模型账号 |
-| Python | Python 3（Ubuntu 软件包，`3.14` 系列） | 脚本、工具与系统服务运行 |
+| Python | Python 3（Debian 系统包） | 脚本、工具与系统服务运行 |
 | JavaScript 开发 | Node.js `24.22.1`、npm / npx | JavaScript 开发与本地 MCP 服务 |
 | 开发工具 | Git、GitHub CLI、GCC、curl | 版本管理、GitHub、C 编译与下载 |
-| 系统服务 | Supervisor、D-Bus、Ubuntu 系统 Python `3.14` | 会话、SSH/VNC 和工作站启动服务 |
+| 系统服务 | Supervisor、D-Bus、系统 Python 3 | 会话、SSH/VNC 和工作站启动服务 |
 | 桌面资源 | Arc、Papirus、Inter、Noto CJK、DejaVu、Mesa | 主题、图标、中西文字体与软件图形渲染 |
 
-Chrome、VS Code、AI CLI、Godot 和 Node.js 的固定版本以 [`versions.env`](versions.env) 及 [`Dockerfile`](Dockerfile) 为准；Python 和其他 Ubuntu 软件包按构建时的软件源安装，补丁版本随系统更新。
+Chrome、VS Code、AI CLI、Claude Desktop 和 Node.js 的固定版本以 [`versions.env`](versions.env) 及 [`Dockerfile`](Dockerfile) 为准；Python 和其他系统软件包按构建时的软件源安装，补丁版本随系统更新。
 
 ### MCP 工具
 
@@ -34,21 +34,31 @@ Chrome、VS Code、AI CLI、Godot 和 Node.js 的固定版本以 [`versions.env`
 | Context7 | 本地 `@upstash/context7-mcp` `4.4.4` | 查询开发文档与示例 |
 | Playwright | 本地 `@playwright/mcp` `0.0.83` | 使用容器内 Chrome 进行浏览器操作 |
 | Chrome DevTools | 本地 `chrome-devtools-mcp` `1.12.0` | Chrome 调试与浏览器检查 |
-| Godot | 本地 `@coding-solo/godot-mcp` `0.1.1` | 调用容器内 Godot 工具 |
-| Unity | 本地 `mcpforunityserver` `10.3.0`，MIT | 控制 Unity 场景、对象、脚本、资源和测试；需已激活的编辑器及项目桥接包 |
 | GitHub | 远程 `https://api.githubcopilot.com/mcp/` | GitHub 操作，需个人授权 |
 
-Node.js MCP 通过 `/usr/local/bin/workstation-mcp` 启动，依赖锁定在 [`mcp/package-lock.json`](mcp/package-lock.json)，其中 MCP SDK 为 `1.32.1`。Unity MCP 使用 `/usr/local/bin/unity-mcp` 和独立 Python 环境，完整依赖及 SHA256 锁定在 [`unity/requirements.lock`](unity/requirements.lock)。配置生成方式见 [`scripts/configure-mcp.py`](scripts/configure-mcp.py)。
+Node.js MCP 通过 `/usr/local/bin/workstation-mcp` 启动，依赖锁定在 [`mcp/package-lock.json`](mcp/package-lock.json)，其中 MCP SDK 为 `1.32.1`。配置生成方式见 [`scripts/configure-mcp.py`](scripts/configure-mcp.py)。
 
-### Unity Personal 免费版
+### niu.sh
 
-默认公共镜像包含开源 Unity MCP、`uv` 和固定版本的 Unity 编辑器桥接包。Unity Editor `6000.3.27f1`（6.3 LTS）与 Unity Hub `3.22.4` 通过 [`scripts/install-unity.sh`](scripts/install-unity.sh) 按需安装到现有容器，不重建或替换工作站。安装包下载约 4.57 GB，编辑器解压约 8.77 GB，需预留至少 15 GB 空间。
+Open **niu.sh** on the desktop or type `niu.sh` in a terminal. The desktop shortcut and the system command use the same script.
 
-编辑器安装后，在 Unity Hub 使用自己的账号激活 **Unity Personal 免费许可证**，再在项目中添加已安装的 MCP 桥接包。安装过程不购买 Pro、订阅 AI 服务或预置个人许可证。完整安装、Claude/Codex 接入、已有 HOME 兼容和验收步骤见 [Unity 使用说明](unity/README.md)。
+| Menu number | Action |
+| --- | --- |
+| 1 | Update installed workstation software, desktop apps, extensions and local MCP servers. Node.js stays on the installed major version. |
+| 2 | Update the existing Orca Server from its official stable release. A running server restarts. |
+| 3 | Restart Orca Server. Use SSH or XFCE because Orca sessions may disconnect. |
+| 4 | Update niu.sh from this repository's GitHub main branch and reopen the menu. |
+| 5 | Preview the Claude Code user data to remove. Close Claude Code before applying the cleanup. |
+| 6 | Preview and clear Claude and Codex image caches, temporary Codex clipboard PNGs, CLI caches, desktop thumbnails, browser and Electron caches, and pip/npm caches. |
+| 0 | Exit. |
+
+At the confirmation prompt enter **1** to proceed or **0** to cancel. Cache cleanup keeps generated images, project files, conversation history, settings and credentials. Send pending image attachments before clearing their temporary copies.
+
+The Orca actions appear in the desktop menu when the user's server is installed under `~/.local/share/orca-server/current`.
 
 ### Python 环境
 
-工作站使用 Ubuntu 提供的 Python `3.14` 系列，解释器位于 `/usr/bin/python3`。在桌面终端或 SSH 会话中通过 `python3` 运行脚本，具体补丁版本可直接查询：
+工作站容器使用 Debian 提供的 Python 3，解释器位于 `/usr/bin/python3`。在桌面终端或 SSH 会话中通过 `python3` 运行脚本，具体补丁版本可直接查询：
 
 ```sh
 python3 --version
@@ -85,16 +95,16 @@ docker build --pull=false \
   -t ai-workstation:test ./workstation
 ```
 
-公开工具大文件也可事先下载到单独缓存目录，构建时附加 `--build-context tool-download-cache=/绝对路径/公开下载缓存`。文件名为 `codex-版本.tar.gz`、`claude-版本.zst`、`godot-版本.zip`；安装脚本仍按 `versions.env` 校验 SHA256，缺失文件从官方源下载。缓存以只读挂载供安装步骤使用，原始压缩包不保留在镜像层中。默认构建使用空缓存，无需准备该目录。
+公开工具大文件也可事先下载到单独缓存目录，构建时附加 `--build-context tool-download-cache=/绝对路径/公开下载缓存`。文件名为 `codex-版本-架构.tar.gz`、`claude-版本-架构.zst`、`uv-版本-架构.tar.gz`；安装脚本仍按 `versions.env` 校验 SHA256，缺失文件从官方源下载。缓存以只读挂载供安装步骤使用，原始压缩包不保留在镜像层中。默认构建使用空缓存，无需准备该目录。
 
-启动需要 `DEV_PASSWORD` 和 `VNC_PASSWORD`，也支持对应的 `_FILE` 变量读取容器内文件。正式 Compose 默认管理员 `root / root`，桌面应用用户 `dev / root`，VNC 密码 `root`。`ROOT_PASSWORD` / `ROOT_PASSWORD_FILE` 控制容器管理员密码；直接运行镜像而未提供时 root 保持锁定。Linux 原生安装保留宿主 root 密码。VNC 使用兼容 Mac 屏幕共享的传统认证，密码为 1–8 个 ASCII 字节。运行时密码不写入镜像。独立 Compose 默认使用运行时环境变量设置密码；`_FILE` 也可读取容器内已准备的文件，无需外置业务挂载。
+可通过 `DEV_PASSWORD`、`ROOT_PASSWORD` 和 `VNC_PASSWORD` 或对应的 `_FILE` 设置密码。正式 Compose 默认管理员 `root / root`，桌面应用用户 `dev / dev`，VNC 密码 `root`。`ROOT_PASSWORD` / `ROOT_PASSWORD_FILE` 控制容器管理员密码。Linux 原生安装保留宿主 root 密码。VNC 使用兼容 Mac 屏幕共享的传统认证，密码为 1–8 个 ASCII 字节。运行时密码不写入镜像。独立 Compose 默认使用运行时环境变量设置密码；`_FILE` 也可读取容器内已准备的文件，无需外置业务挂载。
 
 普通应用使用 `dev`，UID/GID 为 `1100`，HOME 为 `/home/dev`。HOME、项目、编辑器配置、CLI 登录和 `/etc/ssh/keys` 均保存在容器内部，默认部署没有业务绑定挂载或数据卷。容器正常重启保留这些内容；更换或重建容器前，先制作私有备份并在目标容器内恢复。首次初始化只拷贝缺失的桌面文件，MCP 配置合并保留已有设置。迁移其他镜像时，应先核对原用户的 UID/GID、HOME 和启动方式，再选择应用状态迁移或完整私有快照恢复。
 
 
-GitHub CLI 在普通用户会话中运行 `gh auth login`，登录文件保存在容器内部的 HOME，正常重启保留；镜像不携带个人令牌。Codex 和 Claude 分别运行 `codex`、`claude` 完成用户自己的登录。GitHub MCP 已配置远程地址，仍需个人授权；其余四项 MCP 可在无模型账号时执行握手测试。
+GitHub CLI 在普通用户会话中运行 `gh auth login`，登录文件保存在容器内部的 HOME，正常重启保留；镜像不携带个人令牌。Codex 和 Claude 分别运行 `codex`、`claude` 完成用户自己的登录。GitHub MCP 已配置远程地址，仍需个人授权；其余三项 MCP 可在无模型账号时执行握手测试。
 
-Chrome 使用自身沙箱。启动时须使用 `security/seccomp-chrome.json`、`no-new-privileges:true` 和至少 `512m` 共享内存，参照目录中的独立 `compose.yaml` 示例。桌面会话使用专门限定范围的 bwrap 兼容包装程序。
+Chrome 使用自身沙箱。启动时须使用 `security/seccomp-chrome.json` 和至少 `512m` 共享内存，参照目录中的独立 `compose.yaml` 示例。桌面会话使用专门限定范围的 bwrap 兼容包装程序。
 
 桌面默认保持顶部面板常显、普通和最大化窗口的标题栏可见，并禁用合成器。Supervisor 以普通用户运行桌面恢复程序；窗口管理器或面板意外退出时，在当前 XFCE 会话中自动补回，不关闭应用。健康检查同时检查窗口管理器，桌面 smoke 和内部存储测试会验证真实窗口标题栏及重启后的异常恢复。
 
@@ -108,7 +118,7 @@ Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` �
 
 ### noVNC 网页桌面
 
-访问 `https://工作站地址:6080/`，网页自动连接与 VNC 相同的桌面。noVNC `1.7.0` 源码包及 SHA256 固定在 `web-desktop/versions.env`，websockify 来自 Ubuntu 软件源。左侧剪贴板面板支持双向文字传递，中文与多行代码需要结合实际浏览器验收；文字剪贴板不等同于图片或文件传输。
+访问 `https://工作站地址:6080/`，网页自动连接与 VNC 相同的桌面。noVNC `1.7.0` 源码包及 SHA256 固定在 `web-desktop/versions.env`，websockify 来自系统软件源。左侧剪贴板面板支持双向文字传递，中文与多行代码需要结合实际浏览器验收；文字剪贴板不等同于图片或文件传输。
 
 可信内网需要免证书提示时，显式设置 `NOVNC_TLS=0`，改用 `http://工作站地址:6080/`；配合 `VNC_AUTH=none` 即为免密码 HTTP 桌面。此连接不加密，文字通过 noVNC 左侧剪贴板面板传递；依赖安全上下文的浏览器 API 会受限。默认仍为 `NOVNC_TLS=1` 的 HTTPS。自定义 `NOVNC_ALLOWED_ORIGINS` 必须与实际入口的协议和端口一致。
 
@@ -118,7 +128,7 @@ Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` �
 
 ### 国家、语言与分开部署（供安装 AI 使用）
 
-在私有 `.env` 或 `docker run -e` 中设置 `WORKSTATION_COUNTRY=SG`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=Asia/Singapore`。默认生成 `en_SG.UTF-8`，同步用于 SSH 登录和 XFCE。其他示例为 `TW / zh / Asia/Taipei`、`US / en / America/New_York`。台湾英语 `TW / en / Asia/Taipei` 使用 `en_US.UTF-8` 英语消息与 `zh_TW.UTF-8` 台湾地区格式，清空 `LC_ALL` 以让分类设置生效；glibc 无 `en_TW`。其他组合须是镜像 glibc 支持的 locale，无效输入会中止初始化。不要通过额外的 `LANG` / `TZ` 覆盖这套参数。
+在私有 `.env` 或 `docker run -e` 中设置 `WORKSTATION_COUNTRY=SG`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=Asia/Singapore`。默认生成 `en_SG.UTF-8`，同步用于 SSH 登录和 XFCE。AI 安装先确认国家，台湾使用 `TW / zh / Asia/Taipei`，美国使用 `US / en / America/Los_Angeles`。台湾英语 `TW / en / Asia/Taipei` 使用 `en_US.UTF-8` 英语消息与 `zh_TW.UTF-8` 台湾地区格式，清空 `LC_ALL` 以让分类设置生效；glibc 无 `en_TW`。其他组合须是镜像 glibc 支持的 locale，无效输入会中止初始化。不要通过额外的 `LANG` / `TZ` 覆盖这套参数。
 
 新加坡采用 IANA 时区 `Asia/Singapore`，全年为 UTC+8。
 
@@ -136,14 +146,22 @@ Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` �
 
 ### 手动清理 Claude Code 身份
 
-新镜像安装 `/usr/local/bin/reset-claude-user`；以普通用户 `dev` 执行 `reset-claude-user` 预览，关闭 Claude 后执行 `reset-claude-user --apply`。命令清理 Code 本地登录、用户/设备标识、会话、历史和旧配置备份，保留当前 MCP 配置及 OAuth 凭据、插件、技能、通用代理和真实项目文件。脚本不会随容器启动自动执行，也不清理浏览器登录或服务器端会话。范围、进程检查、继承认证变量及自定义配置目录约束见 [AI 安装指南](../AI-INSTALL.md#22-手动重置-claude-code-用户信息)。
+新镜像安装 `/usr/local/bin/niu.sh`；以普通用户 `dev` 打开菜单，输入 **5** 预览，关闭 Claude 后输入 **1** 确认或 **0** 取消。命令清理 Code 本地登录、用户/设备标识、会话、历史和旧配置备份，保留当前 MCP 配置及 OAuth 凭据、插件、技能、通用代理和真实项目文件。脚本不会随容器启动自动执行，也不清理浏览器登录或服务器端会话。范围、进程检查、继承认证变量及自定义配置目录约束见 [AI 安装指南](../AI-INSTALL.md#22-手动重置-claude-code-用户信息)。
 
+
+## 桌面目录权限与 LAN 隔离
+
+桌面应用以 `dev` 运行。容器启动时将桌面内 root 所有的目录交还给 `dev`，给已有的用户目录设置可继承的 POSIX 默认 ACL。普通方式新建的子目录会继承桌面用户权限。显式 `0700`、额外挂载和不可变属性有各自的权限语义。修复目录权限无需删除项目、修改普通文件的执行位或开放全员写入。
+
+默认 Linux LAN 模板将 251 地址分配给工作站，允许 Orca 从 251 主动连接配对的 Mac。显式启用隔离后，由同镜像的 `workstation-network` 管理 251 的网络。在此模式下桌面可以回复管理员连接，可通过 250 访问公网；主动访问 NAS、路由器、其他工作站以及 250 管理页面受阻。工作站业务容器始终移除 NET_ADMIN、NET_RAW。见[网络规则、故障行为与迁移](../docs/workstation-egress.md)。
 
 ## 数据、备份与恢复
 
 在仓库根目录操作，确保正在使用原部署的 `.env`、Compose 项目名和 Docker context。`deploy.sh` 只用于首次创建，已有容器会被它拒绝；日常启停用 `docker compose start` / `stop` / `restart`。两个方案均先停止工作站，备份存放在仓库外的私有目录，完成后可以重新启动原容器。
 
 下列命令按同机的根 Compose 编写。独立部署时，在工作站宿主机 A 执行，并为每条 `docker compose` 命令添加 `--env-file .env -f compose.workstation.yaml`（LAN）或 `--env-file .env -f workstation/compose.yaml`（bridge），保持原项目身份。
+
+仅在普通 LAN 和显式隔离模式之间切换时，先保留原 Compose 与可恢复快照，并在获准的窗口释放原容器的 251 地址。启用隔离时，在原项目和原 Compose 参数后追加 `-f compose.workstation-isolation.yaml`，使用目标镜像执行 `up -d --wait --no-deps workstation-network`，确认就绪后再创建和恢复业务容器；下面示例中的 `--no-deps` 不会自动创建辅助服务。辅助容器没有业务数据。回退旧镜像时使用与其匹配的原 Compose，并先释放新版辅助容器占用的 251 地址。独立网桥部署沿用原来的网络。
 
 ### 完整私有快照与原版本恢复
 

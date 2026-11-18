@@ -81,10 +81,10 @@ class NativeGuardTests(unittest.TestCase):
         self.enterContext(patch.object(NATIVE.platform, 'system', return_value='Linux'))
         self.enterContext(patch.object(NATIVE.subprocess, 'check_output', return_value=arch+'\n'))
         self.enterContext(patch.object(NATIVE.shutil, 'which', return_value=None))
-        self.enterContext(patch.object(NATIVE.pwd, 'getpwnam', side_effect=KeyError))
-        self.enterContext(patch.object(NATIVE.pwd, 'getpwuid', side_effect=KeyError))
-        self.enterContext(patch.object(NATIVE.grp, 'getgrnam', side_effect=KeyError))
-        self.enterContext(patch.object(NATIVE.grp, 'getgrgid', side_effect=KeyError))
+        self.enterContext(patch('pwd.getpwnam', side_effect=KeyError))
+        self.enterContext(patch('pwd.getpwuid', side_effect=KeyError))
+        self.enterContext(patch('grp.getgrnam', side_effect=KeyError))
+        self.enterContext(patch('grp.getgrgid', side_effect=KeyError))
         self.enterContext(patch.object(NATIVE.socket, 'socket'))
         return system
 

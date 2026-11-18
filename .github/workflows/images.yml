@@ -59,7 +59,7 @@ jobs:
         include:
           - {component: gateway, image: ai-workstation-gateway, arch: amd64, platform: linux/amd64, runner: ubuntu-latest}
           - {component: gateway, image: ai-workstation-gateway, arch: arm64, platform: linux/arm64, runner: ubuntu-24.04-arm}
-          - {component: gateway, image: ai-workstation-gateway, arch: '386', platform: linux/386, runner: ubuntu-latest}
+          - {component: gateway, image: ai-workstation-gateway, arch: '386', platform: linux/386, runner: ubuntu-24.04}
           - {component: gateway, image: ai-workstation-gateway, arch: armv5, platform: linux/arm/v5, runner: ubuntu-latest}
           - {component: gateway, image: ai-workstation-gateway, arch: armv7, platform: linux/arm/v7, runner: ubuntu-latest}
           - {component: gateway, image: ai-workstation-gateway, arch: riscv64, platform: linux/riscv64, runner: ubuntu-latest}
@@ -92,6 +92,29 @@ jobs:
           tags: candidate:${{ matrix.component }}
           cache-from: type=gha,scope=${{ matrix.component }}-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.component }}-${{ matrix.arch }}
+      - name: Load LAN firewall rules in an isolated network namespace
+        if: matrix.arch == 'amd64' || matrix.arch == 'arm64'
+        shell: bash
+        env:
+          COMPONENT: ${{ matrix.component }}
+        run: |
+          flags=(--rm --read-only --network none --cap-drop ALL --cap-add NET_ADMIN --security-opt no-new-privileges:true)
+          if [[ $COMPONENT == gateway ]]; then
+            docker run "${flags[@]}" -e GATEWAY_ISOLATED_CLIENTS=192.0.2.2 \
+              -e GATEWAY_LAN_ADDRESS=192.0.2.1/24 -e GATEWAY_RUNTIME_INTERFACE=lo \
+              --entrypoint python3 candidate:gateway /opt/gateway/app/egress.py firewall
+          else
+            docker run "${flags[@]}" -e WORKSTATION_GATEWAY=192.0.2.1 -e WORKSTATION_LAN=192.0.2.0/24 \
+              --entrypoint bash candidate:workstation -ec '
+                guard=/etc/workstation/network-guard.py
+                python3 "$guard" & pid=$!
+                for attempt in {1..30}; do
+                  kill -0 "$pid" || exit 1
+                  if python3 "$guard" --ready 2>/dev/null; then exit 0; fi
+                  sleep 0.2
+                done
+                exit 1'
+          fi
       - name: Verify gateway clean deployment
         if: matrix.component == 'gateway'
         run: |

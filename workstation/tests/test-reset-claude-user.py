@@ -1,20 +1,19 @@
 """Claude identity cleanup only uses isolated temporary HOME fixtures."""
 from contextlib import redirect_stdout
-import importlib.util
+import types
 import io
 import json
 import os
 from pathlib import Path
 import subprocess
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/reset-claude-user.py'
-spec = importlib.util.spec_from_file_location('reset_claude', SCRIPT)
-RESET = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(RESET)
+SCRIPT = Path(__file__).resolve().parents[1] / 'desktop/niu.sh'
+source = SCRIPT.read_text().split("<<'CLAUDE_RESET_PY'\n", 1)[1].split('\nCLAUDE_RESET_PY\n', 1)[0]
+RESET = types.ModuleType('reset_claude')
+exec(compile(source, str(SCRIPT), 'exec'), RESET.__dict__)
 
 
 class ResetTests(unittest.TestCase):
@@ -34,16 +33,13 @@ class ResetTests(unittest.TestCase):
         return path
 
     def invoke(self, apply=False, env=None, running=False, home=None):
-        args = [str(SCRIPT), '--home', str(home or self.home)]
-        if apply:
-            args.append('--apply')
         environment = {k: v for k, v in os.environ.items()
                        if k not in RESET.AUTH_ENV and k != 'CLAUDE_CONFIG_DIR'}
         environment.update(env or {})
         output = io.StringIO()
-        with patch.object(sys, 'argv', args), patch.dict(os.environ, environment, clear=True), \
+        with patch.dict(os.environ, environment, clear=True), \
                 patch.object(RESET, 'active_claude', return_value=running), redirect_stdout(output):
-            RESET.main()
+            RESET.main(home or self.home, apply)
         return output.getvalue()
 
     def test_preserves_mcp_credentials_plugins_skills_proxy_and_project_files(self):

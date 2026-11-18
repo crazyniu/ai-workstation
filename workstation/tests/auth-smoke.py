@@ -35,7 +35,7 @@ def ssh_login():
         askpass.chmod(0o700)
         check = ('import os,pathlib; assert os.getuid()==1100 and os.getgid()==1100; '
                  's=pathlib.Path("/proc/self/status").read_text(); '
-                 'assert "NoNewPrivs:\\t1" in s; print("WORKSTATION_SSH_AUTH_PASS")')
+                 'assert "NoNewPrivs:\\t0" in s; print("WORKSTATION_SSH_AUTH_PASS")')
         result = subprocess.run([
             'ssh', '-T', '-o', 'BatchMode=no', '-o', 'NumberOfPasswordPrompts=1',
             '-o', 'PreferredAuthentications=password', '-o', 'PubkeyAuthentication=no',
@@ -79,4 +79,4 @@ if __name__ == '__main__':
     assert vnc_login(password) == 0, 'VNC runtime password authentication failed'
     wrong_password = bytes([password[0] ^ 1]) + password[1:]
     assert vnc_login(wrong_password) != 0, 'VNC accepted an incorrect password'
-    print('PASS: SSH password login runs as dev without new privileges; VNC accepts the configured password and rejects an incorrect one.')
+    print('PASS: SSH password login runs as dev; VNC accepts the configured password and rejects an incorrect one.')

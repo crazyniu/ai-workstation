@@ -17,7 +17,7 @@ class ChangeScopeTests(unittest.TestCase):
 
     def test_code_and_mixed_changes_need_images(self):
         for code in ['compose.yaml', 'workstation/Dockerfile', 'gateway/app/server.py',
-                     'workstation/scripts/reset-claude-user.py', 'tests/test_ci_changes.py',
+                     'workstation/desktop/niu.sh', 'tests/test_ci_changes.py',
                      '.github/workflows/images.yml', 'docs-example.py']:
             with self.subTest(code=code):
                 self.assertTrue(CI.requires_images(['README.md', code]))

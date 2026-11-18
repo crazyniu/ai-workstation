@@ -6,8 +6,6 @@ import json
 import os
 from pathlib import Path
 import platform
-import pwd
-import grp
 import shutil
 import socket
 import subprocess
@@ -26,6 +24,8 @@ def run(*command, **kwargs):
 def preflight(role, config, system=Path('/')):
     if platform.system() != 'Linux':
         raise ValueError('Native installation requires Linux. Use Docker Desktop on Windows/macOS.')
+    import grp
+    import pwd
     # Userland architecture, including 32-bit userland on a 64-bit kernel.
     arch = architecture(subprocess.check_output(['dpkg', '--print-architecture'], text=True).strip())
     release = dict(line.split('=', 1) for line in (system/'etc/os-release').read_text().splitlines() if '=' in line)
@@ -53,9 +53,9 @@ def preflight(role, config, system=Path('/')):
         paths += ['opt/workstation', 'opt/node', 'etc/workstation', 'home/dev',
                   'usr/local/libexec/workstation-glycin', 'tmp/.X11-unix/X1',
                   'etc/systemd/system/ai-workstation.service']
-        for name in ('node', 'npm', 'npx', 'uv', 'uvx', 'codex', 'claude', 'godot',
-                     'workstation-mcp', 'unity-mcp', 'workstation-entrypoint',
-                     'workstation-vnc', 'workstation-desktop', 'configure-workstation-exit-dns', 'reset-claude-user'):
+        for name in ('node', 'npm', 'npx', 'uv', 'uvx', 'codex', 'claude',
+                     'workstation-mcp', 'workstation-entrypoint',
+                     'workstation-vnc', 'workstation-desktop', 'configure-workstation-exit-dns', 'niu.sh'):
             paths.append('usr/local/bin/' + name)
         paths += ['etc/apt/sources.list.d/workstation-vscode.list',
                   'etc/apt/sources.list.d/workstation-chrome.list',
@@ -153,7 +153,7 @@ def install(role, config, arch, start):
     if role in ('all', 'workstation'):
         dest = Path('/opt/workstation')
         dest.mkdir()
-        for name in ('scripts', 'mcp', 'unity', 'desktop', 'web-desktop', 'licenses'):
+        for name in ('scripts', 'mcp', 'desktop', 'web-desktop', 'licenses'):
             shutil.copytree(ROOT/'workstation'/name, dest/name, ignore=shutil.ignore_patterns('node_modules', '__pycache__', '*.pyc', '.DS_Store'))
         shutil.copyfile(ROOT/'workstation/versions.env', dest/'versions.env')
         shutil.copytree(ROOT/'workstation/desktop/home-template', dest/'home-template', ignore=shutil.ignore_patterns('.DS_Store'))

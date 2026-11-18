@@ -20,21 +20,24 @@ if not re.fullmatch(r'[a-z_][a-z0-9_-]{0,30}', name):
     raise ValueError('GATEWAY_CONTAINER_USER must name a valid Linux account')
 if password is not None and (not password or any(c in password for c in '\r\n\x00:')):
     raise ValueError('GATEWAY_CONTAINER_PASSWORD is invalid')
-if not value or value['name'] != name:
-    value = {'name': name}
-if subprocess.run(['id', '-u', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+native = os.environ.get('GATEWAY_INSTALL_MODE') == 'native'
+exists = subprocess.run(['id', '-u', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+if native and exists and name != 'root' and (not value or value.get('name') != name):
+    raise ValueError('Existing host account cannot be used as a new gateway administrator')
+if not exists:
     subprocess.run(['useradd', '-M', '-d', str(ROOT / 'home'), '-s', '/bin/bash', name], check=True)
+if not value or value.get('name') != name:
+    value = {'name': name}
 home = ROOT / 'home'
 home.mkdir(exist_ok=True)
 import pwd
 user = pwd.getpwnam(name)
 os.chown(home, user.pw_uid, user.pw_gid)
 home.chmod(0o700)
-native_root = os.environ.get('GATEWAY_INSTALL_MODE') == 'native' and name == 'root'
-if native_root:
-    # Preserve the administrator of the physical host, including its password.
-    value['hash'] = next(line.split(':')[1] for line in Path('/etc/shadow').read_text().splitlines() if line.startswith('root:'))
-    save(account, value)
+if native and name == 'root':
+    # SSH uses the host's own account database. Keep the host hash out of gateway backups.
+    if read(account) != {'name': name}:
+        save(account, {'name': name})
 elif password is not None:
     subprocess.run(['chpasswd'], input=f'{name}:{password}\n', text=True, check=True)
     value['hash'] = next(line.split(':')[1] for line in Path('/etc/shadow').read_text().splitlines() if line.startswith(name + ':'))
@@ -62,5 +65,3 @@ UsePAM yes
 AllowUsers {name}
 Subsystem sftp internal-sftp
 ''')
-for variable in ('GATEWAY_CONTAINER_PASSWORD', 'GATEWAY_ADMIN_PASSWORD'):
-    os.environ.pop(variable, None)

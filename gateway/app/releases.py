@@ -7,7 +7,7 @@ import platform
 import subprocess
 import tempfile
 import tarfile
-import urllib.request
+import shutil
 from pathlib import Path
 
 REPOS = {'mihomo': 'MetaCubeX/mihomo', 'adguard': 'AdguardTeam/AdGuardHome', 'panel': 'MetaCubeX/metacubexd'}
@@ -71,10 +71,19 @@ def install_asset(manifest, dest):
     if hashlib.sha256(data).hexdigest() != manifest['sha256']:
         raise ValueError('SHA256 校验失败，原版本保持')
     dest = Path(dest)
-    dest.mkdir(parents=True, exist_ok=False)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=dest.parent) as folder:
+        staged = Path(folder) / dest.name
+        staged.mkdir()
+        extract_asset(manifest, data, staged)
+        staged.rename(dest)
+
+
+def extract_asset(manifest, data, dest):
     component = manifest['component']
     if component == 'mihomo':
-        binary = gzip.decompress(data)
+        with gzip.GzipFile(fileobj=io.BytesIO(data)) as archive:
+            binary = archive.read(MAX_DOWNLOAD + 1)
         if len(binary) > MAX_DOWNLOAD:
             raise ValueError('解压文件过大')
         (dest / 'mihomo').write_bytes(binary)
@@ -102,8 +111,8 @@ def install_asset(manifest, dest):
                     raise ValueError('解压文件过大')
                 target = dest / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
-                with archive.extractfile(member) as stream:
-                    target.write_bytes(stream.read())
+                with archive.extractfile(member) as stream, target.open('wb') as output:
+                    shutil.copyfileobj(stream, output)
                 target.chmod(0o755 if component != 'panel' else 0o644)
     required = {'mihomo': ['mihomo'], 'adguard': ['AdGuardHome'], 'tailscale': ['tailscale', 'tailscaled'], 'panel': ['index.html']}[component]
     if not all((dest / p).is_file() for p in required):

@@ -18,8 +18,8 @@ Windows/macOS 的 Docker 内运行 Linux 用户空间。Docker Desktop 不支持
 
 | CPU | 网关 | 完整工作站 | 上游差异 |
 | --- | --- | --- | --- |
-| amd64 / x64 | 构建、运行检查与发布矩阵 | 构建、运行检查与发布矩阵 | Chrome、VS Code、Codex、Claude、Godot；Unity Linux Editor/Hub 按需安装 |
-| arm64 / aarch64 | 同上 | 同上 | Linux Google Chrome 没有 ARM64 包，改用 Chromium；VS Code、Codex、Claude、Godot 和 Unity MCP 使用 ARM64 依赖。Unity Linux Editor/Hub 的现有固定版本仅提供 amd64，需在其他支持的机器上运行 Editor |
+| amd64 / x64 | 构建、运行检查与发布矩阵 | 构建、运行检查与发布矩阵 | Chrome、VS Code、Codex、Claude Code、Claude Desktop |
+| arm64 / aarch64 | 同上 | 同上 | Linux Google Chrome 没有 ARM64 包，改用 Chromium；VS Code、Codex、Claude Code 和 Claude Desktop 使用 ARM64 版本 |
 | 32 位 x86 / 386 | 构建、运行检查与发布矩阵 | 当前固定版本的 Codex、Claude 没有 32 位 Linux 二进制 | 安装器说明缺少的上游组件，不静默装入 amd64 程序 |
 | ARMv5、ARMv7 | 网关构建、运行检查与发布矩阵 | 同上，Codex、Claude 缺少对应二进制 | 必须使用正确 ARM 变体；ARMv6 的组件已锁定，可在兼容基础系统上原生安装或自行构建 |
 | RISC-V 64 | 网关构建、运行检查与发布矩阵 | 当前 Codex、Claude 无对应固定发布 | 网关使用 Mihomo、AdGuard Home、Tailscale 的 riscv64 文件 |
@@ -30,7 +30,13 @@ CI 跨架构运行检查使用 portable 应用模式，不授予 NET_ADMIN，也
 
 以上“矩阵”是 CI 必须执行的检查定义；某个提交是否通过、镜像是否已发布，分别以该提交 Actions 和 GHCR manifest 为准。其他架构的锁定文件是构建输入，不是实机验收证据。网关锁文件包含各架构的固定版本、官方地址与 SHA256；工作站版本文件包含两种 CPU 的独立校验值。APT 提供的 Chromium 与基础系统包随软件源更新，实际版本在验收时输出。
 
+默认 Linux LAN 部署允许 251 连接局域网内的 Orca 主机。可选的 251 隔离依赖宿主内核的网络命名空间、conntrack 和 nftables（inet/filter、fib）。同一工作站镜像同时提供无业务数据的网络辅助服务，无需额外公共镜像。隔离模式下工作站只在受控 IPv4 网络运行，管理端仍可连入工作站。portable、独立 bridge 和原生部署使用各自的网络边界；这些入口不会在宿主自动创建 LAN 隔离规则。见[工作站网络策略](workstation-egress.md)。
+
 ## 通用 Docker 安装
+
+AI 首次安装前必须确认国家。新加坡使用英语与新加坡时区，台湾使用繁体中文与台北时区，美国使用英语与洛杉矶时区。
+
+AI 安装和升级按[四条单角色指令](../README.md#让-ai-安装或升级容器)执行，只使用本项目发布的容器。250 网关和 251 工作站各有独立入口。以下为手动部署方式。
 
 先安装并启动 Docker Engine / Docker Desktop，核实当前 context 指向目标主机、Engine 为 Linux，Compose 版本至少 2.33.1。首次安装：
 
@@ -61,13 +67,13 @@ Windows 的 `.env` 继承当前用户目录的 ACL，应保存在私人目录中
 | 网关网页 | `http://127.0.0.1:8080/` | 管理员 `root`，页面只输入密码 `root` |
 | 网关 SSH | `ssh -p 2223 root@127.0.0.1` | `root / root` |
 | 工作站 SSH 管理 | `ssh -p 2222 root@127.0.0.1` | `root / root` |
-| 工作站普通用户 | 同一 SSH 端口，用户名 `dev` | `dev / root` |
+| 工作站普通用户 | 同一 SSH 端口，可使用 sudo | `dev / dev` |
 | 工作站网页桌面 | `https://127.0.0.1:6080/` | VNC 密码 `root` |
 | 工作站 VNC | `127.0.0.1:5901` | VNC 密码 `root` |
 | HTTP / HTTPS 显式代理 | `127.0.0.1:7890` | 从网关网页导入用户自己的代理配置 |
 | AdGuard DNS | `127.0.0.1:1053`，TCP / UDP | 非标准 DNS 端口；客户端须支持指定端口 |
 
-网关容器 root HOME 使用 `/data/home`，包含在网关数据备份范围内。默认管理员凭据统一为 **`root / root`**，供首次初始化使用。桌面、Codex、Claude、浏览器仍由 `dev` 执行，其默认密码同为 `root`。在开放 LAN 或公网访问之前配置私有密码；示例默认不开放公网。已有部署的网关账户和密码保留，不因文档默认值变化自动重置。工作站密码环境变量属于每次启动输入，按原部署配置保留。
+网关容器 root HOME 使用 `/data/home`，包含在网关数据备份范围内。默认管理员凭据统一为 **`root / root`**，供首次初始化使用。桌面、Codex、Claude、浏览器仍由 `dev` 执行，容器中 `dev` 的默认密码为 `dev`。在开放 LAN 或公网访问之前配置私有密码；示例默认不开放公网。已有部署的网关账户和密码保留，不因文档默认值变化自动重置。工作站密码环境变量属于每次启动输入，按原部署配置保留。
 
 需要 LAN 访问时，明确设置 `BIND_ADDRESS`、对应端口和宿主防火墙，并使用可达的宿主 IP；不把容器私有 IP 写成客户端访问地址。自定义网页桌面端口或域名要设置实际的 `NOVNC_ALLOWED_ORIGINS`；网关工作站图标默认跟随本机协议/端口，跨机器访问在 `.env` 设置 `WORKSTATION_URL` 或修改网关中的已保存入口，已有用户入口保留。portable 网关使用 Tailscale userspace 模式，不向宿主添加透明路由，也不接管宿主 DNS；需要透明网关 / Tailscale 子网路由时使用满足网络权限要求的 Linux LAN 部署。默认 workstation 经同一 Compose 的 `gateway:7890` 显式代理；HTTP 代理不覆盖全部 UDP 或系统 DNS。
 

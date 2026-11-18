@@ -4,12 +4,12 @@ set -euo pipefail
 base=/opt/workstation
 source "$base/versions.env"
 case $(dpkg --print-architecture) in
-    amd64) triple=x86_64; claude_arch=x64; godot_arch=x86_64 ;;
-    arm64) triple=aarch64; claude_arch=arm64; godot_arch=arm64
+    amd64) triple=x86_64; claude_arch=x64 ;;
+    arm64) triple=aarch64; claude_arch=arm64
         CODEX_SHA256=$CODEX_ARM64_SHA256
         CLAUDE_ZSTD_SHA256=$CLAUDE_ARM64_ZSTD_SHA256
         CLAUDE_SHA256=$CLAUDE_ARM64_SHA256
-        GODOT_SHA256=$GODOT_ARM64_SHA256 ;;
+        UV_SHA256=$UV_ARM64_SHA256 ;;
     *) echo 'Codex and Claude upstream Linux binaries require amd64 or arm64.' >&2; exit 1 ;;
 esac
 [[ $(node --version) == "v$NODE_VERSION" ]] || { echo 'Unexpected Node.js version.' >&2; exit 1; }
@@ -39,19 +39,17 @@ zstd --decompress --stdout "$stage/claude-$CLAUDE_VERSION-$claude_arch.zst" > "$
 printf '%s  %s\n' "$CLAUDE_SHA256" "$base/claude/claude-$CLAUDE_VERSION" | sha256sum --check --status
 chmod 755 "$base/claude/claude-$CLAUDE_VERSION"
 
-download "godot-$GODOT_VERSION-$godot_arch.zip" \
-    "https://github.com/godotengine/godot-builds/releases/download/$GODOT_VERSION-stable/Godot_v$GODOT_VERSION-stable_linux.$godot_arch.zip" "$GODOT_SHA256"
-unzip -q "$stage/godot-$GODOT_VERSION-$godot_arch.zip" -d "$stage/godot"
-install -d "$base/godot"
-install -m 755 "$stage/godot/Godot_v$GODOT_VERSION-stable_linux.$godot_arch" "$base/godot/godot-$GODOT_VERSION"
+download "uv-$UV_VERSION-$triple.tar.gz" \
+    "https://github.com/astral-sh/uv/releases/download/$UV_VERSION/uv-$triple-unknown-linux-gnu.tar.gz" "$UV_SHA256"
+tar -xzf "$stage/uv-$UV_VERSION-$triple.tar.gz" -C "$stage"
+install -m 755 "$stage/uv-$triple-unknown-linux-gnu"/{uv,uvx} /usr/local/bin/
 
 # Keep the complete Codex bundle: helpers and resources resolve relative to bin/codex.
-# Every interactive launcher refuses root and retains no_new_privs for its children.
-for name in codex claude godot; do
+# Desktop and shell launchers both select the dev user's updated CLI.
+for name in codex claude; do
     case "$name" in
-        codex) target="$base/codex/$CODEX_VERSION/bin/codex"; extra='' ;;
-        claude) target="$base/claude/claude-$CLAUDE_VERSION"; extra='' ;;
-        godot) target="$base/godot/godot-$GODOT_VERSION"; extra='--rendering-method gl_compatibility' ;;
+        codex) target="$base/codex/$CODEX_VERSION/bin/codex" ;;
+        claude) target="$base/claude/claude-$CLAUDE_VERSION" ;;
     esac
     cat > "/usr/local/bin/$name" <<SH
 #!/bin/sh
@@ -60,7 +58,12 @@ if [ "\$(id -u)" -eq 0 ]; then
     echo 'Run $name as the dev account.' >&2
     exit 1
 fi
-exec /usr/bin/setpriv --no-new-privs '$target' $extra "\$@"
+updated="\$HOME/.local/share/workstation-cli/bin/$name"
+target='$target'
+if [ -x "\$updated" ]; then
+    target="\$updated"
+fi
+exec "\$target" "\$@"
 SH
     chmod 755 "/usr/local/bin/$name"
 done
@@ -75,23 +78,14 @@ if [ "$(id -u)" -eq 0 ]; then
     echo 'Run MCP servers as the dev account.' >&2
     exit 1
 fi
-base=/opt/workstation/mcp/node_modules
-if [ "${1:-}" = unity ]; then
-    shift
-    exec /usr/local/bin/unity-mcp "$@"
-fi
 case "${1:-}" in
-    context7) script="$base/@upstash/context7-mcp/dist/index.js" ;;
-    playwright) script="$base/@playwright/mcp/cli.js" ;;
-    chrome-devtools) script="$base/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js" ;;
-    godot) script="$base/@coding-solo/godot-mcp/build/index.js" ;;
-    *) echo 'Choose context7, playwright, chrome-devtools, godot, or unity.' >&2; exit 2 ;;
+    context7|playwright|chrome-devtools) command="/opt/workstation/mcp/node_modules/.bin/$1-mcp" ;;
+    *) echo 'Choose context7, playwright, or chrome-devtools.' >&2; exit 2 ;;
 esac
 shift
-exec /usr/bin/setpriv --no-new-privs /usr/local/bin/node "$script" "$@"
+exec /usr/bin/setpriv --no-new-privs "$command" "$@"
 SH
 chmod 755 /usr/local/bin/workstation-mcp
-bash "$base/scripts/install-unity-mcp.sh"
 python3 "$base/scripts/configure-mcp.py" --home "$base/home-template"
 chown -R root:root "$base"
 chmod -R go-w "$base"

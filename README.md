@@ -5,44 +5,40 @@
 
 面向家庭网络与远程开发的网关与工作站环境：一个带桌面式 Web 后台的网关，一个可通过浏览器、SSH / VNC 使用的 Linux 开发工作站。
 
-工作站默认新加坡英文，可配置国家、语言和时区。两个角色既可同机运行，也可分别部署在宿主机 A/B；独立部署入口、网络前提和初始化参数见 [AI 安装指南](AI-INSTALL.md)。
+手动部署的工作站默认使用新加坡英文。AI 首次安装网关或工作站时，先确认国家，再设置容器的系统语言和时区。两个角色既可同机运行，也可分别部署在宿主机 A/B；独立部署入口、网络前提和初始化参数见 [AI 安装指南](AI-INSTALL.md)。
 
-## 让 AI 帮你安装
+## 让 AI 安装或升级容器
 
-点击下面代码块右上角的复制按钮，发送给能操作你主机的 AI 助手。也可以直接发送本仓库链接并说明“请按仓库的 AI-INSTALL.md 帮我安装”；仓库提供 [AI 安装指引](AI-INSTALL.md) 和 [Agent 入口](AGENTS.md)。
+选一段复制给能操作目标 Docker 宿主机的 AI。
+
+### 安装 250 网关
 
 ```text
-请帮我安装 https://github.com/crazyniu/ai-workstation 。
-先读取当前版本 README.md、AGENTS.md、AI-INSTALL.md 和 docs/platforms.md。
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只安装网关 192.168.1.250。
+先问我安装国家，得到确认后用 AI_INSTALL_COUNTRY 传入国家代码，再在仓库根目录执行 ./deploy.sh ai gateway，只用 ghcr.io/crazyniu/ai-workstation-gateway:latest，不额外安装软件。
+容器 SSH 用 root/root，网关网页密码用 root。地址已占用或已有网关时停止。
+```
 
-先只读盘点目标机器：操作系统、CPU 和用户空间架构、现有服务与数据；
-使用 Docker 时核对 context、Engine 的 Linux/CPU 架构、Compose 版本和已有容器。
-网关、工作站都不限定 NAS 或平台，只按各软件上游的真实支持范围选择版本；
-区分 x86/32 位、amd64/x64/x86_64、arm64/aarch64、ARM 变体等。
-遇到缺少上游版本的组件，说明组件名和可用方案，不套用 amd64 程序或承诺已支持。
+### 安装 251 工作站
 
-Linux 可选择原生服务或 Docker。已有适用运行环境优先复用；
-原生安装用 install-native.py，先预览再 --apply，核对发行版依赖。
-Windows/macOS 使用 Docker Desktop 的 Linux containers，缺少时先完成安装；
-默认 portable 端口映射，Windows 用 deploy.ps1，Linux/macOS 用 deploy.sh。
-只有需要透明 LAN 网关且目标 Linux 满足 macvlan/TUN/转发条件时才选择 LAN 入口。
-网关和工作站可以同机或异机；按实际网络设置代理、DNS 和客户端访问地址。
-192.168.1.250/251 仅为 LAN 示例，网卡、空闲地址、路由和宿主均现场核实。
+```text
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只安装工作站 192.168.1.251。
+先问我安装国家，得到确认后用 AI_INSTALL_COUNTRY 传入国家代码，再在仓库根目录执行 ./deploy.sh ai workstation，只用 ghcr.io/crazyniu/ai-workstation:latest，不额外安装软件。
+容器管理员用 root/root，桌面用户用 dev/dev，VNC 密码用 root。地址已占用、已有工作站或网关 192.168.1.250 不可用时停止。
+```
 
-默认服务器管理员账号/密码统一 root/root；网关网页登录只需密码 root。
-工作站桌面和应用使用 dev，默认密码 root，VNC 默认密码 root。
-Linux 原生安装保留宿主已有 root 密码和现有 SSH 入口，不重置服务器身份。
-配置保存在私有 .env 或原生初始化文件，不回显或提交个人凭据。
-工作站默认 SG/en/Asia/Singapore，需要其他地区时按指南设置三项。
+### 升级 250 网关
 
-已有环境先说明实际状态并保留数据，不删除、重建或迁移其他服务。
-Docker 数据留在容器内部，不添加业务挂载；原生状态留在文档指定目录。
-不擅自迁移 Docker 存储、修改主路由器、接管宿主路由/DNS 或开放公网端口。
+```text
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只将现有网关 192.168.1.250 升级到 ghcr.io/crazyniu/ai-workstation-gateway:latest。
+核对原容器、启动配置和镜像摘要。按 gateway/README.md 备份后再替换网关，恢复配置、账号和身份。保留 251 原状，不额外安装软件。
+```
 
-完成后验证实际网页登录、DNS 查询、代理请求、SSH、网页/VNC 桌面与应用启动，
-核对工具 CPU/版本、重启后的数据和 SSH 指纹；需要账号登录的服务由我登录。
-区分构建/健康检查、模拟执行、真实客户端验收；缺环境的项目明确标为 NOT RUN。
-最后给我访问入口、账号、已通过/未验证项、服务管理命令和升级的数据注意事项。
+### 升级 251 工作站
+
+```text
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只将现有工作站 192.168.1.251 升级到 ghcr.io/crazyniu/ai-workstation:latest。
+核对原容器、启动配置和镜像摘要。按 workstation/README.md 备份后再替换工作站，恢复项目、桌面、账号和 SSH 身份。保留 250 原状，不额外安装软件。
 ```
 
 ![AI Workstation 与网关桌面展示](docs/images/gateway-home.png)
@@ -55,21 +51,74 @@ Docker 数据留在容器内部，不添加业务挂载；原生状态留在文�
 
 Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop 的 Linux 容器。两个角色按上游软件实际支持的 CPU 范围提供构建：完整工作站覆盖 amd64/x64 和 arm64；网关还覆盖 32 位 x86、ARMv5/ARMv7、RISC-V，并锁定其他上游可用架构的依赖。只有软件自身缺少对应版本时才说明限制。完整矩阵、命令和验证边界见[平台安装说明](docs/platforms.md)。
 
-默认管理员账号、密码为 **`root / root`**；工作站应用以普通用户 `dev` 运行，默认密码和 VNC 密码均为 `root`。Linux 原生安装保留宿主已有 root 密码。默认 Docker 端口映射只绑定本机回环地址。
+默认管理员账号、密码为 **`root / root`**；工作站应用以普通用户 `dev` 运行，默认密码为 `dev`，VNC 密码为 `root`。Linux 原生安装保留宿主已有 root 密码。手动选用 portable 模式时，端口默认绑定本机回环地址。
 
 ## 两个服务
 
 | 服务 | 默认地址 | 能力 | 公开镜像 |
 | --- | --- | --- | --- |
 | Gateway | `192.168.1.250` | Mihomo / Clash、AdGuard Home、Tailscale、Web 控制面板 | `ghcr.io/crazyniu/ai-workstation-gateway` |
-| Workstation | `192.168.1.251` | XFCE、Chrome、VS Code、Godot、Codex、Claude、GitHub CLI、MCP 工具 | `ghcr.io/crazyniu/ai-workstation` |
+| Workstation | `192.168.1.251` | XFCE、Chrome、VS Code、Codex、Claude Code、Claude Desktop、GitHub CLI、MCP 工具 | `ghcr.io/crazyniu/ai-workstation` |
 
 - 桌面链接支持自动获取站点 favicon，也可手动选图标；提供壁纸、主题、排序与账户设置。
 - 网关内置工作站网页入口，可修改地址；内置图标与自定义链接统一排序，保存、导入和表单校验通过全局提示反馈。
 - 网关默认使用密码登录，可信私网可在账户设置中关闭；工作站提供 HTTPS noVNC 网页桌面，支持双向文字剪贴板。
 - 网关统一管理代理配置、DNS、子网访问、组件升级与备份恢复。
-- LAN 部署中，工作站的桌面和 CLI 默认经网关代理访问外网，局域网地址绕过显式代理；bridge 部署使用配置的私有代理端点，代理留空时沿用宿主机正常出口。
+- 251 默认直接接入局域网，可主动连接 Mac 的 Orca 配对服务。250 继续负责公网代理。需要限制 251 主动访问其他内网设备时，显式启用[可选隔离](docs/workstation-egress.md#显式启用隔离)。
+- 在 250 的 Clash 规则里，把软件或来源 IP 绑定到具体 HTTP、HTTPS 或 SOCKS5 出口。该节点连接失败或不支持 UDP 时，命中的流量被拒绝。手动选用的其他节点和独立规则按其自身策略执行。详见[工作站网络策略](docs/workstation-egress.md)。
 - 配置、HOME 和账号身份全部保存在各自容器内部。公开镜像包含程序和默认模板，个人订阅、身份和业务数据由用户自行配置。
+
+## 让 AI 帮你检测 IP 泄漏
+
+复制下面的提示词，发送给能连接目标环境的 AI 助手。将示例地址替换为实际部署地址；检测结果以当次实测为准。该提示词涵盖 HTTPS 出口、STUN / WebRTC、IPv6、DNS 和 Claude 连接，并要求保留现有配置与数据。
+
+```text
+请检查本项目工作站是否存在绕过代理、暴露真实公网 IP 的情况。
+目标工作站示例为 192.168.1.251，网关示例为 192.168.1.250，
+实际宿主机、容器或原生服务、访问入口和预期代理出口请先现场核实。
+先读取 README.md、AGENTS.md、AI-INSTALL.md 和 docs/platforms.md。
+本次仅检测，保持已有服务、代理、路由、防火墙、浏览器配置和用户数据原状；
+使用当前可用的原生工具操作桌面和浏览器，确认测试运行在目标工作站。
+
+1. 盘点实际网络：记录接口、地址、默认路由、策略路由、DNS、代理环境变量，
+   以及浏览器、Claude Desktop / Claude Code 的运行状态与适用代理策略。
+   区分工作站、网关、宿主机和控制端，核对多网卡、Docker / VPN 等额外路径。
+
+2. 在工作站通过两个独立 HTTPS 查询服务测出口 IP，区分系统默认路径和
+   应用实际使用的代理路径。与预期代理出口、可安全取得的宽带出口基线比较，
+   并结合实时转发链判断；仅看到两个查询结果相同，证据仍不完整。
+
+3. 从工作站实际发送 STUN Binding 请求，至少测试 Google STUN 的 19302
+   和 Cloudflare STUN 的 3478 端口。记录当次解析地址，校验响应事务 ID，
+   读取映射公网地址；对各可用接口分别检测。保持测试连接一段时间，
+   同步核对网关实时连接的源 IP、协议、目标、命中规则和代理链。
+
+4. 在目标工作站的实际浏览器中执行 WebRTC ICE 候选收集，记录浏览器版本、
+   代理与 WebRTC 策略，区分 host、srflx、relay、mDNS、私网地址和公网地址。
+   将候选中的公网 IPv4 / IPv6 与 HTTPS 出口、预期代理出口逐项比较。
+   网络层 STUN 探测和浏览器完整 WebRTC 测试分别报告；缺少浏览器访问时，
+   浏览器项记为 NOT RUN，同时继续完成可执行的网络检查。
+
+5. 检查公网 IPv6 地址、IPv6 路由、DNS 的实际解析路径和 UDP/443 的转发链。
+   有 IPv6 时分别验证其出口；DNS 结合查询、日志或限定范围的抓包取证，
+   系统配置和检测页的解析服务商标签只作线索。区分 DNS 泄漏与公网 IP 泄漏。
+
+6. 对正在运行的 Claude 及其子进程观察网络连接，记录观察时长、采样方式，
+   尽量通过 PID、socket、源端口和时间关联转发记录。区分主动测试产生的
+   STUN 请求与应用自身活动；未观察到连接仅代表观察窗口内的结果。
+   登录、语音等未触发场景单列为未验证，记录需要用户配合的具体步骤。
+
+7. 检查规则顺序、子规则、源地址强制代理、UDP 支持和直连回退策略。
+   特别确认前面的工作站子规则是否优先于后面的通用 STUN / QUIC 拒绝规则。
+   区分“已拦截”“经预期代理转发”“绕过代理直连”；STUN 可连通本身不能
+   证明泄漏，超时也不能单独证明拦截。代理故障时的行为仅检查现有证据，
+   停服务或切换出口的故障演练另列为未验证。
+
+最后输出检测表：检查项、实际结果、关键证据、PASS / FAIL / NOT RUN，
+并给出“确认泄漏 / 本次未发现泄漏 / 证据不足”的结论和适用范围。
+发现问题时定位具体路径、规则与影响，并给出最小修复建议。
+保留私有检测报告；公开文档使用脱敏示例，凭据、个人配置和原始日志留在私有位置。
+```
 
 ## 每个容器的软件
 
@@ -91,19 +140,21 @@ Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop �
 | 类别 | 安装的软件 |
 | --- | --- |
 | 桌面与连接 | Debian `13`、XFCE、Thunar 文件管理器、XFCE Terminal、TigerVNC、noVNC `1.7.0`、websockify、OpenSSH Server |
-| 浏览器与编辑器 | Google Chrome `156.0.8078.47`、Visual Studio Code `1.143.1`、Godot `4.7.2` |
+| 浏览器与编辑器 | Google Chrome `156.0.8078.47`、Visual Studio Code `1.143.1` |
 | AI CLI | Codex `0.164.0`、Claude Code `2.1.309` |
-| 开发运行时 | Python 3（Ubuntu 软件包，`3.14` 系列）、Node.js `24.22.1`、npm / npx、GCC |
-| 开发与进程管理 | Git、GitHub CLI、curl、Supervisor；Ubuntu 系统 Python `3.14` 用于系统服务 |
-| 本地 MCP | Context7 `4.4.4`、Playwright `0.0.83`、Chrome DevTools `1.12.0`、Godot MCP `0.1.1`、Unity MCP `10.3.0` |
+| 开发运行时 | Python 3（Debian 系统包）、Node.js `24.22.1`、npm / npx、GCC |
+| 开发与进程管理 | Git、GitHub CLI、curl、Supervisor；系统 Python 3 用于系统服务 |
+| 本地 MCP | Context7 `4.4.4`、Playwright `0.0.83`、Chrome DevTools `1.12.0` |
 | 远程 MCP | GitHub MCP 连接配置，使用个人账号授权 |
-| 可选 Unity 环境 | Unity Editor `6000.3.27f1`（6.3 LTS）、Hub `3.22.4`；使用 Unity Personal 免费许可证，安装方式见 [Unity 说明](workstation/unity/README.md) |
+| AI desktop app | Claude Desktop. **niu.sh** updates it alongside system packages, desktop applications, runtimes, AI CLIs, and local MCP servers. |
 
-工作站通过 `python3` 使用 Ubuntu 提供的 Python `3.14` 系列，补丁版本随系统软件包更新。MCP 配置同时提供给 Codex 和 Claude，浏览器工具使用容器内的 Chrome。详细清单与使用方式见 [工作站说明](workstation/README.md)。
+工作站容器使用 Debian 提供的 Python 3，补丁版本随系统软件包更新。MCP 配置同时提供给 Codex 和 Claude，浏览器工具使用容器内的 Chrome。详细清单与使用方式见 [工作站说明](workstation/README.md)。
 
 ## 首次部署
 
-默认 portable 模式适用于 Linux、Windows、macOS 的 Docker Linux 容器；需要 Docker Compose 2.33.1+。首次部署：
+AI 首次安装只执行所选角色的入口。脚本在拉取镜像前用 Python 3 核对 Compose 实际使用的角色、镜像和 LAN 地址。
+
+手动选用 portable 模式时，Linux、Windows、macOS 都可以使用 Docker Linux 容器和 Compose 2.33.1+。
 
 ```sh
 git clone https://github.com/crazyniu/ai-workstation.git
@@ -125,6 +176,8 @@ Linux 不安装 Docker 时使用 `python3 install-native.py` 预览，再按[原
 
 | 部署方式 | 首次创建命令 | Compose 文件 |
 | --- | --- | --- |
+| AI 安装 250 网关 | `./deploy.sh ai gateway` | `compose.gateway.yaml` |
+| AI 安装 251 工作站 | `./deploy.sh ai workstation` | `compose.workstation.yaml` |
 | 通用 Docker 端口映射 | `./deploy.sh` / `.\deploy.ps1` | `compose.portable.yaml` |
 | 同一 Linux 宿主机、同一 LAN | `./deploy.sh all` | `compose.yaml` |
 | 宿主机 B：独立网关 | `./deploy.sh gateway` | `compose.gateway.yaml` |
@@ -162,7 +215,7 @@ WORKSTATION_LANGUAGE=en
 WORKSTATION_TIMEZONE=Asia/Singapore
 ```
 
-国家使用大写两位代码，语言使用小写语言代码，两者通常组合为 `en_SG.UTF-8`；时区独立使用 IANA 名称。例如台湾繁体中文为 `TW / zh / Asia/Taipei`，美国英文（纽约）为 `US / en / America/New_York`。台湾英语使用 `TW / en / Asia/Taipei`：英语界面采用 `en_US.UTF-8`，台湾日期、货币等地区格式采用 `zh_TW.UTF-8`，无需不存在的 `en_TW`。初始化按需生成所需 locale，并将配置应用到 SSH 登录和 XFCE 会话。
+国家使用大写两位代码，语言使用小写语言代码，两者通常组合为 `en_SG.UTF-8`；时区独立使用 IANA 名称。例如台湾繁体中文为 `TW / zh / Asia/Taipei`，美国英文（洛杉矶）为 `US / en / America/Los_Angeles`。台湾英语使用 `TW / en / Asia/Taipei`：英语界面采用 `en_US.UTF-8`，台湾日期、货币等地区格式采用 `zh_TW.UTF-8`，无需不存在的 `en_TW`。初始化按需生成所需 locale，并将配置应用到 SSH 登录和 XFCE 会话。
 
 已有容器可通过内部 `/etc/workstation/region.json` 覆盖地区配置，再重启同一容器；提供的字段优先于容器环境变量。修改 `.env` 后重启不会更新已有容器的环境变量定义。配置文件写法、参数校验和验收命令见 [AI 安装指南](AI-INSTALL.md#21-工作站国家语言和时区初始化)。地区设置控制容器内部语言、格式和时间，公网出口由网关和代理配置决定。
 
@@ -170,12 +223,9 @@ WORKSTATION_TIMEZONE=Asia/Singapore
 
 ### 重置 Claude 用户信息
 
-工作站镜像安装 `reset-claude-user` 命令，在 251 的普通用户 `dev` 终端运行：
+以 `dev` 打开 **niu.sh**，菜单 **6** 可预览 Claude、Codex 图片及应用缓存的路径和占用空间。输入 **1** 清理列出的缓存，输入 **0** 取消。生成的图片、项目、聊天记录和登录配置保留。
 
-```sh
-reset-claude-user          # 预览清理项目，不修改文件
-reset-claude-user --apply  # 关闭 Claude 后，执行本地身份与历史清理
-```
+以 `dev` 打开桌面的 **niu.sh**，输入 **5** 预览清理范围。关闭 Claude Code 后，输入 **1** 确认执行，或输入 **0** 取消。
 
 清理 Claude Code 登录凭据、用户/设备标识、会话、输入历史、日志及旧配置备份；保留当前 MCP 配置、MCP OAuth 凭据、插件、技能、通用代理设置及实际项目文件。只修改选定 HOME 中的 Claude 数据及独立的认证变量声明，不清理浏览器登录、远端会话或共享 Shell 历史。执行时检查 Claude 进程及继承的认证环境变量，发现仍在使用的身份时拒绝清理。清理按需手动执行，容器启动不会自动重置账号。
 
@@ -189,7 +239,7 @@ reset-claude-user --apply  # 关闭 Claude 后，执行本地身份与历史清�
 | --- | --- |
 | 网关 Web：`http://192.168.1.250/` | 密码来自 `WEB_PASSWORD`，示例值为 `root` |
 | 网关 SSH：`192.168.1.250:22` | `GATEWAY_USER` / `GATEWAY_PASSWORD`，示例均为 `root` |
-| 工作站 SSH：`192.168.1.251:22` | 管理员 `root / root`；应用用户 `dev / root` |
+| 工作站 SSH：`192.168.1.251:22` | 管理员 `root / root`；应用用户 `dev / dev` |
 | 工作站 VNC：`192.168.1.251:5901` | `VNC_PASSWORD`，示例值为 `root` |
 
 部署前设置自己的密码。VNC 密码接受 1–8 个 ASCII 字符；Compose 默认启用工作站 root / root 管理登录，桌面应用仍由 dev 运行。网关 Web 密码首次初始化后由“设置 → 账户”管理。后续环境变量变更与数据处理见各服务文档。

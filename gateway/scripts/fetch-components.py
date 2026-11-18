@@ -41,11 +41,14 @@ def fetch(root, arch, refresh=False):
     folder = seed / 'filters'
     folder.mkdir(exist_ok=True)
     dest = folder / 'adguard-dns.txt'
-    content = dest.read_bytes() if dest.exists() else download(pinned['url'], 20*1024*1024)
-    if hashlib.sha256(content).hexdigest() != pinned['sha256']:
-        raise ValueError('AdGuard DNS filter SHA256 mismatch')
-    if not dest.exists():
-        dest.write_bytes(content)
+    if not dest.is_file() or hashlib.sha256(dest.read_bytes()).hexdigest() != pinned['sha256']:
+        content = download(pinned['url'], 20*1024*1024)
+        if hashlib.sha256(content).hexdigest() != pinned['sha256']:
+            raise ValueError('AdGuard DNS filter SHA256 mismatch')
+        with tempfile.TemporaryDirectory(dir=folder) as scratch:
+            staged = Path(scratch) / dest.name
+            staged.write_bytes(content)
+            staged.replace(dest)
     (folder / 'manifest.json').write_text(json.dumps(pinned, indent=2) + '\n')
     (seed / 'architecture').write_text(arch + '\n')
 

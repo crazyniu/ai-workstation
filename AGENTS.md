@@ -1,7 +1,7 @@
 # Repository guide for AI assistants
 
 This repository builds two separate services: `gateway/` and `workstation/`.
-`compose.portable.yaml` is the default Docker deployment on Linux, Windows and
+`compose.portable.yaml` is the default manual Docker deployment on Linux, Windows and
 macOS; `deploy.ps1` is the Windows entry. Linux may also install native services
 using `install-native.py` (preview first). Read `docs/platforms.md` for the vendor
 architecture matrix, native prerequisites and validation boundaries. Do not
@@ -15,7 +15,26 @@ The workstation defaults to Singapore/English and supports country, language
 and timezone initialization through WORKSTATION_* settings or internal
 `/etc/workstation/region.json`.
 
+The default Linux LAN workstation keeps its own LAN address and can initiate
+connections to a paired Mac. Only explicit LAN isolation adds `workstation-network`.
+This helper uses the workstation image and holds its LAN address and firewall
+capability. Keep the desktop in that namespace with NET_ADMIN and NET_RAW
+dropped. Preserve the editable Clash source and compile the enforced runtime
+policy on startup, reload and restore. The helper contains no user data.
+
 ## Installation requests
+
+For each new AI installation, ask the user to confirm the country before deploying. Pass that answer through `AI_INSTALL_COUNTRY`. SG uses English and Asia/Singapore, TW uses Traditional Chinese and Asia/Taipei, and US uses English and America/Los_Angeles. Preserve existing region settings on upgrades.
+
+Each AI request installs or upgrades only the named role. For a new gateway at
+`192.168.1.250`, run `./deploy.sh ai gateway` with
+`ghcr.io/crazyniu/ai-workstation-gateway:latest`. For a new workstation at
+`192.168.1.251`, run `./deploy.sh ai workstation` with
+`ghcr.io/crazyniu/ai-workstation:latest`. Use the published project image and
+its shipped services. Do not install additional software or substitute images,
+IP addresses, host packages or deployment modes. Report any blocking conflict.
+For an upgrade, identify the existing target, back up its private state and
+follow the role-specific migration procedure in AI-INSTALL.md.
 
 Read [AI-INSTALL.md](AI-INSTALL.md), [README.md](README.md), and `.env.example`
 before installing or changing a deployment. Inspect the actual host and existing
@@ -26,7 +45,7 @@ migration or replacement plan. Do not infer permission to delete other services.
 Docker runtime configuration, HOME and identities live inside each container.
 Native state uses the dedicated directories in docs/platforms.md; preserve host
 root credentials, SSH/nginx configuration and existing services. Default new
-container administrator credentials are root/root; applications run as dev. Restart
+container administrator credentials are root/root. Workstation desktop credentials are dev/dev. Gateway Web and workstation VNC use the password root. Restart
 preserves them; deletion or recreation removes them. Do not add business bind
 mounts or data volumes to the default deployment. Keep credentials, personal
 configuration, logs and private snapshots outside Git and public images.

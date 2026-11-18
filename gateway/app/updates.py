@@ -1,7 +1,8 @@
+import egress
 import json,os,shutil,tempfile,time,uuid
 import yaml
 from pathlib import Path
-from state import ROOT,LOCK,atomic,save,read,command
+from state import ROOT,LOCK,save,read,command
 from releases import discover,install_asset
 
 COMPONENTS=('mihomo','adguard','tailscale','panel')
@@ -12,8 +13,9 @@ def manifests():
     return {c:read(ROOT/'components/current'/c/'version.json',{}) for c in COMPONENTS}
 def check():
     result={}
+    installed=manifests()
     for c in COMPONENTS:
-        current=manifests()[c]
+        current=installed[c]
         try:
             latest=discover(c)
             result[c]={'current':current.get('version','unknown'),'latest':latest['version'],'available':current.get('version')!=latest['version'],'manifest':latest}
@@ -92,7 +94,7 @@ def upgrade(component,manifest=None):
             if component=='mihomo':
                 with tempfile.TemporaryDirectory() as scratch:
                     shutil.copytree(ROOT/'mihomo',Path(scratch)/'mihomo')
-                    command([str(target/'mihomo'),'-t','-d',str(Path(scratch)/'mihomo'),'-f',str(ROOT/'mihomo/config.yaml')],timeout=40)
+                    command([str(target/'mihomo'),'-t','-d',str(Path(scratch)/'mihomo'),'-f',str(egress.runtime(Path(scratch)/'mihomo/config.yaml'))],timeout=40)
             if component=='adguard':
                 with tempfile.TemporaryDirectory() as scratch:
                     shutil.copytree(ROOT/'adguard',Path(scratch)/'adguard')

@@ -26,6 +26,7 @@ def source_files(root, include_seed):
         files.extend(path for path in (root / directory).glob(pattern)
                      if path.is_file() or path.is_symlink())
     if include_seed:
+        files.append(root / 'seed/architecture')
         for component in ('mihomo', 'adguard', 'tailscale', 'panel', 'filters'):
             directory = root / 'seed' / component
             if not directory.is_dir():

@@ -7,7 +7,7 @@ import legacy
 from state import ROOT,DASH,CONFIG,LOCK,read,save,atomic,settings,command,config,write_config,password_hash,password_valid,validate_password,domain_config,local_domain,lan_ip,lan_networks
 import updates
 import favicon
-legacy.CONFIG_LOCK=LOCK
+import proxy_editor
 MAX_BODY=36*1024*1024
 JOBS={}
 FAILURES={}
@@ -17,11 +17,11 @@ DESKTOP_BUILTINS=('builtin:clash','builtin:adguard','builtin:tailscale','builtin
 def default_workstation_url():
     configured=os.environ.get('GATEWAY_WORKSTATION_URL')
     if configured:return configured
-    if os.environ.get('GATEWAY_MODE','true')=='false':
-        scheme='http' if os.environ.get('NOVNC_TLS','1')=='0' else 'https'
-        port=int(os.environ.get('GATEWAY_WORKSTATION_PORT','6080'))
-        return f'{scheme}://127.0.0.1:{port}/'
-    return 'https://192.168.1.251:6080/'
+    portable=os.environ.get('GATEWAY_MODE','true')=='false'
+    host='127.0.0.1' if portable else os.environ.get('GATEWAY_WORKSTATION_ADDRESS','192.168.1.251')
+    scheme='http' if os.environ.get('NOVNC_TLS','1')=='0' else 'https'
+    port=int(os.environ.get('GATEWAY_WORKSTATION_PORT','6080'))
+    return f'{scheme}://{host}:{port}/'
 
 def validate_desktop(value):
     if not isinstance(value,dict):raise ValueError('桌面设置必须为对象')
@@ -131,7 +131,8 @@ def connect_tailscale():
 
 def maintain_tailscale_routes():
     with LOCK:
-        if any(j['status']=='running' for j in JOBS.values()):return
+        with JOB_LOCK:
+            if any(j['status']=='running' for j in JOBS.values()):return
         if tailscale_raw_status().get('BackendState')!='Running':return
         try:configure_tailscale_routes()
         except Exception as exc:
@@ -148,12 +149,18 @@ def submit(kind,work):
     with JOB_LOCK:
         if any(j['status']=='running' for j in JOBS.values()):raise ValueError('有任务正在执行，请等待完成')
         ident=uuid.uuid4().hex;JOBS[ident]={'id':ident,'kind':kind,'status':'running','started':time.time()}
+        if len(JOBS)>64:
+            del JOBS[next(iter(JOBS))]
+        submitted=JOBS[ident].copy()
     def run():
-        try: result=work();JOBS[ident].update(status='success',result=result)
-        except Exception as exc:JOBS[ident].update(status='error',error=str(exc) if isinstance(exc,ValueError) else '操作失败，原配置已保留；请检查连接或服务日志')
-        JOBS[ident]['finished']=time.time();save(DASH/'last-job.json',JOBS[ident])
+        try:done={'status':'success','result':work()}
+        except Exception as exc:
+            done={'status':'error','error':str(exc) if isinstance(exc,ValueError) else '操作失败，请检查服务状态'}
+        with JOB_LOCK:
+            JOBS[ident].update(done,finished=time.time())
+            save(DASH/'last-job.json',JOBS[ident])
     threading.Thread(target=run,daemon=True).start()
-    return JOBS[ident].copy()
+    return submitted
 
 def fetch_subscription(url):
     parsed=urllib.parse.urlparse(url)
@@ -265,14 +272,17 @@ class Handler(legacy.Handler):
             self.reply(200,{'services':r.stdout,'configured':read(DASH/'proxy-state.json',{}).get('configured',False),'domain':settings()['domain'],'address':lan_ip()});return
         if path=='/api/settings':self.reply(200,settings());return
         if path=='/api/tailscale':self.reply(200,tailscale_status());return
-        if path=='/api/updates':self.reply(200,{'components':updates.manifests(),'checked':read(DASH/'releases.json',{}),'job':next((j for j in JOBS.values() if j['status']=='running'),read(DASH/'last-job.json'))});return
+        if path=='/api/updates':
+            with JOB_LOCK:
+                job=next((j.copy() for j in JOBS.values() if j['status']=='running'),None) or read(DASH/'last-job.json')
+            self.reply(200,{'components':updates.manifests(),'checked':read(DASH/'releases.json',{}),'job':job});return
         if path.startswith('/api/jobs/'):
-            job=JOBS.get(path.split('/')[-1]) or read(DASH/'last-job.json',{})
+            with JOB_LOCK:job=dict(JOBS.get(path.split('/')[-1]) or read(DASH/'last-job.json',{}))
             if job.get('id')!=path.split('/')[-1]:self.reply(404,{'error':'任务不存在'});return
             self.reply(200,job);return
         if path=='/api/backup':
             stream=io.BytesIO()
-            with tarfile.open(fileobj=stream,mode='w:gz') as archive:
+            with LOCK, tarfile.open(fileobj=stream,mode='w:gz') as archive:
                 for name in backup_paths():
                     p=ROOT/name
                     if p.is_file():archive.add(p,arcname=name,recursive=False)
@@ -280,15 +290,16 @@ class Handler(legacy.Handler):
         self.reply(404,{'error':'接口不存在'})
     def do_POST(self):
         try:self.post()
+        except legacy.ConfigConflict as exc:self.reply(409,{'error':str(exc)})
         except Exception as exc:self.reply(400,{'error':str(exc) if isinstance(exc,ValueError) else '操作失败，请检查输入及服务状态'})
     def post(self):
         path=urllib.parse.urlparse(self.path).path
         if not self.same_origin():self.reply(403,{'error':'请从本网关页面操作'});return
         if path in ('/api/auth/setup','/api/auth/login'):
             data=self.body(8192);password=validate_password(data.get('password',''));address=self.headers.get('X-Real-IP',self.client_address[0])
-            attempts=FAILURES.get(address,[]);attempts=[t for t in attempts if t>time.time()-300]
-            if len(attempts)>=10:self.reply(429,{'error':'尝试过多，请五分钟后重试'});return
             with LOCK:
+                attempts=[t for t in FAILURES.get(address,[]) if t>time.time()-300]
+                if len(attempts)>=10:self.reply(429,{'error':'尝试过多，请五分钟后重试'});return
                 admin=read(DASH/'admin.json')
                 if path.endswith('setup'):
                     if admin:raise ValueError('管理员已设置，请登录')
@@ -302,7 +313,9 @@ class Handler(legacy.Handler):
         if path=='/api/auth/logout':
             self.send_response(200);self.send_header('Set-Cookie','gateway_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0');self.end_headers();self.wfile.write(b'{}');return
         if path=='/api/proxy/config':
-            super().import_config();return
+            self.apply_config();return
+        if path=='/api/proxy/draft':
+            self.reply(200,proxy_editor.draft(self.body(4*1024*1024)));return
         data=self.body(8192) if path in ('/api/password','/api/auth/settings') else self.body()
         if path in ('/api/password','/api/auth/settings'):
             if path=='/api/password':password=validate_password(data.get('password',''))
@@ -333,7 +346,9 @@ class Handler(legacy.Handler):
         if path=='/api/cards':
             card=self.validate_card(data);card['id']=uuid.uuid4().hex
             with LOCK:
-                cards=legacy.read_cards();cards.append(card);legacy.write_cards(cards)
+                cards=legacy.read_cards()
+                if len(cards)>=1000:raise ValueError('最多保存 1000 个桌面链接')
+                cards.append(card);legacy.write_cards(cards)
             self.reply(201,{'ok':True});return
         if path=='/api/cards/order':
             ids=data.get('ids',[])
@@ -356,16 +371,9 @@ class Handler(legacy.Handler):
         if path=='/api/subscription':
             url=str(data.get('url','')).strip();hours=int(data.get('interval_hours',0))
             if hours not in (0,1,6,12,24):raise ValueError('请选择有效更新间隔')
-            content=fetch_subscription(url)
-            # Use the exact existing transactional importer, including cache refresh and rollback.
-            result=self.apply_content(content)
-            with LOCK:
-                s=settings();s['subscription']={'url':url,'interval_hours':hours,'last_updated':time.time()};save(DASH/'settings.json',s)
-            self.reply(200,result);return
+            self.reply(200,refresh_subscription(url,hours));return
         if path=='/api/subscription/refresh':
-            s=settings()['subscription'];content=fetch_subscription(s.get('url',''));result=self.apply_content(content)
-            with LOCK:value=settings();value['subscription']['last_updated']=time.time();value['subscription'].pop('error',None);save(DASH/'settings.json',value)
-            self.reply(200,result);return
+            self.reply(200,refresh_subscription());return
         if path=='/api/settings/domain':
             update_domain(str(data.get('domain','')))
             self.reply(200,{'ok':True});return
@@ -402,46 +410,42 @@ class Handler(legacy.Handler):
             payload=base64.b64decode(data.get('data',''),validate=True)
             self.reply(202,submit('restore',lambda:restore(payload)));return
         self.reply(404,{'error':'接口不存在'})
-    def apply_content(self,content):
-        payload={'content':content,'filename':'subscription.yaml','revision':legacy.revision(CONFIG.read_bytes()),'refresh_providers':True}
-        original_body,original_reply=self.body,self.reply
-        captured={}
-        self.body=lambda *args:payload
-        self.reply=lambda code,value:captured.update(code=code,value=value)
-        try:self.import_config()
-        finally:self.body,self.reply=original_body,original_reply
-        if captured.get('code')!=200:raise ValueError(captured.get('value',{}).get('error','订阅应用失败'))
-        save(DASH/'proxy-state.json',{'configured':True})
-        return captured['value']
-    def apply_config(self):
-        # Legacy importer writes one HTTP response; record success only after it reports 200.
-        self.config_status=None
-        original=self.send_response
-        def capture(code,*args,**kwargs):self.config_status=code;return original(code,*args,**kwargs)
-        self.send_response=capture
-        try:super().apply_config()
-        finally:self.send_response=original
-        if self.config_status==200:save(DASH/'proxy-state.json',{'configured':True})
     def validate_card(self,data):
         card=super().validate_card(dict(data,tag=data.get('tag') or '链接'))
         icon=str(data.get('icon','link'))
         if not valid_card_icon(icon):raise ValueError('请选择图标')
         card['icon']=icon;return card
+    def card_id(self):
+        path=urllib.parse.urlsplit(self.path).path
+        match=re.fullmatch(r'/api/cards/([^/]+)',path)
+        if not match:
+            self.reply(404,{'error':'链接不存在'})
+            return None
+        return urllib.parse.unquote(match[1])
+
     def do_PATCH(self):
-        if not self.same_origin():self.reply(403,{'error':'请从本网关页面操作'});return
-        if not self.authorized():return
-        try:
-            ident=self.path.split('/')[-1];card=self.validate_card(self.body())
-            with LOCK:
-                cards=legacy.read_cards();index=next((i for i,c in enumerate(cards) if c['id']==ident),None)
-                if index is None:raise ValueError('链接不存在')
-                cards[index]=dict(card,id=ident);legacy.write_cards(cards)
-            self.reply(200,{'ok':True})
-        except Exception as exc:self.reply(400,{'error':str(exc) if isinstance(exc,ValueError) else '更新失败'})
+        self.change_card(delete=False)
+
     def do_DELETE(self):
+        self.change_card(delete=True)
+
+    def change_card(self,delete):
         if not self.same_origin():self.reply(403,{'error':'请从本网关页面操作'});return
         if not self.authorized():return
-        with LOCK:super().do_DELETE()
+        ident=self.card_id()
+        if ident is None:return
+        try:
+            card=None if delete else self.validate_card(self.body(8192))
+            with LOCK:
+                cards=legacy.read_cards()
+                index=next((i for i,item in enumerate(cards) if item['id']==ident),None)
+                if index is None:
+                    self.reply(404,{'error':'链接不存在'});return
+                if delete:cards.pop(index)
+                else:cards[index]=dict(card,id=ident)
+                legacy.write_cards(cards)
+            self.reply(200,{'ok':True})
+        except ValueError as exc:self.reply(400,{'error':str(exc)})
 
 def backup_paths():
     return ['mihomo/config.yaml','adguard/AdGuardHome.yaml','tailscale/tailscaled.state']+['dashboard/'+n for n in ('cards.json','settings.json','proxy-state.json','appearance.json','desktop.json')]
@@ -503,10 +507,14 @@ def restore(payload):
         agh=yaml.safe_load(files['adguard/AdGuardHome.yaml'])
         if not isinstance(agh,dict) or not isinstance(agh.get('dns'),dict):raise ValueError('备份 DNS 配置无效')
         # This installation authenticates the native UI at Nginx, never a LAN listener.
-        agh.setdefault('http',{})['address']='127.0.0.1:3000';agh['users']=[];agh['dns']['bind_hosts']=['0.0.0.0']
-        files['adguard/AdGuardHome.yaml']=yaml.safe_dump(agh,sort_keys=False).encode()
+        agh.setdefault('http',{})['address']='127.0.0.1:3000';agh['users']=[]
     with LOCK:
         backup=ROOT/'backups'/('restore-'+uuid.uuid4().hex);backup.mkdir(parents=True)
+        if 'adguard/AdGuardHome.yaml' in files:
+            local_dns=yaml.safe_load((ROOT/'adguard/AdGuardHome.yaml').read_text())['dns']
+            agh['dns']['bind_hosts']=local_dns.get('bind_hosts',['0.0.0.0'])
+            agh['dns']['port']=local_dns['port']
+            files['adguard/AdGuardHome.yaml']=yaml.safe_dump(agh,sort_keys=False).encode()
         previous_domain=settings()['domain']
         stopped=[];snapshot_complete=False;changed=False
         # domain_config also edits AdGuard even when it was omitted by the archive.
@@ -528,9 +536,7 @@ def restore(payload):
             snapshot_complete=True
             # Preserve this installation's controller identity and addresses when importing another deployment.
             current=config()
-            for key in legacy.GATEWAY_KEYS:
-                if key in current:c[key]=current[key]
-                else:c.pop(key,None)
+            legacy.preserve_gateway_settings(c,current,edit_network=True)
             files['mihomo/config.yaml']=yaml.safe_dump(c,sort_keys=False).encode()
             changed=True
             for name,body in files.items():atomic(ROOT/name,body)
@@ -557,23 +563,46 @@ def restore(payload):
             raise ValueError('恢复失败，已回退原配置') from exc
     return {'ok':True,'backup':backup.name}
 
+def refresh_subscription(url=None,hours=None,scheduled=False):
+    with LOCK:
+        previous=settings()['subscription']
+        if scheduled:
+            interval=previous.get('interval_hours',0)
+            if not interval or time.time()-previous.get('last_attempt',previous.get('last_updated',0))<interval*3600:
+                return
+            value=settings()
+            value['subscription']['last_attempt']=time.time()
+            save(DASH/'settings.json',value)
+        revision=legacy.revision(CONFIG.read_bytes())
+        source=previous.get('url','') if url is None else url
+    try:
+        content=fetch_subscription(source)
+        with LOCK:
+            value=settings()
+            if value['subscription'].get('url')!=previous.get('url'):
+                raise legacy.ConfigConflict('订阅已变更，请刷新后重试')
+            result=legacy.commit_proxy_config({'content':content,'filename':'subscription.yaml',
+                                               'revision':revision,'refresh_providers':True})
+            if url is not None:value['subscription']={'url':source,'interval_hours':hours}
+            value['subscription']['last_updated']=time.time()
+            value['subscription'].pop('error',None)
+            save(DASH/'settings.json',value)
+            return result
+    except Exception:
+        if scheduled:
+            with LOCK:
+                value=settings()
+                if value['subscription'].get('url')==source:
+                    value['subscription']['error']='定时刷新失败，请检查订阅和服务状态'
+                    save(DASH/'settings.json',value)
+        raise
+
+
 def scheduler():
-    # Same validated importer is invoked over loopback using an internal session cookie.
     while True:
         time.sleep(30)
-        s=settings()['subscription'];interval=s.get('interval_hours',0)
-        if not interval or time.time()-s.get('last_attempt',s.get('last_updated',0))<interval*3600:continue
-        if not (DASH/'admin.json').exists():continue
-        try:
-            with LOCK:
-                value=settings();value['subscription']['last_attempt']=time.time();save(DASH/'settings.json',value)
-            expires=str(int(time.time()+60));signature=hmac.new((DASH/'session-key').read_text().encode(),expires.encode(),hashlib.sha256).hexdigest()
-            req=urllib.request.Request('http://127.0.0.1:8787/api/subscription/refresh',data=b'{}',headers={'Cookie':f'gateway_session={expires}.{signature}','Content-Type':'application/json'})
-            with urllib.request.urlopen(req,timeout=180) as r:
-                if r.status!=200:raise ValueError('更新失败')
-            with LOCK:value=settings();value['subscription']['last_updated']=time.time();value['subscription'].pop('error',None);save(DASH/'settings.json',value)
-        except Exception:
-            with LOCK:value=settings();value['subscription']['error']='定时刷新失败，原配置保留';save(DASH/'settings.json',value)
+        try:refresh_subscription(scheduled=True)
+        except Exception:continue
 
 if __name__=='__main__':
     threading.Thread(target=scheduler,daemon=True).start()

@@ -141,9 +141,12 @@ def install(source, gateway, port):
         raise ValueError('Supervisor must include the selected resolver service directory; upgrade separately')
     subprocess.run(['supervisorctl', '-c', SUPERVISOR, 'pid'], check=True,
                    stdout=subprocess.DEVNULL)
-    for host, candidate_port in ((source, port), ('127.0.0.1', port), ('127.0.0.1', 3001)):
-        with socket.socket() as probe:
-            probe.bind((host, candidate_port))
+    for host in (source, '127.0.0.1'):
+        for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
+            with socket.socket(socket.AF_INET, kind) as probe:
+                probe.bind((host, port))
+    with socket.socket() as probe:
+        probe.bind(('127.0.0.1', 3001))
     config = configuration(source, gateway, port, password_hash())
     with urllib.request.urlopen(URL, timeout=120) as response:
         archive = response.read(64 * 1024 * 1024 + 1)
@@ -153,10 +156,11 @@ def install(source, gateway, port):
     # All network/identity/port validation precedes the first persistent write.
     import pwd
     nobody = pwd.getpwnam('nobody')
-    added = False
+    PROGRAM.mkdir(mode=0o755)
+    data_created = service_created = added = False
     try:
-        PROGRAM.mkdir(mode=0o755)
         DATA.mkdir(mode=0o700)
+        data_created = True
         (DATA / 'work').mkdir(mode=0o700)
         for name, content in artifacts.items():
             path = PROGRAM / name
@@ -169,7 +173,9 @@ def install(source, gateway, port):
             os.chown(path, nobody.pw_uid, nobody.pw_gid)
         subprocess.run([str(PROGRAM / 'AdGuardHome'), '--check-config', '--no-check-update',
                         '-c', str(config_path), '-w', str(DATA / 'work')], check=True)
-        SERVICE.write_text(supervisor_configuration())
+        with SERVICE.open('x') as out:
+            service_created = True
+            out.write(supervisor_configuration())
         SERVICE.chmod(0o600)
         subprocess.run(['supervisorctl', '-c', SUPERVISOR, 'reread'], check=True)
         added = True
@@ -190,13 +196,15 @@ def install(source, gateway, port):
         if added:
             subprocess.run(['supervisorctl', '-c', SUPERVISOR, 'stop', 'workstation-exit-dns'],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        SERVICE.unlink(missing_ok=True)
+        if service_created:
+            SERVICE.unlink(missing_ok=True)
         subprocess.run(['supervisorctl', '-c', SUPERVISOR, 'reread'],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if added:
             subprocess.run(['supervisorctl', '-c', SUPERVISOR, 'update', 'workstation-exit-dns'],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        shutil.rmtree(DATA, ignore_errors=True)
+        if data_created:
+            shutil.rmtree(DATA, ignore_errors=True)
         shutil.rmtree(PROGRAM, ignore_errors=True)
         raise
 

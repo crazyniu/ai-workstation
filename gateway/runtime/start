@@ -2,9 +2,27 @@
 set -Eeuo pipefail
 export DATA_DIR=${DATA_DIR:-/data}
 export SAFE_PATHS=$DATA_DIR
+if [[ ${GATEWAY_INSTALL_MODE:-container} != native && -n ${GATEWAY_LOCALE:-} ]]; then
+  zone=${GATEWAY_TIMEZONE:-UTC}
+  [[ $zone != /* && $zone != *..* && -f "/usr/share/zoneinfo/$zone" ]] || { echo 'Invalid gateway time zone' >&2; exit 1; }
+  if [[ $GATEWAY_LOCALE != C.UTF-8 ]]; then
+    [[ $GATEWAY_LOCALE =~ ^[a-z]{2,3}_[A-Z]{2}\.UTF-8$ ]] || { echo 'Invalid gateway locale' >&2; exit 1; }
+    name=${GATEWAY_LOCALE%.UTF-8}
+    if ! locale -a | grep -Fxi "${name}.utf8" >/dev/null; then
+      localedef -i "$name" -f UTF-8 "$GATEWAY_LOCALE"
+    fi
+  fi
+  export TZ="$zone" LANG="$GATEWAY_LOCALE"
+  ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
+  printf '%s\n' "$TZ" > /etc/timezone
+  printf 'LANG=%s\n' "$LANG" > /etc/default/locale
+fi
 mkdir -p "$DATA_DIR" /run/gateway /run/tailscale /var/log/supervisor
 if [[ -n ${GATEWAY_LAN_ADDRESS:-} ]]; then
   iface=${GATEWAY_LAN_INTERFACE:-$(ip -j -d link show | python3 -c 'import json,sys;print(next(x["ifname"] for x in json.load(sys.stdin) if x.get("linkinfo",{}).get("info_kind")=="macvlan"))')}
+  if [[ -n ${GATEWAY_ISOLATED_CLIENTS:-} ]]; then
+    GATEWAY_RUNTIME_INTERFACE="$iface" python3 /opt/gateway/app/egress.py firewall
+  fi
   ip addr replace "$GATEWAY_LAN_ADDRESS" dev "$iface"
   ip link set "$iface" up
   ip route replace default via "${GATEWAY_LAN_ROUTER:?Set upstream router}" dev "$iface"
@@ -16,6 +34,9 @@ python3 /opt/gateway/app/state.py
 python3 /opt/gateway/runtime/account.py
 unset GATEWAY_CONTAINER_PASSWORD GATEWAY_ADMIN_PASSWORD DEV_PASSWORD VNC_PASSWORD ROOT_PASSWORD
 if [[ ${GATEWAY_MODE:-true} == true ]]; then
+  if [[ -n ${GATEWAY_ISOLATED_CLIENTS:-} ]]; then
+    ip rule show | grep -q 'fwmark 0x1a0b.*lookup main' || ip rule add priority 7999 fwmark 6667 lookup main
+  fi
   ip rule show | grep -q 'fwmark 0x1a0a.*lookup main' || ip rule add priority 8000 fwmark 6666 lookup main
   iptables -t nat -C POSTROUTING -o "$iface" -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o "$iface" -j MASQUERADE
   for proto in tcp udp; do

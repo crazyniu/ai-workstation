@@ -17,6 +17,7 @@ import urllib.request
 
 import yaml
 import state
+import egress
 
 PRIVATE_RULES = [
     'DOMAIN,localhost,DIRECT', 'DOMAIN-SUFFIX,local,DIRECT', 'DOMAIN-SUFFIX,lan,DIRECT',
@@ -160,7 +161,7 @@ def backup(action, source, before):
 
 def validate_mihomo(body):
     with tempfile.NamedTemporaryFile(dir=state.CONFIG.parent, suffix='.yaml') as candidate:
-        candidate.write(body)
+        candidate.write(yaml.safe_dump(egress.effective(yaml.safe_load(body)), allow_unicode=True).encode())
         candidate.flush()
         subprocess.run([str(state.ROOT / 'components/current/mihomo/mihomo'), '-t',
                         '-d', str(state.CONFIG.parent), '-f', candidate.name],
@@ -168,7 +169,7 @@ def validate_mihomo(body):
 
 
 def reload_mihomo():
-    request('/configs?force=true', {'path': str(state.CONFIG)}, method='PUT', controller=True)
+    request('/configs?force=true', {'path': str(egress.runtime(state.CONFIG))}, method='PUT', controller=True)
 
 
 def probe_resolver(source, port):

@@ -20,5 +20,5 @@ for process in ('Xtigervnc', 'xfce4-session', 'xfwm4', 'xfdesktop', 'xfce4-panel
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
     urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
 scheme = 'http' if os.environ.get('NOVNC_TLS', '1') == '0' else 'https'
-with opener.open(scheme + '://127.0.0.1:6080/vnc.html', timeout=2) as response:
+with opener.open(f"{scheme}://127.0.0.1:{int(os.environ.get('NOVNC_PORT', '6080'))}/vnc.html", timeout=2) as response:
     assert response.status == 200

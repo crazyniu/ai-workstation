@@ -80,7 +80,6 @@ def launch(tool, arguments=()):
         project = home / 'Projects'
         project.mkdir(exist_ok=True)
         # Inherit stdin/stdout/stderr unchanged: Codex and Claude retain their TTY.
-        # The installed tool wrapper applies no_new_privs before executing the CLI.
         result = subprocess.run(['/usr/local/bin/' + tool, *arguments], cwd=project, env=environment)
         exit_code = result.returncode if result.returncode >= 0 else 128 - result.returncode
     except OSError as error:

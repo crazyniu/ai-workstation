@@ -3,7 +3,6 @@
 set -euo pipefail
 [[ $(id -u) -ne 0 ]] || { echo 'Run this check as dev.' >&2; exit 1; }
 source /opt/workstation/versions.env
-source /opt/workstation/unity/versions.env
 if [[ $(dpkg --print-architecture) == arm64 ]]; then VSCODE_VERSION=$VSCODE_ARM64_VERSION; fi
 uv_output=$(uv --version)
 printf '%s\n' "$uv_output"
@@ -12,7 +11,6 @@ printf '%s\n' "$uv_output"
     echo "Expected uv $UV_VERSION; got: $uv_output" >&2
     exit 1
 }
-[[ $(/opt/workstation/unity-mcp/bin/python -c 'from importlib.metadata import version; print(version("mcpforunityserver"))') == "$UNITY_MCP_VERSION" ]]
 [[ $(node --version) == "v$NODE_VERSION" ]]
 # Exercise the desktop's SVG decoder: missing loaders leave icons and wallpaper
 # blank even though the desktop processes and network health probes pass.
@@ -28,7 +26,6 @@ print('PASS: desktop SVG wallpaper and icon decoder.')
 PY
 codex --version | grep -F "$CODEX_VERSION"
 claude --version | grep -F "$CLAUDE_VERSION"
-godot --version | grep -F "$GODOT_VERSION"
 git --version
 gh --version
 chrome=$(google-chrome-stable --version)

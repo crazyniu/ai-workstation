@@ -26,12 +26,13 @@ RUN ln -s /opt/node/bin/node /usr/local/bin/node \
     && ln -s /opt/node/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 COPY mcp /opt/workstation/mcp
 COPY scripts /opt/workstation/scripts
-COPY unity /opt/workstation/unity
 RUN --mount=type=bind,from=tool-download-cache,target=/mnt/tool-download-cache \
     WORKSTATION_DOWNLOAD_CACHE=/mnt/tool-download-cache bash /opt/workstation/scripts/install-tools.sh
 COPY desktop/bwrap-desktop-compat.c /opt/workstation/desktop/bwrap-desktop-compat.c
 COPY web-desktop/ /opt/workstation/web-desktop/
 COPY runtime/ /etc/workstation/
+COPY --chmod=755 desktop/niu.sh /usr/local/bin/niu.sh
+COPY --chmod=755 desktop/niu.desktop desktop/claude-desktop.desktop /opt/workstation/home-template/Desktop/
 COPY licenses/ /opt/workstation/licenses/
 RUN bash /opt/workstation/scripts/install-runtime.sh
 EXPOSE 22 5901 6080
