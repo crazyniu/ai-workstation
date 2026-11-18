@@ -153,17 +153,17 @@ docker compose --env-file .env -f "$workstation_compose" exec -T workstation \
 
 ### 2.2 手动重置 Claude Code 用户信息
 
-新镜像包含 `/usr/local/bin/reset-claude-user`，源码为 `workstation/scripts/reset-claude-user.py`。此命令供用户主动更换账号或清理本地身份时使用，安装、启动、重启和升级都不自动调用它；不因安装验收而删除用户的真实身份。
+新镜像包含 `/usr/local/bin/niu.sh`，源码为 `workstation/desktop/niu.sh`。此命令供用户主动更换账号或清理本地身份时使用，安装、启动、重启和升级都不自动调用它；不因安装验收而删除用户的真实身份。
 
-在 251 普通用户 `dev` 的终端执行 `reset-claude-user` 先预览；关闭 Claude 后，显式执行 `reset-claude-user --apply` 才修改文件。从 **工作站宿主机 A** 执行的等价示例：
+在 251 普通用户 `dev` 的终端执行 `niu.sh claude-reset` 先预览；关闭 Claude 后，显式执行 `niu.sh claude-reset --apply` 才修改文件。从 **工作站宿主机 A** 执行的等价示例：
 
 ```sh
 workstation_compose=compose.workstation.yaml  # 替换为该部署实际使用的文件
 docker compose --env-file .env -f "$workstation_compose" exec -T \
-  --user 1100:1100 -e HOME=/home/dev workstation reset-claude-user
+  --user 1100:1100 -e HOME=/home/dev workstation niu.sh claude-reset
 # 用户要求执行清理且 Claude 已关闭时：
 docker compose --env-file .env -f "$workstation_compose" exec -T \
-  --user 1100:1100 -e HOME=/home/dev workstation reset-claude-user --apply
+  --user 1100:1100 -e HOME=/home/dev workstation niu.sh claude-reset --apply
 ```
 
 - 清理本地 Code OAuth 登录字段、用户与设备标识、账号缓存、会话/输入历史、调试/遥测/用量、会话文件与已存在的 Claude 配置备份；不生成新的身份恢复副本。

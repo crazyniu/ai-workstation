@@ -1,6 +1,6 @@
 """Claude identity cleanup only uses isolated temporary HOME fixtures."""
 from contextlib import redirect_stdout
-import importlib.util
+import types
 import io
 import json
 import os
@@ -11,10 +11,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/reset-claude-user.py'
-spec = importlib.util.spec_from_file_location('reset_claude', SCRIPT)
-RESET = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(RESET)
+SCRIPT = Path(__file__).resolve().parents[1] / 'desktop/niu.sh'
+source = SCRIPT.read_text().split("<<'CLAUDE_RESET_PY'\n", 1)[1].split('\nCLAUDE_RESET_PY\n', 1)[0]
+RESET = types.ModuleType('reset_claude')
+exec(compile(source, str(SCRIPT), 'exec'), RESET.__dict__)
 
 
 class ResetTests(unittest.TestCase):

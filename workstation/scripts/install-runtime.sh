@@ -21,7 +21,13 @@ bash "$base/web-desktop/install.sh"
 install -m 755 /etc/workstation/entrypoint.py /usr/local/bin/workstation-entrypoint
 install -d /etc/supervisor/conf.d
 install -m 755 "$base/scripts/configure-exit-dns.py" /usr/local/bin/configure-workstation-exit-dns
-install -m 755 "$base/scripts/reset-claude-user.py" /usr/local/bin/reset-claude-user
+if [[ ${WORKSTATION_INSTALL_MODE:-container} == native ]]; then
+    install -m 755 "$base/desktop/niu.sh" /usr/local/bin/niu.sh
+    install -m 755 "$base/desktop/niu.desktop" "$base/home-template/Desktop/niu.desktop"
+fi
+ln -s /usr/local/bin/niu.sh "$base/home-template/Desktop/niu.sh"
+# XFCE shows the terminal launcher; the command is also accessible at ~/Desktop/niu.sh.
+echo niu.sh >> "$base/home-template/Desktop/.hidden"
 install -m 755 /etc/workstation/start-desktop /usr/local/bin/workstation-desktop
 install -m 755 /etc/workstation/start-vnc /usr/local/bin/workstation-vnc
 if [[ ${WORKSTATION_INSTALL_MODE:-container} == container ]]; then

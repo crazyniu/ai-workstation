@@ -18,7 +18,6 @@ RUN case "$TARGETARCH" in amd64|arm64) ;; *) echo 'Codex and Claude upstream Lin
 COPY versions.env /opt/workstation/versions.env
 COPY scripts/install-system.sh /opt/workstation/scripts/install-system.sh
 COPY desktop/home-template/ /opt/workstation/home-template/
-COPY --chmod=755 desktop/upgrade-ai.sh desktop/upgrade-ai.desktop desktop/claude-desktop.desktop /opt/workstation/home-template/Desktop/
 RUN bash /opt/workstation/scripts/install-system.sh
 COPY --from=node-runtime /usr/local/bin/node /opt/node/bin/node
 COPY --from=node-runtime /usr/local/lib/node_modules /opt/node/lib/node_modules
@@ -32,6 +31,8 @@ RUN --mount=type=bind,from=tool-download-cache,target=/mnt/tool-download-cache \
 COPY desktop/bwrap-desktop-compat.c /opt/workstation/desktop/bwrap-desktop-compat.c
 COPY web-desktop/ /opt/workstation/web-desktop/
 COPY runtime/ /etc/workstation/
+COPY --chmod=755 desktop/niu.sh /usr/local/bin/niu.sh
+COPY --chmod=755 desktop/niu.desktop desktop/claude-desktop.desktop /opt/workstation/home-template/Desktop/
 COPY licenses/ /opt/workstation/licenses/
 RUN bash /opt/workstation/scripts/install-runtime.sh
 EXPOSE 22 5901 6080

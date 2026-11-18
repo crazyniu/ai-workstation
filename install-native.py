@@ -55,7 +55,7 @@ def preflight(role, config, system=Path('/')):
                   'etc/systemd/system/ai-workstation.service']
         for name in ('node', 'npm', 'npx', 'uv', 'uvx', 'codex', 'claude',
                      'workstation-mcp', 'workstation-entrypoint',
-                     'workstation-vnc', 'workstation-desktop', 'configure-workstation-exit-dns', 'reset-claude-user'):
+                     'workstation-vnc', 'workstation-desktop', 'configure-workstation-exit-dns', 'niu.sh'):
             paths.append('usr/local/bin/' + name)
         paths += ['etc/apt/sources.list.d/workstation-vscode.list',
                   'etc/apt/sources.list.d/workstation-chrome.list',

@@ -70,7 +70,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      # The x64 runner can run 386 directly. QEMU i386 lacks the netlink calls used by iproute2.
+      - name: Enable native 32-bit x86 execution
+        if: matrix.arch == '386'
+        run: |
+          if [ -e /proc/sys/abi/ia32_emulation ]; then sudo sysctl -w abi.ia32_emulation=1; fi
       - uses: docker/setup-qemu-action@v3
+        if: matrix.arch == 'armv5' || matrix.arch == 'armv7' || matrix.arch == 'riscv64'
         with:
           platforms: all
       - uses: docker/setup-buildx-action@v3

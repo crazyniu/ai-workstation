@@ -95,7 +95,7 @@ Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop �
 | 开发与进程管理 | Git、GitHub CLI、curl、Supervisor；Ubuntu 系统 Python `3.14` 用于系统服务 |
 | 本地 MCP | Context7 `4.4.4`、Playwright `0.0.83`、Chrome DevTools `1.12.0` |
 | 远程 MCP | GitHub MCP 连接配置，使用个人账号授权 |
-| AI desktop app | Claude Desktop. **Update Workstation Software** updates it alongside system packages, desktop applications, runtimes, AI CLIs, and local MCP servers. |
+| AI desktop app | Claude Desktop. **niu.sh** updates it alongside system packages, desktop applications, runtimes, AI CLIs, and local MCP servers. |
 
 工作站通过 `python3` 使用 Ubuntu 提供的 Python `3.14` 系列，补丁版本随系统软件包更新。MCP 配置同时提供给 Codex 和 Claude，浏览器工具使用容器内的 Chrome。详细清单与使用方式见 [工作站说明](workstation/README.md)。
 
@@ -171,11 +171,11 @@ WORKSTATION_TIMEZONE=Asia/Singapore
 
 ### 重置 Claude 用户信息
 
-工作站镜像安装 `reset-claude-user` 命令，在 251 的普通用户 `dev` 终端运行：
+工作站镜像安装 `niu.sh claude-reset` 命令，在 251 的普通用户 `dev` 终端运行：
 
 ```sh
-reset-claude-user          # 预览清理项目，不修改文件
-reset-claude-user --apply  # 关闭 Claude 后，执行本地身份与历史清理
+niu.sh claude-reset          # 预览清理项目，不修改文件
+niu.sh claude-reset --apply  # 关闭 Claude 后，执行本地身份与历史清理
 ```
 
 清理 Claude Code 登录凭据、用户/设备标识、会话、输入历史、日志及旧配置备份；保留当前 MCP 配置、MCP OAuth 凭据、插件、技能、通用代理设置及实际项目文件。只修改选定 HOME 中的 Claude 数据及独立的认证变量声明，不清理浏览器登录、远端会话或共享 Shell 历史。执行时检查 Claude 进程及继承的认证环境变量，发现仍在使用的身份时拒绝清理。清理按需手动执行，容器启动不会自动重置账号。

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=niu.sh
+Exec=xfce4-terminal --execute /usr/local/bin/niu.sh
+Icon=system-software-update
+Terminal=false

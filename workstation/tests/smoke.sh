@@ -83,7 +83,7 @@ assert 'Operation not permitted' in result.stderr, result.stderr
 print('PASS: even container root cannot alter routes or create raw packet sockets.')
 PYNETWORK
 docker exec -i --user 1100:1100 "$name" python3 - < "$repo/tests/desktop-recovery.py"
-docker exec "$name" test -x /usr/local/bin/reset-claude-user
+docker exec "$name" test -x /usr/local/bin/niu.sh
 # Exercise the installed command against a dedicated temporary HOME only.
 # No real account state is removed by startup or acceptance.
 docker exec -i --user 1100:1100 "$name" python3 - <<'PYRESET'
@@ -97,7 +97,7 @@ with tempfile.TemporaryDirectory(prefix='claude-reset-smoke-') as folder:
     credentials=config/'.credentials.json'
     credentials.write_text(json.dumps({'claudeAiOauth':{'accessToken':'fixture-only'},'mcpOAuth':{'keep':{}}}))
     environment={k:v for k,v in os.environ.items() if not k.startswith('ANTHROPIC_') and not k.startswith('CLAUDE_CODE_OAUTH_') and k!='CLAUDE_CONFIG_DIR'}
-    command=['reset-claude-user','--home',str(home)]
+    command=['niu.sh','claude-reset','--home',str(home)]
     subprocess.run(command,env=environment,check=True,stdout=subprocess.DEVNULL)
     assert 'userID' in json.loads(account.read_text()),'Preview changed account'
     subprocess.run(command+['--apply'],env=environment,check=True,stdout=subprocess.DEVNULL)
@@ -144,7 +144,7 @@ for port in [22,5901]:
     with socket.create_connection(('127.0.0.1',port),timeout=5) as conn:
         greeting=conn.recv(256)
         assert greeting.startswith(b'SSH-' if port==22 else b'RFB '),(port,greeting)
-for filename in ['codex.desktop','claude.desktop','claude-desktop.desktop','upgrade-ai.sh','upgrade-ai.desktop','google-chrome.desktop','code.desktop']:
+for filename in ['codex.desktop','claude.desktop','claude-desktop.desktop','niu.sh','niu.desktop','google-chrome.desktop','code.desktop']:
     assert os.access(home/'Desktop'/filename,os.X_OK),filename
 (home/'Projects/persistence-smoke.txt').write_text('persisted\n')
 (home/'.codex/config.toml').write_text((home/'.codex/config.toml').read_text()+'\n# preserve-my-settings-smoke\n')

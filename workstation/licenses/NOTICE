@@ -20,7 +20,7 @@ MCP dependency versions and package licenses: workstation/mcp/package-lock.json.
 Claude identity reset rules: liseami/CCBaga (MIT), commit
 bdfb90ceadfc5fae6772ffff597bddecb0b73cc3, cleaner_config.rs and cleaner_targets.rs.
 The Linux adaptation retains the upstream license in
-workstation/scripts/reset-claude-user.py.
+workstation/desktop/niu.sh.
 
 Upstream projects and terms:
 - Ubuntu and Debian packages: their package copyright files in /usr/share/doc.
