@@ -1,0 +1,5 @@
+# Optional overlay for compose.yaml or compose.gateway.yaml (Linux LAN).
+services:
+  gateway:
+    environment:
+      GATEWAY_ISOLATED_CLIENTS: ${WORKSTATION_ADDRESS:-192.168.1.251}

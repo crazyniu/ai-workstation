@@ -65,18 +65,18 @@ def save_region(values):
         os.replace(staged, path)
 
 
-def main(compose_file, role):
+def main(compose_file, role, *overlays):
     region = confirmed_region(role)
     engine = docker('info', '--format', '{{.OSType}}/{{.OperatingSystem}}').strip()
     if not engine.startswith('linux/') or 'docker desktop' in engine.lower():
         sys.exit('当前 Docker Engine 不支持本方案的独立 LAN 地址。请先取得用户对替代方案的同意。')
 
     os.environ.update(region)
-    config = json.loads(docker('compose', '--env-file', '.env', '-f', compose_file,
-                               'config', '--format', 'json'))
+    files = [arg for path in (compose_file, *overlays) for arg in ('-f', path)]
+    config = json.loads(docker('compose', '--env-file', '.env', *files, 'config', '--format', 'json'))
     services = config['services']
     expected = {'gateway', 'workstation'} if role == 'all' else {role}
-    if 'workstation' in expected:
+    if 'compose.workstation-isolation.yaml' in overlays:
         expected.add('workstation-network')
     if set(services) != expected:
         sys.exit('实际部署角色与本次安装范围不符。请先取得用户同意。')
@@ -92,13 +92,15 @@ def main(compose_file, role):
             desired = gateway_ip
             peer = service['environment']['GATEWAY_BLOCK_DIRECT_CLIENTS']
             expected_peer = workstation_ip
-            if workstation_ip not in service['environment'].get('GATEWAY_ISOLATED_CLIENTS', '').split():
+            if 'compose.gateway-isolation.yaml' in overlays and workstation_ip not in service['environment'].get('GATEWAY_ISOLATED_CLIENTS', '').split():
                 sys.exit('网关的隔离来源必须包含指定的工作站 IP。')
         else:
             image = 'ghcr.io/crazyniu/ai-workstation:latest'
-            owner = services['workstation-network']
-            if service.get('network_mode') != 'service:workstation-network' or owner['image'] != image:
-                sys.exit('工作站必须使用同版本镜像创建的隔离网络。')
+            owner = service
+            if 'workstation-network' in expected:
+                owner = services['workstation-network']
+                if service.get('network_mode') != 'service:workstation-network' or owner['image'] != image:
+                    sys.exit('隔离模式需要同版本工作站镜像提供网络。')
             address = owner['networks']['workstation_lan']['ipv4_address']
             desired = workstation_ip
             peer = config['networks']['workstation_lan']['ipam']['config'][0]['gateway']

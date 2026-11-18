@@ -2,42 +2,17 @@
 # No dependency on a local gateway container or Docker network from host B.
 name: ai-workstation-workstation
 services:
-  workstation-network:
+  workstation:
     image: ${WORKSTATION_IMAGE:-ghcr.io/crazyniu/ai-workstation:latest}
     hostname: ai-workstation
     restart: unless-stopped
-    entrypoint: [python3, /etc/workstation/network-guard.py]
-    read_only: true
-    cap_drop: [ALL]
-    cap_add: [NET_ADMIN]
-    security_opt: [no-new-privileges:true]
-    sysctls:
-      net.ipv6.conf.all.disable_ipv6: '1'
-      net.ipv6.conf.default.disable_ipv6: '1'
-    environment:
-      WORKSTATION_GATEWAY: ${GATEWAY_ADDRESS:-192.168.1.250}
-      WORKSTATION_LAN: ${LAN_SUBNET:-192.168.1.0/24}
-    dns: ["${GATEWAY_ADDRESS:-192.168.1.250}"]
-    networks:
-      workstation_lan:
-        ipv4_address: ${WORKSTATION_ADDRESS:-192.168.1.251}
-    healthcheck:
-      test: [CMD, python3, /etc/workstation/network-guard.py, --ready]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-  workstation:
-    image: ${WORKSTATION_IMAGE:-ghcr.io/crazyniu/ai-workstation:latest}
-    network_mode: service:workstation-network
-    restart: unless-stopped
     shm_size: 512mb
-    # The desktop shares the filtered namespace, without either networking capability.
+    # LAN access does not require network administration or raw sockets.
     cap_drop: [NET_ADMIN, NET_RAW]
     security_opt:
       - no-new-privileges:false
       - seccomp=./workstation/security/seccomp-chrome.json
     environment:
-      WORKSTATION_LAN_GUARD: required
       DEV_PASSWORD: ${WORKSTATION_PASSWORD:-dev}
       VNC_PASSWORD: ${VNC_PASSWORD:-root}
       VNC_AUTH: ${VNC_AUTH:-password}
@@ -50,11 +25,11 @@ services:
       WORKSTATION_TIMEZONE: ${WORKSTATION_TIMEZONE:-Asia/Singapore}
       HTTP_PROXY: http://${GATEWAY_ADDRESS:-192.168.1.250}:7890
       HTTPS_PROXY: http://${GATEWAY_ADDRESS:-192.168.1.250}:7890
-      NO_PROXY: ${WORKSTATION_NO_PROXY:-localhost,127.0.0.1}
-    depends_on:
-      workstation-network:
-        condition: service_healthy
-        restart: true
+      NO_PROXY: ${WORKSTATION_NO_PROXY:-localhost,127.0.0.1,home.arpa,.home.arpa,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12}
+    dns: ["${GATEWAY_ADDRESS:-192.168.1.250}"]
+    networks:
+      workstation_lan:
+        ipv4_address: ${WORKSTATION_ADDRESS:-192.168.1.251}
 networks:
   workstation_lan:
     driver: macvlan

@@ -49,9 +49,10 @@ Open **niu.sh** on the desktop or type `niu.sh` in a terminal. The desktop short
 | 3 | Restart Orca Server. Use SSH or XFCE because Orca sessions may disconnect. |
 | 4 | Update niu.sh from this repository's GitHub main branch and reopen the menu. |
 | 5 | Preview the Claude Code user data to remove. Close Claude Code before applying the cleanup. |
+| 6 | Preview and clear Claude and Codex image caches, temporary Codex clipboard PNGs, CLI caches, desktop thumbnails, browser and Electron caches, and pip/npm caches. |
 | 0 | Exit. |
 
-At the confirmation prompt enter **1** to proceed or **0** to cancel.
+At the confirmation prompt enter **1** to proceed or **0** to cancel. Cache cleanup keeps generated images, project files, conversation history, settings and credentials. Send pending image attachments before clearing their temporary copies.
 
 The Orca actions appear in the desktop menu when the user's server is installed under `~/.local/share/orca-server/current`.
 
@@ -152,7 +153,7 @@ Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` �
 
 桌面应用以 `dev` 运行。容器启动时将桌面内 root 所有的目录交还给 `dev`，给已有的用户目录设置可继承的 POSIX 默认 ACL。普通方式新建的子目录会继承桌面用户权限。显式 `0700`、额外挂载和不可变属性有各自的权限语义。修复目录权限无需删除项目、修改普通文件的执行位或开放全员写入。
 
-Linux LAN 模板通过同镜像的 `workstation-network` 管理 251 的网络。桌面可以回复管理员连接，可通过 250 访问公网；主动访问 NAS、路由器、其他工作站以及 250 管理页面受阻。工作站业务容器始终移除 NET_ADMIN、NET_RAW。见[网络规则、故障行为与迁移](../docs/workstation-egress.md)。
+默认 Linux LAN 模板将 251 地址分配给工作站，允许 Orca 从 251 主动连接配对的 Mac。显式启用隔离后，由同镜像的 `workstation-network` 管理 251 的网络。在此模式下桌面可以回复管理员连接，可通过 250 访问公网；主动访问 NAS、路由器、其他工作站以及 250 管理页面受阻。工作站业务容器始终移除 NET_ADMIN、NET_RAW。见[网络规则、故障行为与迁移](../docs/workstation-egress.md)。
 
 ## 数据、备份与恢复
 
@@ -160,7 +161,7 @@ Linux LAN 模板通过同镜像的 `workstation-network` 管理 251 的网络。
 
 下列命令按同机的根 Compose 编写。独立部署时，在工作站宿主机 A 执行，并为每条 `docker compose` 命令添加 `--env-file .env -f compose.workstation.yaml`（LAN）或 `--env-file .env -f workstation/compose.yaml`（bridge），保持原项目身份。
 
-切换旧版 LAN 工作站的网络部署时，先保留原 Compose 与可恢复快照，并在获准的窗口释放原容器的 251 地址。在原项目下使用目标工作站镜像执行 `docker compose up -d --wait --no-deps workstation-network`（独立部署带上对应 Compose 文件），确认就绪后再创建和恢复业务容器；下面示例中的 `--no-deps` 不会自动创建辅助服务。辅助容器没有业务数据。回退旧镜像时使用与其匹配的原 Compose，并先释放新版辅助容器占用的 251 地址。独立网桥部署沿用原来的网络。
+仅在普通 LAN 和显式隔离模式之间切换时，先保留原 Compose 与可恢复快照，并在获准的窗口释放原容器的 251 地址。启用隔离时，在原项目和原 Compose 参数后追加 `-f compose.workstation-isolation.yaml`，使用目标镜像执行 `up -d --wait --no-deps workstation-network`，确认就绪后再创建和恢复业务容器；下面示例中的 `--no-deps` 不会自动创建辅助服务。辅助容器没有业务数据。回退旧镜像时使用与其匹配的原 Compose，并先释放新版辅助容器占用的 251 地址。独立网桥部署沿用原来的网络。
 
 ### 完整私有快照与原版本恢复
 

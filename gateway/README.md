@@ -68,7 +68,7 @@ docker compose up -d --no-build
 
 macvlan 使容器拥有独立 LAN 地址，因此不映射宿主的 80/53 端口。uplink 设置 `enable_ipv4: false`，关闭 Docker 自动 IPv4 地址分配，启动脚本在容器内设置固定 LAN 地址及上游默认路由。宿主与 macvlan 容器默认不能直接通信；control bridge 和可选宿主 `/32` 路由解决容器到 NAS 的访问。宿主可经 control 地址打开主页，LAN 用户使用 LAN 地址。宿主防火墙仍须允许需要的 bridge 流量。
 
-同机及分机 LAN 模板默认保护工作站 IP。使用本目录独立 Compose 时，在私有环境文件中将 `GATEWAY_ISOLATED_CLIENTS` 设成对应工作站的 IPv4（多个地址以空格分隔）。网关校验、运行及重载使用派生的运行配置；固定出口失败时拒绝匹配流量，导出的 YAML 保留可编辑规则。受保护来源的 DIRECT 连接不能访问内网目标。详见[出口故障与 LAN 隔离](../docs/workstation-egress.md)。
+默认 LAN 部署允许 251 访问局域网和配对的 Mac。只有主动启用隔离才过滤工作站的内网目标。使用本目录独立 Compose 并启用此功能时，在私有环境文件中将 `GATEWAY_ISOLATED_CLIENTS` 设成对应工作站的 IPv4（多个地址以空格分隔）。网关校验、运行及重载使用派生的运行配置；固定出口失败时拒绝匹配流量，导出的 YAML 保留可编辑规则。受保护来源的 DIRECT 连接不能访问内网目标。详见[出口故障与 LAN 隔离](../docs/workstation-egress.md)。
 
 ## 首次设置与日常使用
 

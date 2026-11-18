@@ -104,6 +104,16 @@ with tempfile.TemporaryDirectory(prefix='claude-reset-smoke-') as folder:
     subprocess.run(command,input=b"5\n1\n0\n",env=environment,check=True,stdout=subprocess.DEVNULL)
     assert json.loads(account.read_text())=={'mcpServers':{'keep':{}}}
     assert json.loads(credentials.read_text())=={'mcpOAuth':{'keep':{}}}
+    cache = home / '.cache/thumbnails'
+    cache.mkdir(parents=True)
+    item = cache / 'fixture.png'
+    item.write_bytes(b'fixture')
+    environment.update(XDG_CACHE_HOME=str(home/'.cache'), XDG_CONFIG_HOME=str(home/'.config'), TMPDIR=str(home))
+    subprocess.run(command,input=b"6\n0\n0\n",env=environment,check=True,stdout=subprocess.DEVNULL)
+    assert item.exists(), 'Cancelling the cache cleanup removed files'
+    subprocess.run(command,input=b"6\n1\n0\n",env=environment,check=True,stdout=subprocess.DEVNULL)
+    assert cache.is_dir() and not item.exists(), 'Confirmed cache cleanup did not clear the cache'
+    assert credentials.is_file(), 'Cache cleanup removed Claude settings'
 print('PASS: installed Claude reset command previews safely and preserves MCP configuration/credentials.')
 PYRESET
 docker exec -i "$name" python3 - < "$repo/tests/auth-smoke.py"

@@ -1,0 +1,37 @@
+# Optional overlay for compose.yaml or compose.workstation.yaml (Linux LAN).
+services:
+  workstation-network:
+    image: ${WORKSTATION_IMAGE:-ghcr.io/crazyniu/ai-workstation:latest}
+    hostname: ai-workstation
+    restart: unless-stopped
+    entrypoint: [python3, /etc/workstation/network-guard.py]
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: [no-new-privileges:true]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: '1'
+      net.ipv6.conf.default.disable_ipv6: '1'
+    environment:
+      WORKSTATION_GATEWAY: ${GATEWAY_ADDRESS:-192.168.1.250}
+      WORKSTATION_LAN: ${LAN_SUBNET:-192.168.1.0/24}
+    dns: ["${GATEWAY_ADDRESS:-192.168.1.250}"]
+    networks:
+      workstation_lan:
+        ipv4_address: ${WORKSTATION_ADDRESS:-192.168.1.251}
+    healthcheck:
+      test: [CMD, python3, /etc/workstation/network-guard.py, --ready]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+  workstation:
+    hostname: !reset null
+    dns: !reset []
+    networks: !reset {}
+    network_mode: service:workstation-network
+    environment:
+      WORKSTATION_LAN_GUARD: required
+    depends_on:
+      workstation-network:
+        condition: service_healthy
+        restart: true

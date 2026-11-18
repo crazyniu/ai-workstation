@@ -15,7 +15,8 @@ The workstation defaults to Singapore/English and supports country, language
 and timezone initialization through WORKSTATION_* settings or internal
 `/etc/workstation/region.json`.
 
-For Linux LAN deployments the workstation role includes `workstation-network`.
+The default Linux LAN workstation keeps its own LAN address and can initiate
+connections to a paired Mac. Only explicit LAN isolation adds `workstation-network`.
 This helper uses the workstation image and holds its LAN address and firewall
 capability. Keep the desktop in that namespace with NET_ADMIN and NET_RAW
 dropped. Preserve the editable Clash source and compile the enforced runtime

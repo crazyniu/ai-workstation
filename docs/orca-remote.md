@@ -41,6 +41,10 @@ Git、Codex 或 Claude 缺失时，按工作站已有安装方式和官方来源
 
 Linux 端无需安装 Orca 桌面 GUI。managed server 保持私有回环监听，Mac 经 SSH 访问，无需映射或开放公网 Orca 端口。
 
+## 从 251 控制 Mac
+
+如果 251 已通过 WebSocket 配对 Mac，251 会主动连接配对记录中的 Mac 地址和 TCP 端口。默认 LAN 配置允许这条连接。启用 `--isolate-lan` 会阻止这种回连，即使 Mac 仍然可以用 SSH 登录 251。使用显式代理且客户端遵循 `NO_PROXY` 时，可在私有 `.env` 的 `WORKSTATION_NO_PROXY` 加上 Mac 的确切地址。Mac 端的 Orca 服务还需监听配对端口，并具备相应的电脑控制权限。
+
 ## CLI、编排技能与登录
 
 在 dev 的远程终端运行：

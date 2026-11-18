@@ -536,6 +536,111 @@ if __name__ == '__main__':
 CLAUDE_RESET_PY
 }
 
+clean_caches() {
+    local python=(python3)
+    if (( EUID == 0 )); then
+        python=(runuser -u dev -- env HOME="$orca_home" python3)
+    fi
+    # fd 3 retains the menu input while Python reads this embedded script.
+    "${python[@]}" - 3<&0 <<'CACHE_PY'
+import os
+from pathlib import Path
+import re
+import stat
+import subprocess
+import sys
+import tempfile
+
+home = Path.home().resolve()
+cache = Path(os.environ.get("XDG_CACHE_HOME") or home / ".cache")
+config = Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config")
+claude = Path(os.environ.get("CLAUDE_CONFIG_DIR") or home / ".claude")
+codex = Path(os.environ.get("CODEX_HOME") or home / ".codex")
+temp = Path(tempfile.gettempdir()).resolve()
+uid = os.getuid()
+targets = {}
+
+def mount_points():
+    with open("/proc/self/mountinfo") as stream:
+        return [Path(re.sub(r"\\([0-7]{3})", lambda m: chr(int(m[1], 8)), line.split()[4])) for line in stream]
+
+mounts = mount_points()
+
+def include(path, *, clipboard=False):
+    if not clipboard and not path.is_relative_to(home):
+        return
+    if path in targets or not path.exists() or path.resolve() != path:
+        return
+    info = path.lstat()
+    if info.st_uid != uid or not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)):
+        return
+    if any(m.is_relative_to(path) for m in mounts):
+        print(f"Skipped mounted cache: {path}", file=sys.stderr)
+        return
+    usage = subprocess.run(["du", "-sx", "-B1", "--", str(path)], stdout=subprocess.PIPE)
+    if usage.returncode:
+        return
+    size = int(usage.stdout.split(maxsplit=1)[0])
+    targets[path] = (info.st_dev, info.st_ino, size)
+
+for path in (claude / "image-cache", claude / "cache", codex / "image-cache", codex / "cache",
+             cache / "thumbnails", cache / "pip", home / ".npm" / "_cacache"):
+    include(path)
+for path in (claude / "paste-cache").glob("*"):
+    if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".webp"} and path.is_file():
+        include(path)
+for path in temp.glob("codex-clipboard-*.png"):
+    if path.is_file():
+        include(path, clipboard=True)
+electron_caches = ("Cache", "Code Cache", "GPUCache", "GPUPersistentCache", "DawnGraphiteCache", "DawnWebGPUCache")
+for app in ("Claude", "Codex", "Code"):
+    for name in electron_caches:
+        include(config / app / name)
+for browser in ("google-chrome", "chromium"):
+    for profile in (cache / browser).glob("*"):
+        for name in ("Cache", "Code Cache", "GPUCache"):
+            include(profile / name)
+
+if not targets:
+    print("No matching caches found.")
+    sys.exit(0)
+def size_text(size):
+    return f"{size / 1048576:.1f} MiB" if size >= 1048576 else f"{size / 1024:.1f} KiB"
+
+for path, (_, _, size) in targets.items():
+    print(f"{size_text(size):>12}  {path}")
+print("Total on disk:", size_text(sum(item[2] for item in targets.values())))
+print("Clear these caches, including temporary pasted images?  1. Confirm  0. Cancel", flush=True)
+with os.fdopen(3) as menu_input:
+    if menu_input.readline().strip() != "1":
+        print("Cancelled.")
+        sys.exit(0)
+
+mounts = mount_points()
+failed = False
+for path, (device, inode, _) in targets.items():
+    try:
+        if path.resolve() != path or any(m.is_relative_to(path) for m in mounts):
+            raise OSError("cache path changed")
+        current = path.lstat()
+        if (current.st_dev, current.st_ino) != (device, inode):
+            raise OSError("cache was replaced")
+        if stat.S_ISDIR(current.st_mode):
+            # Leave the cache root and its permissions in place.
+            subprocess.run(["find", "-P", str(path), "-xdev", "-depth", "-mindepth", "1", "-delete"], check=True)
+        else:
+            path.unlink()
+    except FileNotFoundError:
+        continue
+    except (OSError, subprocess.CalledProcessError) as exc:
+        print(f"Could not clear {path}: {exc}", file=sys.stderr)
+        failed = True
+if failed:
+    sys.exit(1)
+print("Cache cleanup complete.")
+CACHE_PY
+}
+
 confirm_action() {
     local answer
     printf '%s\n  1. Confirm\n  0. Cancel\n' "$1"
@@ -565,7 +670,7 @@ menu() {
         if orca_installed; then
             printf '  2. Update Orca Server\n  3. Restart Orca Server\n'
         fi
-        printf '  4. Update niu.sh from GitHub\n  5. Reset Claude Code user data\n  0. Exit\n'
+        printf '  4. Update niu.sh from GitHub\n  5. Reset Claude Code user data\n  6. Clear Claude, Codex and application caches\n  0. Exit\n'
         read -rp 'Choose a number: ' choice || return 0
         case "$choice" in
             0) return 0 ;;
@@ -587,6 +692,7 @@ menu() {
                if (( action_status != 0 )); then continue; fi
                confirm_action 'Permanently apply the Claude cleanup shown above?' || continue
                run_action reset_claude apply ;;
+            6) run_action clean_caches ;;
             *) echo 'Choose one of the listed numbers.' ;;
         esac
     done
