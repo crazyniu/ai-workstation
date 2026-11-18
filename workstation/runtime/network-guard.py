@@ -69,7 +69,7 @@ flush chain inet workstation input
 add rule inet workstation output oifname "lo" accept
 add rule inet workstation output ct direction reply ct state {{ established, related }} accept
 add rule inet workstation output ip daddr {gateway} udp dport 53 accept
-add rule inet workstation output ip daddr {gateway} tcp dport {{ 53, 7890, 7891 }} accept
+add rule inet workstation output ip daddr {gateway} tcp dport {{ 53, 80, 7890, 7891 }} accept
 add rule inet workstation output ip daddr {gateway} drop
 add rule inet workstation output fib daddr type {{ local, broadcast, multicast }} drop
 add rule inet workstation output ip daddr {lan} ip daddr . tcp dport @allow_tcp accept

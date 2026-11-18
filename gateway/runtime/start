@@ -62,6 +62,7 @@ fi
 python3 - <<'PY'
 import os
 import ipaddress
+import subprocess
 from pathlib import Path
 port = int(os.environ.get('GATEWAY_WEB_PORT', '80'))
 if not 1 <= port <= 65535:
@@ -70,6 +71,18 @@ config = Path('/opt/gateway/runtime/nginx.conf').read_text()
 bind = str(ipaddress.IPv4Address(os.environ.get('GATEWAY_BIND_ADDRESS', '0.0.0.0')))
 config = config.replace('listen 80 default_server;', f'listen {bind}:{port} default_server;')
 config = config.replace('/run/nginx.pid', '/run/gateway/nginx.pid')
+lan_address = os.environ.get('GATEWAY_LAN_ADDRESS')
+if lan_address:
+    workstation = ipaddress.IPv4Address(os.environ.get('GATEWAY_WORKSTATION_ADDRESS', '192.168.1.251'))
+    config = config.replace('# Paired LAN workstation address is supplied at startup.', f'{workstation} 1;')
 Path('/run/gateway/nginx.conf').write_text(config)
+
+# Keep this exception with the Nginx runtime policy. Web-only upgrades on an
+# older image must not open a management listener that lacks the path filter.
+if lan_address and str(workstation) in os.environ.get('GATEWAY_ISOLATED_CLIENTS', '').split():
+    gateway = ipaddress.IPv4Interface(lan_address).ip
+    subprocess.run(['nft', 'insert', 'rule', 'inet', 'workstation_boundary', 'input',
+                    'ip', 'saddr', str(workstation), 'ip', 'daddr', str(gateway),
+                    'tcp', 'dport', str(port), 'accept'], check=True)
 PY
 exec supervisord -n -c /opt/gateway/runtime/supervisord.conf

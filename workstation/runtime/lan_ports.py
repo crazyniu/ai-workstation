@@ -96,16 +96,15 @@ def change(context, action, entry=None):
         if action in ('add', 'remove'):
             save_rules(entries)
         allowed = [row for row in entries if on_lan(row, lan, gateway)]
-        hosts = sorted({row[1] for row in allowed}) if context['isolated'] else []
+        hosts = [str(gateway)]
         if context['isolated']:
+            hosts.extend(sorted({row[1] for row in allowed}))
             try:
                 firewall_request(allowed)
             except (ValueError, OSError) as exc:
                 raise ValueError(f'Saved rules are not confirmed active. Choose Reapply to retry. {exc}') from exc
         # Exact IPv4 addresses also work in proxy clients without NO_PROXY CIDR support.
-        script = ''
-        if hosts:
-            script = """no_proxy=${no_proxy-${NO_PROXY-}}
+        script = """no_proxy=${no_proxy-${NO_PROXY-}}
 for _ws_peer in %s; do
   case ",${NO_PROXY-}," in *",$_ws_peer,"*) ;; *) NO_PROXY="${NO_PROXY:+$NO_PROXY,}$_ws_peer" ;; esac
   case ",${no_proxy-}," in *",$_ws_peer,"*) ;; *) no_proxy="${no_proxy:+$no_proxy,}$_ws_peer" ;; esac
