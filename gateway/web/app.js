@@ -118,7 +118,7 @@ function beginLoading(region){
 }
 function loadingRegion(target=null){
   if(target)return $(target);
-  if($('#proxy-window').open)return $('#proxy-workspace');
+  if(proxyWindow?.focused)return $('#proxy-workspace');
   return $('#settings-dialog').open?$('#settings-content'):$('.desktop-workspace');
 }
 async function withLoading(region,work){const done=beginLoading(region);try{return await work();}finally{done();}}
@@ -135,8 +135,8 @@ function icon(name,url=''){const image=document.createElement('img');image.alt='
 function button(text,handler,className){const el=element('button',text,className);el.type='button';el.onclick=handler;return el;}
 function configDirty(){return savedConfig!==null&&editor.getValue()!==savedConfig;}
 async function discardChanges(){return !configDirty()||await askConfirm('配置文件尚未应用。离开后将丢弃这些修改，是否继续？');}
-async function closeSettings(){if(!await discardChanges())return;destroySettings();}
-function destroySettings(){$('#proxy-entry').close();$('#proxy-window').close();proxyGeneration++;finishSettingsLoading();if(settingsWindow){const w=settingsWindow;settingsWindow=null;w.close(true);}$('#settings-dialog').close();navigation++;currentPage=null;savedConfig=null;}
+function closeSettings(){destroySettings();}
+function destroySettings(){finishSettingsLoading();if(settingsWindow){const w=settingsWindow;settingsWindow=null;w.close(true);}$('#settings-dialog').close();navigation++;currentPage=null;}
 async function guard(work,target=null){
   if(busy)return;
   const done=beginLoading(loadingRegion(target));
@@ -197,6 +197,7 @@ async function readAccess() {
   cards = [];
   desktopPrefs = {workstation_url:'https://192.168.1.251:6080/', order:[]};
   drawDesktop();
+  destroyProxyWindow();
   destroySettings();
   $('#link-dialog').close();
   $('#home-domain').textContent = '';
@@ -212,9 +213,8 @@ async function authState() {
 async function openSettings(page='overview',{force=false}={}){
   if(page==='proxy'||page==='ranges')return openProxyWindow(force, page==='ranges');
   if(!force&&$('#settings-dialog').open&&currentPage===page){showSettingsWindow();return;}
-  if(!force&&!await discardChanges())return;
   const previousPage=currentPage;
-  finishSettingsLoading();const request=++navigation;currentPage=page;if(page!=='proxy')savedConfig=null;
+  finishSettingsLoading();const request=++navigation;currentPage=page;
   showSettingsWindow();$('#settings-dialog').classList.toggle('is-overview',page==='overview');settingsWindow?.window.classList.toggle('is-overview',page==='overview');$('#settings-content').scrollTop=0;const done=beginLoading($('#settings-content'));settingsLoadingDone=done;
   $$('[data-section]').forEach(el=>el.hidden=el.dataset.section!==page);
   $$('[data-page]').forEach(el=>{el.classList.toggle('active',el.dataset.page===page);el.setAttribute('aria-current',el.dataset.page===page?'page':'false');});
@@ -338,23 +338,37 @@ $$('[data-ts]').forEach(b=>b.onclick=()=>guard(async()=>{
 }));
 $('#check-updates').onclick=()=>guard(async()=>{await Promise.all([loadWebRelease(true),job(await post('/updates/check'))]);await loadUpdates();});
 $('#backup').onclick=()=>guard(async()=>{const r=await api('/backup');const a=element('a');a.href='data:application/gzip;base64,'+r.data;a.download=r.filename;document.body.append(a);a.click();a.remove();toast('备份已下载，请妥善保存。');});
-$('#restore').onclick=()=>guard(async()=>{const file=$('#restore-file').files[0];if(!file||!$('#restore-confirm').checked)throw Error('请选择备份并确认替换配置');if(file.size>24*1024*1024)throw Error('备份超过 24 MB');const bytes=new Uint8Array(await file.arrayBuffer());let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));await job(await post('/restore',{data:btoa(text)}));savedConfig=null;await Promise.all([loadStatus(),loadCards(),loadAppearance()]);$('#restore-file').value='';$('#restore-confirm').checked=false;toast('备份已恢复。');});
+$('#restore').onclick=()=>guard(async()=>{const file=$('#restore-file').files[0];if(!file||!$('#restore-confirm').checked)throw Error('请选择备份并确认替换配置');if(file.size>24*1024*1024)throw Error('备份超过 24 MB');if(!await discardChanges())return;const bytes=new Uint8Array(await file.arrayBuffer());let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));await job(await post('/restore',{data:btoa(text)}));if(proxyWindow)await openProxyWindow(true);await Promise.all([loadStatus(),loadCards(),loadAppearance()]);$('#restore-file').value='';$('#restore-confirm').checked=false;toast('备份已恢复。');});
 $('#login-settings-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/auth/settings',{login_required:$('#login-required').checked,current_password:$('#login-settings-password').value});renderLoginSettings(await api('/auth'));$('#login-settings-password').value='';toast($('#login-required').checked?'密码登录已开启。':'密码登录已关闭，打开网页即可进入网关。');});};
 $('#password-form').onsubmit=e=>{e.preventDefault();const password=$('#new-password').value;if(!$('#current-password').value){toast('请输入当前密码。',true);return;}if(!password){toast('请输入新密码。',true);return;}if(password!==$('#repeat-password').value){toast('两次新密码不一致，请重新输入。',true);return;}guard(async()=>{await post('/password',{current_password:$('#current-password').value,password});$('#password-form').reset();toast('密码已保存。');});};
-$('#logout').onclick=()=>guard(async()=>{if(!await discardChanges())return;await post('/auth/logout');destroySettings();await authState();});
+$('#logout').onclick=()=>guard(async()=>{if(!await discardChanges())return;await post('/auth/logout');destroyProxyWindow();destroySettings();await authState();});
 $('#settings-dialog').addEventListener('cancel',e=>{e.preventDefault();closeSettings();});
 window.addEventListener('beforeunload',e=>{if(configDirty()){e.preventDefault();e.returnValue='';}});
-function showSettingsWindow(){
-  const shell=$('#settings-dialog');
-  if(settingsWindow){if(settingsWindow.min)settingsWindow.restore();settingsWindow.show();settingsWindow.focus();return;}
+function createGatewayWindow(shell, title, iconPath, close) {
   shell.show();
-  const mobile=window.matchMedia('(max-width:700px)').matches;
-  const width=Math.min(1120,innerWidth-48),height=Math.min(800,innerHeight-80);
-  settingsWindow=new WinBox({title:'控制面板',icon:'/icons/settings.svg',mount:shell,class:['gateway-window','no-full'],width,height,minwidth:Math.min(420,innerWidth),minheight:Math.min(320,innerHeight),x:'center',y:mobile?0:Math.max(48,(innerHeight-height)/2),top:mobile?0:48,bottom:mobile?0:22,header:48,max:mobile,onclose(force){if(force)return false;closeSettings();return true;}});
-  for(const [cls,label] of [['wb-close','关闭控制面板'],['wb-min','最小化控制面板'],['wb-max','最大化或还原控制面板']]){
-    const control=settingsWindow.window.querySelector('.'+cls);control.setAttribute('role','button');control.setAttribute('aria-label',label);control.tabIndex=0;
-    control.onkeydown=e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();control.click();}};
+  const mobile = window.matchMedia('(max-width:700px)').matches;
+  const width = Math.min(1120, innerWidth - 48), height = Math.min(800, innerHeight - 80);
+  const win = new WinBox({title, icon:iconPath, mount:shell, class:['gateway-window','no-full'],
+    width, height, minwidth:Math.min(420,innerWidth), minheight:Math.min(320,innerHeight), x:'center',
+    y:mobile ? 0 : Math.max(48,(innerHeight-height)/2), top:mobile ? 0 : 48, bottom:mobile ? 0 : 22,
+    header:48, max:mobile, onclose(force) { if (force) return false; close(); return true; }});
+  for (const [cls, action] of [['wb-close','关闭'],['wb-min','最小化'],['wb-max','最大化或还原']]) {
+    const control = win.window.querySelector('.'+cls);
+    control.setAttribute('role','button');
+    control.setAttribute('aria-label',action+title);
+    control.tabIndex = 0;
+    control.onkeydown = event => { if (['Enter',' '].includes(event.key)) { event.preventDefault(); control.click(); } };
   }
+  return win;
+}
+function focusGatewayWindow(win) {
+  if (win.min) win.restore();
+  win.show();
+  win.focus();
+}
+function showSettingsWindow() {
+  if (settingsWindow) focusGatewayWindow(settingsWindow);
+  else settingsWindow = createGatewayWindow($('#settings-dialog'),'控制面板','/icons/settings.svg',closeSettings);
 }
 function askConfirm(copy,title='确认操作'){
   return new Promise(resolve=>{
@@ -432,7 +446,7 @@ function setupDesktop(){
     },true);
   });
   setupIconPicker();
-  document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('#desktop-context-menu').hidden){hideContext();return;}if(settingsWindow&&!document.querySelector('dialog:modal')){e.preventDefault();closeSettings();}});
+  document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('#desktop-context-menu').hidden){hideContext();return;}if(!document.querySelector('dialog:modal')){if(proxyWindow?.focused){e.preventDefault();backProxy();}else if(settingsWindow?.focused){e.preventDefault();closeSettings();}}});
   document.addEventListener('pointerdown',e=>{if(!e.target.closest('#desktop-context-menu'))hideContext();});
   document.addEventListener('contextmenu',e=>{if(e.target.closest('dialog,.winbox,.topbar,#desktop-context-menu'))return;e.preventDefault();showContext(e.clientX,e.clientY);});
   let hold=null,point=null;
@@ -440,7 +454,7 @@ function setupDesktop(){
   $('#desktop').addEventListener('pointermove',e=>{if(point&&Math.hypot(e.clientX-point[0],e.clientY-point[1])>10){clearTimeout(hold);hold=null;}});
   for(const type of ['pointerup','pointercancel'])$('#desktop').addEventListener(type,()=>{clearTimeout(hold);hold=null;point=null;});
   $('#desktop').addEventListener('click',e=>{if(!$('#desktop-context-menu').hidden){e.preventDefault();e.stopImmediatePropagation();}},true);
-  $('#show-desktop').onclick=()=>{if(settingsWindow){if(settingsWindow.min)settingsWindow.restore();else settingsWindow.minimize();}};
+  $('#show-desktop').onclick=()=>{const windows=[settingsWindow,proxyWindow].filter(Boolean);if(windows.some(w=>!w.min)){windows.forEach(w=>{if(!w.min)w.minimize();});}else{windows.forEach(focusGatewayWindow);}};
   $('#open-personalization').onclick=openPersonalization;$$('[data-personalization]').forEach(el=>el.onclick=openPersonalization);
   $('#minimize-settings').onclick=()=>settingsWindow?.minimize();$('#maximize-settings').onclick=()=>{if(settingsWindow?.max)settingsWindow.restore();else settingsWindow?.maximize();};
   for(const id of ['close-personalization','wallpaper-cancel'])$('#'+id).onclick=()=>$('#personalization-dialog').close();
