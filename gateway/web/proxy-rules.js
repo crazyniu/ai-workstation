@@ -294,23 +294,58 @@ function openOptionEntry(parent, key, existing) {
 }
 
 function renderProxyBrowser() {
+  const collections = {exits: ['代理节点', 'exit'], providers: ['节点订阅', 'provider'],
+                       groups: ['策略组', 'group'], bindings: ['来源 IP 绑定', 'binding']};
+  const collection = collections[proxyTab];
   const advanced = proxyTab === 'options', direct = proxyTab === 'direct';
   const search = $('#proxy-search').value.trim().toLowerCase();
   const results = $('#proxy-results'), add = $('#add-proxy-item'), select = $('#proxy-scope');
   const pathNav = $('#proxy-path');
   pathNav.hidden = !advanced;
   const mode = String(proxyModel.options.mode || 'rule').toLowerCase();
-  $('#proxy-rule-mode').hidden = advanced || mode === 'rule';
+  $('#proxy-rule-mode').hidden = Boolean(collection) || advanced || mode === 'rule';
   if (!advanced && mode !== 'rule') {
     $('#proxy-rule-mode').textContent = (mode === 'direct' ? '直连模式' : '全局模式') + ' · 切换为规则模式';
   }
-  $('#proxy-scope-label').hidden = advanced;
-  $('#proxy-browser-title').textContent = advanced ? '自定义配置项' : direct ? '直连地址' : '分流规则';
+  $('#proxy-scope-label').hidden = Boolean(collection) || advanced;
+  $('#proxy-browser-title').textContent = collection ? collection[0] : advanced ? '全部配置项' : direct ? '直连地址' : '分流规则';
   const rows = [];
   function row(title, detail, actions) {
     if (!search || (title + ' ' + detail).toLowerCase().includes(search)) rows.push({title, detail, actions});
   }
-  if (advanced) {
+  if (collection) {
+    const [title, kind] = collection;
+    add.textContent = '添加' + title;
+    add.onclick = () => openProxyEntry(kind);
+    function advancedEntry(path) {
+      proxyTab = 'options';
+      resetProxyBrowser();
+      optionPath = path;
+      showProxyMode(true);
+    }
+    function entry(item, title, detail, path, editable = true) {
+      row(title, detail, () => {
+        const actions = [button('编辑', () => editable ? openProxyEntry(kind, item) : advancedEntry(path), 'text-button')];
+        if (editable && path) actions.push(button('全部字段', () => advancedEntry(path), 'text-button'));
+        if (kind === 'binding') actions.push(button('解绑', () => guard(() =>
+          updateProxyDraft({kind, id: item.id, remove: true})), 'text-button'));
+        return actions;
+      });
+    }
+    const config = proxyModel.options;
+    if (kind === 'exit') (config.proxies || []).forEach((item, i) =>
+      entry(item, item.name, [item.type?.toUpperCase(), item.server, item.port].filter(Boolean).join(' · '),
+            ['proxies', i], ['http', 'socks5'].includes(item.type)));
+    if (kind === 'provider') for (const [name, item] of Object.entries(config['proxy-providers'] || {})) {
+      let detail = item.type;
+      try { detail = new URL(item.url).host; } catch {}
+      entry({...item, name}, name, detail, ['proxy-providers', name], item.type === 'http');
+    }
+    if (kind === 'group') (config['proxy-groups'] || []).forEach((item, i) =>
+      entry(item, item.name, [item.type, (item.proxies || []).length + ' 个成员', (item.use || []).length + ' 个订阅'].join(' · '),
+            ['proxy-groups', i]));
+    if (kind === 'binding') for (const item of proxyModel.bindings) entry(item, item.ip, item.target);
+  } else if (advanced) {
     let parent = proxyModel.options;
     const valid = [];
     for (const part of optionPath) {

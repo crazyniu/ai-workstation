@@ -79,47 +79,9 @@
             <button data-page="backup"><img src="/icons/server.svg" alt=""><span>备份与恢复</span></button>
             <a id="source-link" href="https://github.com/crazyniu/ai-workstation" target="_blank" rel="noopener noreferrer"><img src="/icons/github.svg" alt=""><span>源码</span></a>
           </div></div>
-          <footer class="settings-version"><span id="gateway-version">版本信息不可用</span></footer>
+          <footer class="settings-version"><button class="text-button" id="gateway-version" data-page="updates">网关 Web 版本</button></footer>
         </section>
 
-        <section data-section="proxy" hidden>
-          <div class="row spread page-heading proxy-heading"><h2>Clash 代理配置</h2><div class="row wrap"><a class="button-link" href="/ui/" target="_blank" rel="noopener">节点面板</a><button id="save-config" class="primary">保存并应用</button></div></div>
-          <div class="config-upload">
-            <button id="upload-config">上传 YAML</button><button id="download-config">下载 YAML</button>
-            <span id="config-note"><span id="config-filename" role="status"></span></span>
-            <input id="config-file" type="file" accept=".yaml,.yml" hidden>
-          </div>
-          <div class="config-modes" role="group" aria-label="编辑方式">
-            <button id="config-visual" data-proxy-tab="connections" aria-pressed="true">出口与订阅</button>
-            <button data-proxy-tab="direct" aria-pressed="false">直连地址</button>
-            <button data-proxy-tab="rules" aria-pressed="false">分流规则</button>
-            <button data-proxy-tab="options" aria-pressed="false">配置项</button>
-            <button id="config-code" aria-pressed="false">YAML 代码</button>
-          </div>
-          <div id="proxy-fields">
-            <section data-proxy-pane="connections"><div class="row spread"><h3>节点订阅</h3><button id="add-provider">添加订阅</button></div><div id="proxy-providers"></div></section>
-            <section data-proxy-pane="connections"><div class="row spread"><h3>代理出口</h3><button id="add-exit">添加出口</button></div><div id="proxy-exits"></div></section>
-            <section data-proxy-pane="connections"><div class="row spread"><h3>来源 IP 绑定</h3><button id="add-binding">添加绑定</button></div><div id="proxy-bindings"></div></section>
-            <section id="proxy-browser" hidden>
-              <div class="proxy-browser-heading"><div><h3 id="proxy-browser-title" tabindex="-1"></h3><span id="proxy-count" class="muted" role="status"></span></div><button id="add-proxy-item"></button></div>
-              <button id="proxy-rule-mode" class="text-button" hidden></button>
-              <nav id="proxy-path" aria-label="配置路径" hidden></nav>
-              <div class="proxy-filters">
-                <label id="proxy-scope-label">范围<select id="proxy-scope"></select></label>
-                <label>搜索<input id="proxy-search" type="search" placeholder="输入名称或地址" autocomplete="off"></label>
-              </div>
-              <div id="proxy-results"></div>
-              <div id="proxy-pager" hidden><button id="proxy-prev">上一页</button><span id="proxy-page"></span><button id="proxy-next">下一页</button></div>
-            </section>
-          </div>
-          <div id="config-editor" hidden><textarea id="config-content" aria-label="Clash YAML 配置" spellcheck="false"></textarea></div>
-          <details id="proxy-subscription" class="advanced-settings"><summary>完整配置订阅</summary><div class="advanced-settings-content">
-            <form id="subscription-form"><label>订阅链接<input id="subscription-url" type="url" required placeholder="https://example.com/config.yaml" autocomplete="off"></label>
-              <div class="row form-actions"><label>自动更新<select id="subscription-interval"><option value="0">关闭</option><option value="1">每小时</option><option value="6">每 6 小时</option><option value="12">每 12 小时</option><option value="24">每天</option></select></label><button type="submit" class="primary">导入订阅</button><button type="button" id="refresh-subscription">立即刷新</button></div>
-              <p class="muted" id="subscription-status"></p>
-            </form>
-          </div></details>
-        </section>
         <section data-section="dns" hidden>
           <div class="page-heading"><h2>DNS 与访问</h2></div>
           <form id="domain-form" class="settings-block">
@@ -151,11 +113,12 @@
         </section>
         <section data-section="updates" hidden>
           <div class="row spread page-heading"><h2>服务升级</h2><button id="check-updates">检查更新</button></div>
+          <div class="settings-block web-release-row"><div><h3>网关 Web</h3><p id="web-release-detail" role="status">正在读取版本…</p></div><button id="web-release-install" hidden>更新网关 Web</button></div>
           <div class="settings-block">
             <div id="components" class="service-list"></div>
             <p id="upgrade-status" class="muted" role="status"></p><button id="refresh-job" hidden>刷新任务</button>
           </div>
-          <div class="settings-block"><h3>网关镜像</h3><p class="muted">更换 Docker 镜像前，请先备份容器内部数据。</p></div>
+          
         </section>
         <section data-section="desktop" hidden>
           <div class="page-heading"><h2>桌面管理</h2></div>
@@ -227,6 +190,45 @@
     </div>
     <div class="window-actions"><button id="wallpaper-cancel">取消</button><button class="primary" id="wallpaper-apply">应用</button></div>
   </dialog>
+  <dialog id="proxy-window" aria-labelledby="proxy-window-title">
+    <header class="proxy-titlebar"><img src="/icons/clash.svg" alt="" width="26" height="26"><h2 id="proxy-window-title">Clash 配置编辑器</h2><button type="button" id="close-proxy" aria-label="关闭 Clash 配置编辑器">关闭</button></header>
+    <div id="proxy-workspace">
+      <div class="proxy-toolbar"><strong id="config-filename" role="status">config.yaml</strong>
+        <div class="row wrap"><button id="upload-config">导入 YAML</button><button id="download-config">导出 YAML</button><a class="button-link" href="/ui/" target="_blank" rel="noopener">节点面板</a><button id="save-config" class="primary">保存并应用</button></div>
+        <input id="config-file" type="file" accept=".yaml,.yml" hidden>
+      </div>
+      <div class="proxy-layout"><nav class="proxy-nav" aria-label="配置分类">
+        <button type="button" data-proxy-tab="exits" aria-pressed="false">代理节点</button>
+        <button type="button" data-proxy-tab="providers" aria-pressed="false">节点订阅</button>
+        <button type="button" data-proxy-tab="groups" aria-pressed="false">策略组</button>
+        <button type="button" data-proxy-tab="bindings" aria-pressed="false">来源 IP 绑定</button>
+        <button type="button" data-proxy-tab="rules" aria-pressed="false">分流规则</button>
+        <button type="button" data-proxy-tab="direct" aria-pressed="false">直连地址</button>
+        <button type="button" data-proxy-tab="options" aria-pressed="false">全部配置项</button>
+        <button type="button" id="config-code" aria-pressed="false">YAML 源码</button>
+      </nav><div class="proxy-canvas"><div id="proxy-fields">
+            <section id="proxy-browser">
+              <div class="proxy-browser-heading"><div><h3 id="proxy-browser-title" tabindex="-1"></h3><span id="proxy-count" class="muted" role="status"></span></div><button id="add-proxy-item"></button></div>
+              <button id="proxy-rule-mode" class="text-button" hidden></button>
+              <nav id="proxy-path" aria-label="配置路径" hidden></nav>
+              <div class="proxy-filters">
+                <label id="proxy-scope-label">范围<select id="proxy-scope"></select></label>
+                <label>搜索<input id="proxy-search" type="search" placeholder="输入名称或地址" autocomplete="off"></label>
+              </div>
+              <div id="proxy-results"></div>
+              <div id="proxy-pager" hidden><button id="proxy-prev">上一页</button><span id="proxy-page"></span><button id="proxy-next">下一页</button></div>
+            </section>
+          </div>
+          <div id="config-editor" hidden><textarea id="config-content" aria-label="Clash YAML 配置" spellcheck="false"></textarea></div>
+          <details id="proxy-subscription" class="advanced-settings"><summary>完整配置订阅</summary><div class="advanced-settings-content">
+            <form id="subscription-form"><label>订阅链接<input id="subscription-url" type="url" required placeholder="https://example.com/config.yaml" autocomplete="off"></label>
+              <div class="row form-actions"><label>自动更新<select id="subscription-interval"><option value="0">关闭</option><option value="1">每小时</option><option value="6">每 6 小时</option><option value="12">每 12 小时</option><option value="24">每天</option></select></label><button type="submit" class="primary">导入订阅</button><button type="button" id="refresh-subscription">立即刷新</button></div>
+              <p class="muted" id="subscription-status"></p>
+            </form>
+          </div></details>
+      </div></div>
+    </div>
+  </dialog>
   <dialog id="confirm-dialog" class="confirm-window" aria-labelledby="confirm-title"><div class="confirm-content"><h2 id="confirm-title">确认操作</h2><p id="confirm-copy"></p></div><div class="window-actions"><button id="confirm-cancel">取消</button><button class="primary" id="confirm-accept">确定</button></div></dialog>
   <div id="desktop-context-menu" class="context-menu" role="menu" aria-label="桌面菜单" hidden></div>
   <div id="desktop-toast" class="desktop-toast" popover="manual" hidden>
@@ -238,7 +240,7 @@
   <script src="/vendor/winbox/winbox.min.js"></script>
   <script src="/proxy-rules.js"></script>
   <script src="/proxy-editor.js"></script>
-  <script src="/app.js"></script>
   <script src="/build-info.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>

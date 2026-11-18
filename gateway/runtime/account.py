@@ -7,7 +7,7 @@ import re
 import subprocess
 import sys
 
-sys.path.insert(0, '/opt/gateway/app')
+sys.path.insert(0, '/opt/gateway/current/app')
 from state import ROOT, atomic, read, save
 
 account = ROOT / 'system/account.json'

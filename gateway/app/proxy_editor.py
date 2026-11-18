@@ -177,6 +177,29 @@ def edit_exit(config, edit):
                 group['proxies'] = [member for member in members if member != name]
 
 
+def edit_group(config, edit):
+    groups = config.setdefault('proxy-groups', [])
+    name, original = edit['name'].strip(), edit.get('original')
+    if not name or ',' in name or (name != original and name in set(policy_names(config)) | BUILTINS):
+        raise ValueError('请输入唯一的策略组名称')
+    group = next((g for g in groups if g.get('name') == original), None) if original else {}
+    if group is None:
+        raise ValueError('策略组已变化，请重新打开')
+    members, providers = edit['proxies'], edit['use']
+    if name in members or (original and original in members):
+        raise ValueError('策略组不能包含自身')
+    if original and name != original:
+        rename_policy(config, original, name)
+    if not original:
+        groups.append(group)
+    group.update(name=name, type=edit['type'])
+    for key, items in [('proxies', members), ('use', providers)]:
+        if items:
+            group[key] = items
+        else:
+            group.pop(key, None)
+
+
 def edit_binding(config, edit):
     rows = list(bindings(config))
     previous = next((r for r in rows if r['id'] == edit.get('id')), None)
@@ -340,7 +363,7 @@ def draft(data):
     if not edit:
         return {'model': model(config)}
     change = {'provider': edit_provider, 'exit': edit_exit, 'binding': edit_binding,
-              'option': edit_option, 'rule': edit_rule}[edit['kind']]
+              'option': edit_option, 'rule': edit_rule, 'group': edit_group}[edit['kind']]
     original = deepcopy(config)
     change(config, edit)
     if config != original:

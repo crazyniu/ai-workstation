@@ -118,6 +118,7 @@ function beginLoading(region){
 }
 function loadingRegion(target=null){
   if(target)return $(target);
+  if($('#proxy-window').open)return $('#proxy-workspace');
   return $('#settings-dialog').open?$('#settings-content'):$('.desktop-workspace');
 }
 async function withLoading(region,work){const done=beginLoading(region);try{return await work();}finally{done();}}
@@ -135,7 +136,7 @@ function button(text,handler,className){const el=element('button',text,className
 function configDirty(){return savedConfig!==null&&editor.getValue()!==savedConfig;}
 async function discardChanges(){return !configDirty()||await askConfirm('配置文件尚未应用。离开后将丢弃这些修改，是否继续？');}
 async function closeSettings(){if(!await discardChanges())return;destroySettings();}
-function destroySettings(){$('#proxy-entry').close();finishSettingsLoading();if(settingsWindow){const w=settingsWindow;settingsWindow=null;w.close(true);}$('#settings-dialog').close();navigation++;currentPage=null;savedConfig=null;}
+function destroySettings(){$('#proxy-entry').close();$('#proxy-window').close();proxyGeneration++;finishSettingsLoading();if(settingsWindow){const w=settingsWindow;settingsWindow=null;w.close(true);}$('#settings-dialog').close();navigation++;currentPage=null;savedConfig=null;}
 async function guard(work,target=null){
   if(busy)return;
   const done=beginLoading(loadingRegion(target));
@@ -181,13 +182,13 @@ function updateLoginHint(){
   $('#login-settings-status').textContent=$('#login-required').checked?'':'关闭密码登录后，能访问网关网页的设备均可管理网关。';
 }
 $('#login-required').addEventListener('change',updateLoginHint);
-async function authState(){const a=await api('/auth');initialized=a.initialized;$('#auth-title').textContent=initialized?'登录网关':'创建管理员';$('#auth-copy').textContent=initialized?'默认初始密码为 root。':'';$('#auth-submit').textContent=initialized?'登录':'创建管理员';$('#confirm-field').hidden=initialized;$('#password').autocomplete=initialized?'current-password':'new-password';if(!a.authenticated){cards=[];desktopPrefs={workstation_url:"https://192.168.1.251:6080/",order:[]};drawDesktop();destroySettings();$('#link-dialog').close();navigation++;currentPage=null;savedConfig=null;$('#home-domain').textContent='';if(!$('#auth-dialog').open)$('#auth-dialog').showModal();return false;}$('#auth-dialog').close();await Promise.all([loadCards(),loadStatus(),loadAppearance()]);return true;}
+async function authState(){const a=await api('/auth');initialized=a.initialized;$('#auth-title').textContent=initialized?'登录网关':'创建管理员';$('#auth-copy').textContent=initialized?'默认初始密码为 root。':'';$('#auth-submit').textContent=initialized?'登录':'创建管理员';$('#confirm-field').hidden=initialized;$('#password').autocomplete=initialized?'current-password':'new-password';if(!a.authenticated){cards=[];desktopPrefs={workstation_url:"https://192.168.1.251:6080/",order:[]};drawDesktop();destroySettings();$('#link-dialog').close();navigation++;currentPage=null;savedConfig=null;$('#home-domain').textContent='';if(!$('#auth-dialog').open)$('#auth-dialog').showModal();return false;}$('#auth-dialog').close();await Promise.all([loadCards(),loadStatus(),loadAppearance()]);loadWebRelease(false,true).catch(e=>toast(e.message,true));return true;}
 async function openSettings(page='overview',{force=false}={}){
+  if(page==='proxy')return openProxyWindow(force);
   if(!force&&$('#settings-dialog').open&&currentPage===page){showSettingsWindow();return;}
   if(!force&&!await discardChanges())return;
   const previousPage=currentPage;
   finishSettingsLoading();const request=++navigation;currentPage=page;if(page!=='proxy')savedConfig=null;
-  if(page==='proxy')$('[data-section="proxy"]').inert=true;
   showSettingsWindow();$('#settings-dialog').classList.toggle('is-overview',page==='overview');settingsWindow?.window.classList.toggle('is-overview',page==='overview');$('#settings-content').scrollTop=0;const done=beginLoading($('#settings-content'));settingsLoadingDone=done;
   $$('[data-section]').forEach(el=>el.hidden=el.dataset.section!==page);
   $$('[data-page]').forEach(el=>{el.classList.toggle('active',el.dataset.page===page);el.setAttribute('aria-current',el.dataset.page===page?'page':'false');});
@@ -199,18 +200,9 @@ async function openSettings(page='overview',{force=false}={}){
   }
   try{
     const loaded=await api('/settings');if(request!==navigation)return;prefs=loaded;
-    if(page==='proxy'){
-      const c=await api('/proxy/config');if(request!==navigation)return;
-      pendingUpload=false;revision=c.revision;savedConfig=c.content;editor.setValue(c.content);updateConfigState();
-      await openProxyVisual();if(request!==navigation)return;
-      $('[data-section="proxy"]').inert=false;
-      $('#subscription-url').value=prefs.subscription.url||'';$('#subscription-interval').value=prefs.subscription.interval_hours||0;
-      $('#subscription-status').textContent=prefs.subscription.error||(prefs.subscription.last_updated?'上次更新：'+new Date(prefs.subscription.last_updated*1000).toLocaleString():'支持返回 Clash/Mihomo YAML 的配置订阅。');
-      $('#refresh-subscription').disabled=busy||!prefs.subscription.url;
-    }
     if(page==='dns'){$('#domain').value=prefs.domain;$('#domain-address').textContent='当前地址：'+status.address+' · http://'+prefs.domain;}
     if(page==='tailscale')await loadTailscale();
-    if(page==='updates'){const task=await loadUpdates();if(task?.status==='running'){await job(task,{request});if(request===navigation)await loadUpdates();}}
+    if(page==='updates'){loadWebRelease().catch(e=>toast(e.message,true));const webJob=await api('/web-release/job');if(webJob.status==='running'){await followWebRelease(webJob);return;}const task=await loadUpdates();if(task?.status==='running'){await job(task,{request});if(request===navigation)await loadUpdates();}}
     if(page==='desktop'){await loadCards();$('#workstation-url').value=desktopPrefs.workstation_url;}
     if(page==='account'){const auth=await api('/auth');if(request!==navigation)return;renderLoginSettings(auth);$('#login-settings-password').value='';}
   }catch(e){if(request===navigation){currentPage=null;toast(e.message,true);}}
@@ -253,8 +245,9 @@ async function loadUpdates(){
   if(request!==navigation||currentPage!=='updates')return;
   const list=$('#components');list.replaceChildren();
   for(const [component,manifest] of Object.entries(u.components)){
+    const checked=u.checked[component],current=manifest.version;
+    if(!current || current==='unknown' || checked?.error)continue;
     const row=element('div',undefined,'service-row'),details=element('div',undefined,'details');
-    const checked=u.checked[component],current=manifest.version||'未知';
     const updateText=checked?.error?checked.error:checked?.available?'可用 '+checked.latest:checked?.latest?'已是最新版':'';
     details.append(element('strong',names[component]),element('span',[current,updateText].filter(Boolean).join(' · ')));
     const action=checked?.available?'升级':checked?.latest&&!checked.error?'重新安装':'安装最新版';
@@ -262,7 +255,8 @@ async function loadUpdates(){
       if(!await askConfirm(names[component]+' 将短暂中断，继续'+action+'？'))return;
       await job(await post('/updates/install',{component}));await loadUpdates();
     }));
-    row.append(icon(component==='mihomo'||component==='panel'?'clash':component),details,install);
+    row.append(icon(component==='mihomo'?'clash':component),details);
+    if(checked?.available && checked.latest!==current)row.append(install);
     list.append(row);
   }
   $('#upgrade-status').textContent=u.job?(u.job.status==='running'?'任务进行中':u.job.status==='success'?'上次操作已完成':u.job.error||''):'';
@@ -285,8 +279,8 @@ $('#config-file').onchange=async()=>{
   await guard(async()=>{
     if(!file.size||file.size>2*1024*1024||! /\.ya?ml$/i.test(file.name))throw Error('选择 2 MB 以内的 YAML 文件');
     if(!await discardChanges())return;
-    const request=navigation, draft=await file.text();
-    if(request!==navigation||currentPage!=='proxy')return;
+    const request=proxyGeneration, draft=await file.text();
+    if(request!==proxyGeneration||!$('#proxy-window').open)return;
     editor.setValue(draft);
     pendingUpload=true;
     $('#config-filename').textContent=file.name+' · 等待应用';
@@ -295,15 +289,15 @@ $('#config-file').onchange=async()=>{
   input.value='';
 };
 $('#save-config').onclick=()=>guard(async()=>{
-  const request=navigation;
+  const request=proxyGeneration;
   if(pendingUpload){
     const draft=await post('/proxy/draft',{content:editor.getValue(),upload:true});
-    if(request!==navigation)return;
+    if(request!==proxyGeneration)return;
     editor.setValue(draft.content);pendingUpload=false;
   }
   const result=await post('/proxy/config',{filename:'config.yaml',content:editor.getValue(),revision,edit_network:true});
   const saved=await api('/proxy/config');
-  if(request!==navigation)return;
+  if(request!==proxyGeneration)return;
   revision=saved.revision;savedConfig=saved.content;editor.setValue(saved.content);updateConfigState();
   if(!$('#proxy-fields').hidden)await openProxyVisual();
   toast(result.message||'配置已应用。');await loadStatus();
@@ -317,7 +311,7 @@ $$('[data-ts]').forEach(b=>b.onclick=()=>guard(async()=>{
   const r=await post('/tailscale/action',{action});if(r.id)await job(r);await loadTailscale();
   toast(action==='logout'?'已退出 Tailscale 账号。':action==='disconnect'?'已断开连接。':'');
 }));
-$('#check-updates').onclick=()=>guard(async()=>{await job(await post('/updates/check'));await loadUpdates();});
+$('#check-updates').onclick=()=>guard(async()=>{await Promise.all([loadWebRelease(true),job(await post('/updates/check'))]);await loadUpdates();});
 $('#backup').onclick=()=>guard(async()=>{const r=await api('/backup');const a=element('a');a.href='data:application/gzip;base64,'+r.data;a.download=r.filename;document.body.append(a);a.click();a.remove();toast('备份已下载，请妥善保存。');});
 $('#restore').onclick=()=>guard(async()=>{const file=$('#restore-file').files[0];if(!file||!$('#restore-confirm').checked)throw Error('请选择备份并确认替换配置');if(file.size>24*1024*1024)throw Error('备份超过 24 MB');const bytes=new Uint8Array(await file.arrayBuffer());let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));await job(await post('/restore',{data:btoa(text)}));savedConfig=null;await Promise.all([loadStatus(),loadCards(),loadAppearance()]);$('#restore-file').value='';$('#restore-confirm').checked=false;toast('备份已恢复。');});
 $('#login-settings-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/auth/settings',{login_required:$('#login-required').checked,current_password:$('#login-settings-password').value});renderLoginSettings(await api('/auth'));$('#login-settings-password').value='';toast($('#login-required').checked?'密码登录已开启。':'密码登录已关闭，打开网页即可进入网关。');});};

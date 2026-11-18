@@ -44,7 +44,7 @@ Open **niu.sh** on the desktop or type `niu.sh` in a terminal. The desktop short
 
 | Menu number | Action |
 | --- | --- |
-| 1 | Update installed workstation software, desktop apps, extensions and local MCP servers. Node.js stays on the installed major version. |
+| 1 | Select one installed application or update all listed software after confirmation. Node.js stays on the installed major version. |
 | 2 | Update the existing Orca Server from its official stable release. A running server restarts. |
 | 3 | Restart Orca Server. Use SSH or XFCE because Orca sessions may disconnect. |
 | 4 | Update niu.sh from this repository's GitHub main branch and reopen the menu. |

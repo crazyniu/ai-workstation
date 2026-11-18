@@ -1,0 +1,42 @@
+name: Gateway Web release
+on:
+  push:
+    tags: ['gateway-web-v*']
+permissions:
+  contents: write
+concurrency:
+  group: gateway-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Package the gateway application
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^gateway-web-v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git merge-base --is-ancestor HEAD origin/main
+          mkdir "$RUNNER_TEMP/gateway-release"
+          cd "$RUNNER_TEMP/gateway-release"
+          git -C "$GITHUB_WORKSPACE" archive HEAD:gateway app web | tar -xf -
+          printf '{"tag":"%s"}\n' "$TAG" > web/release.json
+          tar -czf "$RUNNER_TEMP/gateway-web.tar.gz" app web
+      - name: Publish release with the verified asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          if gh release view "$TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/release-state"; then
+            if grep -qx false "$RUNNER_TEMP/release-state"; then exit 0; fi
+          else
+            gh release create "$TAG" --verify-tag --draft --title "网关 Web ${TAG#gateway-web-}" --generate-notes
+          fi
+          gh release upload "$TAG" "$RUNNER_TEMP/gateway-web.tar.gz" --clobber
+          gh release edit "$TAG" --draft=false --latest

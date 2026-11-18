@@ -251,3 +251,10 @@ python3 scripts/export-source.py ./dist --include-seed
 `docker compose config` 只验证 Compose 结构，容器 healthy 只表示内置探针通过。正式接替网关前还应在真实客户端验证主页交互、DNS 实际回答、国内直连/代理分流、广告拦截、NAS 访问、Tailscale 双向访问及升级回滚。发行包实际验收状态见随交付的测试记录；未执行项目应明确记录 NOT RUN。
 
 组件来源及许可证见 [NOTICE](NOTICE)，对应版本许可证原文在 `licenses/`，随镜像放在 `/opt/gateway/licenses`。公开镜像由 [GitHub Actions](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml) 构建并验证，发布来源以提交标签和镜像摘要为准。
+
+
+### 网关 Web 在线升级
+
+从控制面板打开 **服务升级 → 网关 Web**。页面读取本项目的稳定 GitHub Release，展示当前版本、最新版本和发布说明。确认后下载并核对 SHA-256，在当前容器内切换管理网页和 Python API。网络服务、私有配置和桌面会话继续运行。管理 API 启动失败会切回上一版。
+
+维护者从已合并的 main 提交推送形如 `gateway-web-v1.0.0` 的标签。GitHub 工作流将已跟踪的 `gateway/app` 与 `gateway/web` 打包为 `gateway-web.tar.gz` 并发布 Release。网络运行脚本和容器基础软件不属于此包。
