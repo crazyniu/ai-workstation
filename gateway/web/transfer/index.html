@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>局域网互传 · Gateway</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="alternate" type="text/plain" title="AI 使用说明" href="./ai.txt">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="./transfer.css">
+  <script src="./transfer.js" defer></script>
+</head>
+<body>
+  <main class="transfer">
+    <header class="heading">
+      <div class="title"><img src="/icons/files.svg" alt="" width="36" height="36"><h1>局域网互传</h1></div>
+      <button id="copy">复制 AI 提示词</button>
+    </header>
+    <div class="toolbar">
+      <button id="upload" class="primary">上传文件</button>
+      <input id="files" type="file" multiple hidden>
+      <button id="new-folder">新建文件夹</button>
+      <button id="refresh">刷新</button>
+      <button id="clear" class="danger">清空全部</button>
+    </div>
+    <nav id="crumbs" aria-label="当前文件夹"></nav>
+    <p id="status" role="status"></p>
+    <ul id="entries" aria-label="文件列表"></ul>
+    <p id="empty" hidden>文件夹为空</p>
+  </main>
+  <dialog id="folder-dialog" aria-labelledby="folder-title">
+    <form id="folder-form">
+      <h2 id="folder-title">新建文件夹</h2>
+      <label>文件夹名称<input id="folder-name" required autofocus></label>
+      <div class="dialog-actions"><button type="button" id="cancel-folder">取消</button><button class="primary">创建</button></div>
+    </form>
+  </dialog>
+  <dialog id="manual" aria-labelledby="manual-title">
+    <form method="dialog">
+      <h2 id="manual-title">AI 提示词</h2>
+      <textarea id="prompt" aria-label="AI 提示词" readonly></textarea>
+      <div class="dialog-actions"><button>关闭</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

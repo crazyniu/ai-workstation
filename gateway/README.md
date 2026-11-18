@@ -124,6 +124,12 @@ curl --noproxy '*' http://192.168.10.2/healthz
 
 本地域名在 Mihomo 的 hosts、Fake-IP 排除及 AdGuard 重写中配置，返回部署时的 LAN 地址。域名可在设置中修改。`home.dev` 属于浏览器强制 HTTPS 的域名后缀，当前 HTTP 部署默认使用家庭局域网保留域 `home.arpa`。
 
+## 局域网互传
+
+网关首页和登录窗口均可进入 `/transfer/`。局域网设备可免登录上传、下载、新建或删除文件夹、删除文件、清空整个共享区。页面的“复制 AI 提示词”提供 HTTP 接口、中文路径编码和分块上传示例，纯文本说明位于 `/transfer/ai.txt`。
+
+文件位于网关 `$DATA_DIR/lan-transfer/`（容器默认为 `/data/lan-transfer/`），随完整数据目录备份。网页导出的配置备份只包含网关配置。下载作为附件处理，同名上传返回冲突。
+
 ## 数据、备份和升级
 
 网关应用状态保存在容器内部 `/data`，包括代理配置、订阅、图标与顺序、壁纸与显示方式、管理员密码散列、会话密钥、Tailscale 设备身份、AdGuard 配置与运行记录、组件历史版本及升级备份。Compose 不设置业务 bind mount 或 volume，Dockerfile 不声明匿名卷。容器可写层存放在宿主 Docker 数据目录；建议宿主将该目录放在 SSD，Compose 不负责迁移宿主存储。

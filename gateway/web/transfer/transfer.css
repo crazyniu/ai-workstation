@@ -1,0 +1,32 @@
+body { background: var(--chrome); overflow: auto; }
+.transfer { max-width: 840px; margin: clamp(16px, 6vw, 72px) auto; padding: clamp(18px, 4vw, 36px); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.heading, .title, .toolbar, .dialog-actions, #crumbs, .entry { display: flex; align-items: center; gap: 10px; }
+.heading { justify-content: space-between; gap: 12px; }
+h1, h2 { margin: 0; font-weight: 600; }
+h1 { font-size: clamp(20px, 4vw, 26px); }
+h2 { font-size: 19px; margin-bottom: 18px; }
+.toolbar { margin: 24px 0 14px; flex-wrap: wrap; gap: 8px; }
+#clear { margin-inline-start: auto; }
+#crumbs { flex-wrap: wrap; gap: 6px; padding: 12px 0; color: var(--muted); border-block-end: 1px solid var(--border); }
+#crumbs span, #crumbs a { overflow-wrap: anywhere; }
+#entries { margin: 0; padding: 0; list-style: none; }
+.entry { padding-block: 9px; border-bottom: 1px solid var(--line); }
+.entry .name { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; color: var(--text); }
+.name span { overflow-wrap: anywhere; }
+.entry .size { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.entry button, .entry .action { padding: 5px 9px; min-height: 34px; }
+.entry button { color: var(--danger); }
+.transfer a { color: var(--blue); text-decoration: none; }
+.transfer a:hover { text-decoration: underline; }
+#status:not(:empty) { margin: 12px 0; }
+#status:empty { margin: 0; }
+#status.error { color: var(--danger); }
+#empty { color: var(--muted); padding: 24px 0; text-align: center; }
+dialog form { padding: 24px; min-width: min(350px, 80vw); }
+.dialog-actions { justify-content: flex-end; margin-top: 18px; }
+#prompt { width: min(640px, 75vw); height: 48vh; }
+@media (max-width: 600px) {
+  .transfer { margin: 0; border: 0; border-radius: 0; min-height: 100dvh; }
+  .toolbar button, #copy { padding-inline: 10px; }
+  .toolbar, .entry { gap: 5px; }
+}
