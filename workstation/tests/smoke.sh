@@ -97,10 +97,11 @@ with tempfile.TemporaryDirectory(prefix='claude-reset-smoke-') as folder:
     credentials=config/'.credentials.json'
     credentials.write_text(json.dumps({'claudeAiOauth':{'accessToken':'fixture-only'},'mcpOAuth':{'keep':{}}}))
     environment={k:v for k,v in os.environ.items() if not k.startswith('ANTHROPIC_') and not k.startswith('CLAUDE_CODE_OAUTH_') and k!='CLAUDE_CONFIG_DIR'}
-    command=['niu.sh','claude-reset','--home',str(home)]
-    subprocess.run(command,env=environment,check=True,stdout=subprocess.DEVNULL)
+    environment['HOME']=str(home)
+    command=['niu.sh']
+    subprocess.run(command,input=b"5\n0\n0\n",env=environment,check=True,stdout=subprocess.DEVNULL)
     assert 'userID' in json.loads(account.read_text()),'Preview changed account'
-    subprocess.run(command+['--apply'],env=environment,check=True,stdout=subprocess.DEVNULL)
+    subprocess.run(command,input=b"5\n1\n0\n",env=environment,check=True,stdout=subprocess.DEVNULL)
     assert json.loads(account.read_text())=={'mcpServers':{'keep':{}}}
     assert json.loads(credentials.read_text())=={'mcpOAuth':{'keep':{}}}
 print('PASS: installed Claude reset command previews safely and preserves MCP configuration/credentials.')

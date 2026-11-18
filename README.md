@@ -171,12 +171,7 @@ WORKSTATION_TIMEZONE=Asia/Singapore
 
 ### 重置 Claude 用户信息
 
-工作站镜像安装 `niu.sh claude-reset` 命令，在 251 的普通用户 `dev` 终端运行：
-
-```sh
-niu.sh claude-reset          # 预览清理项目，不修改文件
-niu.sh claude-reset --apply  # 关闭 Claude 后，执行本地身份与历史清理
-```
+以 `dev` 打开桌面的 **niu.sh**，输入 **5** 预览清理范围。关闭 Claude Code 后，输入 **1** 确认执行，或输入 **0** 取消。
 
 清理 Claude Code 登录凭据、用户/设备标识、会话、输入历史、日志及旧配置备份；保留当前 MCP 配置、MCP OAuth 凭据、插件、技能、通用代理设置及实际项目文件。只修改选定 HOME 中的 Claude 数据及独立的认证变量声明，不清理浏览器登录、远端会话或共享 Shell 历史。执行时检查 Claude 进程及继承的认证环境变量，发现仍在使用的身份时拒绝清理。清理按需手动执行，容器启动不会自动重置账号。
 

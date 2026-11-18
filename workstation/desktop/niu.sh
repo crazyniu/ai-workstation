@@ -263,7 +263,7 @@ GITHUB_BLOB
     temporary=$("${writer[@]}" mktemp -- "${destination}.XXXXXXXX")
     "${writer[@]}" install -m 755 "$download/niu.sh" "$temporary"
     "${writer[@]}" mv -Tf -- "$temporary" "$destination"
-    echo 'Updated niu.sh from GitHub main. The next launch uses the new version.'
+    echo 'Updated niu.sh from GitHub main. Reloading the menu.'
 )
 
 reset_claude() {
@@ -272,7 +272,7 @@ reset_claude() {
 
 Reference: liseami/CCBaga bdfb90ceadfc5fae6772ffff597bddecb0b73cc3,
 cleaner_config.rs and cleaner_targets.rs (MIT). Linux adaptation.
-Default: preview only. Close Claude, then run niu.sh claude-reset --apply.
+Preview first. Close Claude Code before confirming cleanup in the menu.
 No new credential backups are created. Actual project directories are untouched.
 """
 # MIT License
@@ -484,7 +484,7 @@ def atomic_write(path, data):
 
 
 def main():
-    parser = argparse.ArgumentParser(prog="niu.sh claude-reset", description=__doc__)
+    parser = argparse.ArgumentParser(prog="Claude Code cleanup", description=__doc__)
     parser.add_argument('--apply', action='store_true', help='permanently remove local Claude Code identity/history')
     parser.add_argument('--home', type=Path, default=Path.home(), help='target HOME; defaults to the current user')
     args = parser.parse_args()
@@ -508,7 +508,7 @@ def main():
         if args.apply and AUTH_ENV.intersection(os.environ):
             raise ValueError('Unset inherited Claude auth variables first: ' + ', '.join(sorted(AUTH_ENV.intersection(os.environ))))
         changes, removals = plan(home, config)
-        print('APPLY' if args.apply else 'PREVIEW (no changes; use --apply to execute)')
+        print('APPLY' if args.apply else 'PREVIEW (no changes)')
         for path, _ in changes:
             print('sanitize', path.relative_to(home))
         for path in removals:
@@ -542,62 +542,68 @@ if __name__ == '__main__':
 CLAUDE_RESET_PY
 }
 
-usage() {
-    echo 'Usage: niu.sh [update | orca-update | orca-restart | self-update | claude-reset [--apply] [--home PATH]]'
+confirm_action() {
+    local answer
+    printf '%s\n  1. Confirm\n  0. Cancel\n' "$1"
+    while read -rp 'Choose 1 or 0: ' answer; do
+        case "$answer" in
+            1) return 0 ;;
+            0) return 1 ;;
+        esac
+    done
+    return 1
 }
 
-dispatch() {
-    local action=$1
-    shift
-    if [[ "$action" != claude-reset && $# != 0 ]]; then usage >&2; return 2; fi
-    case "$action" in
-        update) update_software ;;
-        orca-update) update_orca ;;
-        orca-restart) restart_orca ;;
-        self-update) update_self ;;
-        claude-reset) reset_claude "$@" ;;
-        -h|--help|help) usage ;;
-        *) usage >&2; return 2 ;;
-    esac
+run_action() {
+    set +e
+    (set -e; "$@")
+    action_status=$?
+    set -e
+    if (( action_status != 0 )); then
+        echo 'Action did not complete.' >&2
+    fi
 }
 
 menu() {
-    local choice answer action
+    local choice action_status
     while true; do
         printf '\nniu.sh\n  1. Update installed software\n'
         if orca_installed; then
             printf '  2. Update Orca Server\n  3. Restart Orca Server\n'
         fi
         printf '  4. Update niu.sh from GitHub\n  5. Reset Claude Code user data\n  0. Exit\n'
-        read -rp 'Choose an action: ' choice || return 0
+        read -rp 'Choose a number: ' choice || return 0
         case "$choice" in
-            0|q) return 0 ;;
-            1) action=update ;;
+            0) return 0 ;;
+            1) confirm_action 'Update installed workstation software?' || continue
+               run_action update_software ;;
             2|3)
                 if ! orca_installed; then echo 'Orca Server is not installed.'; continue; fi
-                read -rp 'Orca sessions may disconnect. Continue? [y/N] ' answer
-                [[ "$answer" == [Yy] ]] || continue
-                if [[ "$choice" == 2 ]]; then action=orca-update; else action=orca-restart; fi ;;
-            4) action=self-update ;;
-            5)
-                if ! "$self" claude-reset; then continue; fi
-                read -rp 'Apply the changes listed above? [y/N] ' answer
-                [[ "$answer" == [Yy] ]] || continue
-                "$self" claude-reset --apply || echo 'Reset did not complete.' >&2
-                continue ;;
-            *) echo 'Choose one of the listed actions.'; continue ;;
+                if [[ "$choice" == 2 ]]; then
+                    confirm_action 'Update Orca Server? Active sessions may disconnect.' || continue
+                    run_action update_orca
+                else
+                    confirm_action 'Restart Orca Server? Active sessions will disconnect.' || continue
+                    run_action restart_orca
+                fi ;;
+            4) confirm_action 'Update this script from GitHub main?' || continue
+               run_action update_self
+               if (( action_status == 0 )); then exec "$self"; fi ;;
+            5) run_action reset_claude
+               if (( action_status != 0 )); then continue; fi
+               confirm_action 'Permanently apply the Claude cleanup shown above?' || continue
+               run_action reset_claude --apply ;;
+            *) echo 'Choose one of the listed numbers.' ;;
         esac
-        "$self" "$action" || echo 'Action did not complete.' >&2
     done
 }
 
 self=$(readlink -f -- "${BASH_SOURCE[0]}")
-if [[ $# -gt 0 ]]; then
-    dispatch "$@"
-elif [[ -t 0 ]]; then
-    menu
-elif [[ -n ${DISPLAY:-} ]]; then
-    exec xfce4-terminal --execute "$self"
-else
-    usage
+if (( $# )); then
+    echo 'Open niu.sh without arguments and choose a menu number.' >&2
+    exit 2
 fi
+if [[ ! -t 0 && /dev/stdin -ef /dev/null && -n ${DISPLAY:-} ]]; then
+    exec xfce4-terminal --execute "$self"
+fi
+menu

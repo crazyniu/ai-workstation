@@ -42,13 +42,16 @@ Node.js MCP 通过 `/usr/local/bin/workstation-mcp` 启动，依赖锁定在 [`m
 
 Open **niu.sh** on the desktop or type `niu.sh` in a terminal. The desktop shortcut and the system command use the same script.
 
-| Command | Action |
+| Menu number | Action |
 | --- | --- |
-| `niu.sh update` | Update system packages, installed desktop applications and extensions, AI CLIs, local MCP packages, Node.js within its installed major, uv tools and noVNC. |
-| `niu.sh orca-update` | Update an existing Supervisor-managed Orca Server from the official release for this CPU. A running server restarts. |
-| `niu.sh orca-restart` | Restart the existing Orca Supervisor service. Run from SSH or XFCE because active Orca sessions can disconnect. |
-| `niu.sh self-update` | Replace this script with the version on this repository's GitHub `main` branch. |
-| `niu.sh claude-reset` | Preview the local Claude Code data to remove. Use `--apply` to perform the displayed cleanup after closing Claude Code. |
+| 1 | Update installed workstation software, desktop apps, extensions and local MCP servers. Node.js stays on the installed major version. |
+| 2 | Update the existing Orca Server from its official stable release. A running server restarts. |
+| 3 | Restart Orca Server. Use SSH or XFCE because Orca sessions may disconnect. |
+| 4 | Update niu.sh from this repository's GitHub main branch and reopen the menu. |
+| 5 | Preview the Claude Code user data to remove. Close Claude Code before applying the cleanup. |
+| 0 | Exit. |
+
+At the confirmation prompt enter **1** to proceed or **0** to cancel.
 
 The Orca actions appear in the desktop menu when the user's server is installed under `~/.local/share/orca-server/current`.
 
@@ -142,7 +145,7 @@ Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` �
 
 ### 手动清理 Claude Code 身份
 
-新镜像安装 `/usr/local/bin/niu.sh`；以普通用户 `dev` 执行 `niu.sh claude-reset` 预览，关闭 Claude 后执行 `niu.sh claude-reset --apply`。命令清理 Code 本地登录、用户/设备标识、会话、历史和旧配置备份，保留当前 MCP 配置及 OAuth 凭据、插件、技能、通用代理和真实项目文件。脚本不会随容器启动自动执行，也不清理浏览器登录或服务器端会话。范围、进程检查、继承认证变量及自定义配置目录约束见 [AI 安装指南](../AI-INSTALL.md#22-手动重置-claude-code-用户信息)。
+新镜像安装 `/usr/local/bin/niu.sh`；以普通用户 `dev` 打开菜单，输入 **5** 预览，关闭 Claude 后输入 **1** 确认或 **0** 取消。命令清理 Code 本地登录、用户/设备标识、会话、历史和旧配置备份，保留当前 MCP 配置及 OAuth 凭据、插件、技能、通用代理和真实项目文件。脚本不会随容器启动自动执行，也不清理浏览器登录或服务器端会话。范围、进程检查、继承认证变量及自定义配置目录约束见 [AI 安装指南](../AI-INSTALL.md#22-手动重置-claude-code-用户信息)。
 
 
 ## 数据、备份与恢复
