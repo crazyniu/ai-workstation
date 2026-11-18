@@ -1,1 +1,2 @@
-{"mcpServers":{"lan-transfer":{"type":"http","url":"http://192.168.1.250/api/transfer/mcp"}}}
+请连接下面的局域网互传 MCP（Streamable HTTP，无需认证）。先调用 tools/list，再按我的要求上传、下载或管理文件和文件夹。
+http://192.168.1.250/api/transfer/mcp
