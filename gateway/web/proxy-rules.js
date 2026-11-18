@@ -163,11 +163,9 @@ function renderProxyBrowser() {
   const isRules = proxyTab === 'rules', domains = proxyTab === 'group-domains';
   $('#back-to-policy-groups').hidden = !domains;
   $('#proxy-pager').hidden = proxyTab === 'providers';
-  const searchable = !['exits','bindings'].includes(proxyTab);
-  const search = searchable ? $('#proxy-search').value.trim().toLowerCase() : '';
   $('#proxy-results').removeAttribute('aria-busy');
-  $('#proxy-search-label').hidden = !searchable;
-  $('#proxy-filters').hidden = !searchable;
+  $('#proxy-search-label').hidden = !domains;
+  $('#proxy-filters').hidden = !domains && !isRules;
   $('#rule-policy-label').hidden = !isRules;
   $('#proxy-browser-title').textContent = domains ? (rulePolicy === '🤖 PROXY' ? '🤖 AI' : rulePolicy) + ' · 域名规则' : sectionNames[proxyTab];
   drawDefaults(config);
@@ -175,7 +173,7 @@ function renderProxyBrowser() {
   if (domains) {
     add.textContent = '添加域名';
     add.onclick = () => editMatch(null,rulePolicy);
-    drawDomains(rulePolicy,search);
+    drawDomains(rulePolicy,$('#proxy-search').value.trim().toLowerCase());
     return;
   }
   let headers, rows, empty;
@@ -253,14 +251,13 @@ function renderProxyBrowser() {
         actions:() => [button('编辑',()=>editMatch(item),'text-button'),button('移除',()=>removeMatch(item),'text-button')]});
     });
   }
-  if (search) rows = rows.filter(row => row.cells.join(' ').toLowerCase().includes(search));
   if (proxyTab === 'providers') {
     $('#proxy-count').textContent = rows.length + ' 项';
   } else {
     drawPager(rows.length);
     rows = rows.slice(resultPage * pageSize(),(resultPage + 1) * pageSize());
   }
-  showList(headers,rows,search ? '没有匹配项' : empty);
+  showList(headers,rows,empty);
 }
 
 function setupProxyBrowser() {
@@ -278,8 +275,8 @@ function setupProxyBrowser() {
   $('#proxy-search').oninput = () => {
     resultPage = 0;
     clearTimeout(searchTimer);
-    if (proxyTab === 'group-domains') { ++domainRequest; searchTimer = setTimeout(renderProxyBrowser,160); }
-    else renderProxyBrowser();
+    ++domainRequest;
+    searchTimer = setTimeout(renderProxyBrowser,160);
   };
   for (const [id, step] of [['#proxy-prev',-1],['#proxy-next',1]]) {
     $(id).onclick = () => { resultPage += step; renderProxyBrowser(); $('.proxy-canvas').scrollTop = 0; };

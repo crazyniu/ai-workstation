@@ -256,8 +256,6 @@ p { line-height: 1.75; max-width: 72ch; }
 .advanced-settings[open]>summary::before { transform: rotate(45deg); }
 .advanced-settings>summary:hover { color: var(--blue); }
 .advanced-settings>summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; border-radius: 5px; }
-.advanced-settings-content { padding: 0 2px 6px; }
-.advanced-settings-content>p { margin-top: 0; }
 #config-editor { border: 1px solid #e1e6ed; border-radius: 7px; overflow: hidden; margin-top: 15px; background: var(--editor); }
 #config-content { width: 100%; height: 260px; resize: vertical; font: 12px/1.7 Menlo, Consolas, monospace; border: 0; border-radius: 0; }
 #config-editor .cm-editor { background: var(--editor)!important; color: var(--text)!important; font: 12px/1.7 Menlo, Consolas, monospace; }
@@ -635,4 +633,16 @@ dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .gateway-window #proxy-window { position: static; inset: auto; margin: 0; width: 100%; height: 100%; max-width: none; max-height: none; border-radius: 0; box-shadow: none; }
 #proxy-config-page > h3 { font-size: 18px; margin: 0 0 14px; }
 #proxy-config-page .proxy-toolbar { padding: 0 0 14px; margin-bottom: 14px; }
-.proxy-nav #back-proxy { font-size: 13px; margin-bottom: 6px; }
+.proxy-header-back {
+  position: absolute;
+  inset-inline-start: clamp(84px, calc(50% - 124px), 164px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 36px;
+  color: var(--text);
+}
+.gateway-window.min .proxy-header-back { display: none; }
+@media (max-width: 700px) {
+  .proxy-header-back { inset-inline-start: 46px; width: 44px; height: 44px; }
+}
