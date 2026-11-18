@@ -24,10 +24,10 @@ def initialize_passwords(native, root=Path('/')):
                   (root / 'etc/shadow').read_text().splitlines())
     credentials = []
     # Preserve existing hashes, including locked hashes, when upgrading an older image.
-    if shadow['dev'] in ('', '!', '!!', '*'):
+    if shadow['dev'].lstrip('!') in ('', '*'):
         credentials.append('dev:' + secret('DEV_PASSWORD', required=True,
                                           default='' if native else 'dev'))
-    if not native and shadow['root'] in ('', '!', '!!', '*'):
+    if not native and shadow['root'].lstrip('!') in ('', '*'):
         password = secret('ROOT_PASSWORD', default='root')
         if password:
             credentials.append('root:' + password)

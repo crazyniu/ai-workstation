@@ -38,6 +38,15 @@ class CredentialsTests(unittest.TestCase):
         marker = self.root/'etc/workstation/credentials-initialized'
         self.assertEqual(marker.stat().st_mode & 0o777, 0o600)
 
+    def test_locked_distribution_placeholders_are_initialized(self):
+        for placeholder in ('!*', '!!*', '!!'):
+            with self.subTest(placeholder=placeholder):
+                marker = self.root/'etc/workstation/credentials-initialized'
+                marker.unlink(missing_ok=True)
+                self.shadow.write_text('dev:'+placeholder+':0:\nroot:'+placeholder+':0:\n')
+                run = self.initialize()
+                self.assertEqual(run.call_args.kwargs['input'], b'dev:dev\nroot:root\n')
+
     def test_upgrade_without_marker_preserves_existing_and_locked_hashes(self):
         self.shadow.write_text('dev:$6$changed:0:\nroot:!$6$locked:0:\n')
         self.initialize().assert_not_called()
