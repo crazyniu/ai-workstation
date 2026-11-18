@@ -107,7 +107,8 @@ def begin(tag):
         save(JOB, job)
         try:
             subprocess.Popen([sys.executable, __file__, tag, job['id']], pass_fds=(lock.fileno(),),
-                             stdin=subprocess.DEVNULL, start_new_session=True, cwd='/')
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True, cwd='/')
         except OSError:
             save(JOB, dict(job, status='error', error='无法启动升级任务'))
             raise
@@ -149,7 +150,8 @@ def activate(target):
     next_link.unlink(missing_ok=True)
     next_link.symlink_to(target)
     os.replace(next_link, BASE / 'current')
-    subprocess.run([*SUPERVISOR, 'restart', 'api'], check=True, timeout=45)
+    # Supervisor closes the old API process's output pipes during this call.
+    subprocess.run([*SUPERVISOR, 'restart', 'api'], check=True, timeout=45, capture_output=True)
 
 
 def install(tag):
