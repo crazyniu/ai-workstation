@@ -3,7 +3,8 @@
 const domainTypes = {DOMAIN:'完整域名', 'DOMAIN-SUFFIX':'域名及子域名', 'DOMAIN-KEYWORD':'域名关键词', 'DOMAIN-WILDCARD':'通配域名'};
 const ruleLabels = {...domainTypes, 'IP-CIDR':'IPv4 网段', 'IP-CIDR6':'IPv6 网段', GEOIP:'IP 地区', GEOSITE:'域名分类',
   'RULE-SET':'规则集', MATCH:'兜底规则'};
-const sectionNames = {bindings:'网段 AI 出口', exits:'PROXY 出口池', groups:'策略分组', providers:'节点订阅', rules:'分流规则'};
+const hiddenPolicyGroups = new Set(['GLOBAL', '🌐 GLOBAL', '⚡ AUTO', '📥 订阅下载', '🔗 PROXY-RELAY', '🤖 PROXY']);
+const sectionNames = {bindings:'网段出口', exits:'PROXY 出口池', groups:'策略分组', providers:'节点订阅', rules:'分流规则'};
 const policyLabel = name => ({DIRECT:'直连',REJECT:'拒绝','REJECT-DROP':'静默丢弃'})[name] || name;
 let resultPage = 0, rulePolicy = '', domainRequest = 0, searchTimer;
 const pageSize = () => Number($('#proxy-page-size').value);
@@ -174,7 +175,7 @@ function renderProxyBrowser() {
   }
   let headers, rows, empty;
   if (proxyTab === 'bindings') {
-    headers = ['来源网段','备注','AI 出口','操作'];
+    headers = ['来源网段','备注','固定出口','操作'];
     empty = '暂无网段绑定';
     add.textContent = '添加网段';
     add.onclick = () => proxyModel.deviceExits.length ? openProxyEntry('binding') : toast('请先添加 PROXY 出口',true);
@@ -194,13 +195,12 @@ function renderProxyBrowser() {
     empty = '暂无策略分组';
     add.textContent = '添加分组';
     add.onclick = () => openProxyEntry('group');
-    rows = groups.map(g => {
-      const fixed = ['🤖 PROXY','🔗 PROXY-RELAY'].includes(g.name), enabled = !proxyModel.disabledGroups.includes(g.name);
-      return {cells:[g.name,fixed ? '固定' : enabled ? '已启用' : '已关闭'],actions:() => {
-        const actions = [button('编辑域名',()=>navigateProxy('group-domains',g.name),'text-button')];
-        if (!fixed) actions.push(button(enabled ? '关闭' : '启用',()=>guard(()=>updateProxyDraft({kind:'toggle-group',name:g.name,enabled:!enabled})),'text-button'));
-        return actions;
-      }};
+    rows = groups.filter(g => !hiddenPolicyGroups.has(g.name)).map(g => {
+      const enabled = !proxyModel.disabledGroups.includes(g.name);
+      return {cells:[g.name, enabled ? '已启用' : '已关闭'], actions:() => [
+        button('编辑域名',()=>navigateProxy('group-domains',g.name),'text-button'),
+        button(enabled ? '关闭' : '启用',()=>guard(()=>updateProxyDraft({kind:'toggle-group',name:g.name,enabled:!enabled})),'text-button')
+      ]};
     });
   } else if (proxyTab === 'providers') {
     headers = ['订阅名称','来源','操作'];
