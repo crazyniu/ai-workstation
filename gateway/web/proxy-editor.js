@@ -183,7 +183,7 @@ function openProxyEntry(kind, item) {
       range.required = true;
       const targets = proxyModel.deviceExits;
       field('target', '固定出口', item?.target || '', 'text',
-        [['', '选择 PROXY 出口'], ...targets.map(n => [n, n])]).required = true;
+        [['', '选择出口'], ...targets.map(n => [n, n])]).required = true;
       field('note', '网段备注', item?.note || '');
 
     }

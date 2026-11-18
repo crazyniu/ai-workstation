@@ -4,7 +4,7 @@ const domainTypes = {DOMAIN:'完整域名', 'DOMAIN-SUFFIX':'域名及子域名'
 const ruleLabels = {...domainTypes, 'IP-CIDR':'IPv4 网段', 'IP-CIDR6':'IPv6 网段', GEOIP:'IP 地区', GEOSITE:'域名分类',
   'RULE-SET':'规则集', MATCH:'兜底规则'};
 const hiddenPolicyGroups = new Set(['GLOBAL', '🌐 GLOBAL', '⚡ AUTO', '📥 订阅下载', '🔗 PROXY-RELAY', '🤖 PROXY']);
-const sectionNames = {bindings:'固定出口', exits:'PROXY 出口池', groups:'策略分组', providers:'节点订阅', rules:'分流规则'};
+const sectionNames = {bindings:'固定出口', exits:'代理池', groups:'策略分组', providers:'节点订阅', rules:'分流规则'};
 const policyLabel = name => ({DIRECT:'直连',REJECT:'拒绝','REJECT-DROP':'静默丢弃'})[name] || name;
 let resultPage = 0, rulePolicy = '', domainRequest = 0, searchTimer;
 const pageSize = () => Number($('#proxy-page-size').value);
@@ -134,7 +134,7 @@ async function drawDomains(group, search) {
 
 function drawDefaults(config) {
   const defaults = $('#routing-defaults');
-  defaults.hidden = !['bindings','exits'].includes(proxyTab);
+  defaults.hidden = proxyTab !== 'bindings';
   if (defaults.hidden) return;
   const pool = (config['proxy-groups'] || []).find(g => g.name === '🤖 PROXY');
   const dynamic = pool?.use?.length || pool?.['include-all'] || pool?.['include-all-providers'] || pool?.['include-all-proxies'];
@@ -164,7 +164,7 @@ function renderProxyBrowser() {
   $('#proxy-search-label').hidden = !searchable;
   $('#proxy-filters').hidden = !searchable;
   $('#rule-policy-label').hidden = !isRules;
-  $('#proxy-browser-title').textContent = domains ? rulePolicy + ' · 域名规则' : sectionNames[proxyTab];
+  $('#proxy-browser-title').textContent = domains ? (rulePolicy === '🤖 PROXY' ? '🤖 AI' : rulePolicy) + ' · 域名规则' : sectionNames[proxyTab];
   drawDefaults(config);
   const add = $('#add-proxy-item');
   if (domains) {
@@ -178,7 +178,7 @@ function renderProxyBrowser() {
     headers = ['来源网段','备注','固定出口','操作'];
     empty = '暂无网段绑定';
     add.textContent = '添加网段';
-    add.onclick = () => proxyModel.deviceExits.length ? openProxyEntry('binding') : toast('请先添加 PROXY 出口',true);
+    add.onclick = () => proxyModel.deviceExits.length ? openProxyEntry('binding') : toast('请先在代理池添加出口',true);
     rows = proxyModel.bindings.map(b => ({cells:[b.ip,b.note || '—',b.target],actions:() => [
       button('编辑',()=>openProxyEntry('binding',b),'text-button'),
       button('解绑',()=>guard(()=>updateProxyDraft({kind:'binding',id:b.id,remove:true})),'text-button')]}));
@@ -202,6 +202,11 @@ function renderProxyBrowser() {
         button(enabled ? '关闭' : '启用',()=>guard(()=>updateProxyDraft({kind:'toggle-group',name:g.name,enabled:!enabled})),'text-button')
       ]};
     });
+    if (groups.some(g => g.name === '🤖 PROXY')) {
+      rows.unshift({cells:['🤖 AI','AI 默认出口'], actions:() => [
+        button('编辑域名',()=>navigateProxy('group-domains','🤖 PROXY'),'text-button')
+      ]});
+    }
   } else if (proxyTab === 'providers') {
     headers = ['订阅名称','来源','操作'];
     empty = '暂无节点订阅';
