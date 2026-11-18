@@ -33,6 +33,11 @@ def installed(root=ACTIVE):
     return read(root / 'web/release.json', {}).get('tag', '')
 
 
+def version_number(tag):
+    match = TAG.fullmatch(tag)
+    return tuple(map(int, match.groups())) if match else ()
+
+
 def release(refresh=False):
     cached = read(CACHE, {})
     if not refresh and time.time() - cached.get('checked', 0) < 3600:
@@ -41,7 +46,7 @@ def release(refresh=False):
                                  headers={'User-Agent': 'ai-workstation-gateway', 'Accept': 'application/vnd.github+json'})
     with urllib.request.urlopen(req, timeout=12) as response:
         items = json.load(response)
-    for item in items:
+    for item in sorted(items, key=lambda item: version_number(item['tag_name']), reverse=True):
         tag = item['tag_name']
         if item['draft'] or item['prerelease'] or not TAG.fullmatch(tag):
             continue
@@ -61,10 +66,7 @@ def release(refresh=False):
 
 
 def newer(tag, current):
-    if not tag:
-        return False
-    match = TAG.fullmatch(current)
-    return not match or tuple(map(int, TAG.fullmatch(tag).groups())) > tuple(map(int, match.groups()))
+    return version_number(tag) > version_number(current)
 
 
 def info(refresh=False):
