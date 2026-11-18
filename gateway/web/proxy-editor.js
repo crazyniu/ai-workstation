@@ -6,6 +6,7 @@ const entryTitles = {provider: '节点订阅', exit: '代理出口', binding: '�
 function showProxyMode(visual) {
   $('#proxy-fields').hidden = !visual;
   $('#config-editor').hidden = visual;
+  $('#proxy-config-page').hidden = visual;
   for (const tab of $$('[data-proxy-tab]')) tab.setAttribute('aria-pressed', String(visual && tab.dataset.proxyTab === (proxyTab === 'group-domains' ? 'groups' : proxyTab)));
   $('#proxy-subscription').hidden = !visual || proxyTab !== 'providers';
   if (visual && proxyModel) renderProxyBrowser();
@@ -13,6 +14,7 @@ function showProxyMode(visual) {
 }
 
 const proxyHistory = [];
+let proxyWindow = null;
 function navigateProxy(tab, group = '', restore = null) {
   if (!restore && proxyTab === tab && (!group || group === rulePolicy) && (tab === 'yaml') === !$('#config-editor').hidden) return;
   const wasCode = !$('#config-editor').hidden;
@@ -38,6 +40,7 @@ function backProxy() {
 async function openProxyWindow(force = false, ranges = false) {
   const dialog = $('#proxy-window'), workspace = $('#proxy-workspace');
   if (dialog.open && !force) {
+    focusGatewayWindow(proxyWindow);
     if (ranges) navigateProxy('bindings');
     return;
   }
@@ -45,7 +48,7 @@ async function openProxyWindow(force = false, ranges = false) {
     proxyHistory.length = 0;
     resetProxyBrowser();
     proxyTab = ranges ? 'bindings' : 'groups';
-    dialog.showModal();
+    proxyWindow = createGatewayWindow(dialog, 'Clash 配置编辑器', '/icons/clash.svg', closeProxyWindow);
   }
   const request = ++proxyGeneration;
   workspace.inert = true;
@@ -60,7 +63,7 @@ async function openProxyWindow(force = false, ranges = false) {
     savedConfig = config.content;
     editor.setValue(config.content);
     updateConfigState();
-    await openProxyVisual();
+    await openProxyVisual(proxyTab !== 'yaml');
     if (request !== proxyGeneration) return;
     $('#subscription-url').value = prefs.subscription.url || '';
     $('#subscription-interval').value = prefs.subscription.interval_hours || 0;
@@ -68,14 +71,25 @@ async function openProxyWindow(force = false, ranges = false) {
     $('#refresh-subscription').disabled = !prefs.subscription.url;
     workspace.inert = false;
   } catch (error) {
-    if (request === proxyGeneration) { savedConfig = null; dialog.close(); toast(error.message, true); }
+    if (request === proxyGeneration) { destroyProxyWindow(); toast(error.message, true); }
   } finally { done(); }
 }
 
 async function closeProxyWindow() {
   if (busy || !await discardChanges()) return;
+  destroyProxyWindow();
+}
+
+function destroyProxyWindow() {
   ++proxyGeneration;
+  ++domainRequest;
   savedConfig = null;
+  $('#proxy-entry').close();
+  if (proxyWindow) {
+    const win = proxyWindow;
+    proxyWindow = null;
+    win.close(true);
+  }
   $('#proxy-window').close();
 }
 
@@ -107,7 +121,9 @@ async function updateProxyDraft(edit) {
 
 function updateConfigState() {
   if (!$('#proxy-window').open || savedConfig === null) return;
-  $('#config-filename').textContent = configDirty() ? 'config.yaml · 等待应用' : 'config.yaml · 当前正在使用';
+  const dirty = configDirty();
+  $('#config-filename').textContent = dirty ? 'config.yaml · 等待应用' : 'config.yaml · 当前正在使用';
+  $('#config-code').textContent = dirty ? '配置 · 待应用' : '配置';
 }
 
 function proxyDialog(title, build) {
@@ -224,7 +240,6 @@ function setupProxyEditor() {
   };
   $('#config-code').onclick = () => navigateProxy('yaml');
   $('#proxy-entry-cancel').onclick = () => $('#proxy-entry').close();
-  $('#close-proxy').onclick = closeProxyWindow;
   $('#proxy-window').oncancel = event => { event.preventDefault(); backProxy(); };
   $('#download-config').onclick = () => {
     const link = element('a'), blob = new Blob([editor.getValue()], {type: 'application/yaml;charset=utf-8'});
