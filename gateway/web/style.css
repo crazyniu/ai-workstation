@@ -598,32 +598,36 @@ dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .routing-defaults legend { padding: 0; font-size: 13px; color: var(--muted); }
 #ai-default-exit { display: flex; flex-wrap: wrap; gap: 2px 18px; }
 .routing-defaults label { display: inline-flex; align-items: center; gap: 7px; margin: 0; padding-block: 7px; overflow-wrap: anywhere; cursor: pointer; }
-.device-bindings { width: 100%; border-collapse: collapse; text-align: start; font-size: 14px; }
-.device-bindings :is(th,td) { text-align: start; padding: 10px 6px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
-.device-bindings th { font-weight: 500; font-size: 12px; color: var(--muted); }
-.device-bindings td:first-child { font-variant-numeric: tabular-nums; font-weight: 600; }
-.device-bindings :is(th,td):last-child { text-align: end; }
-.group-switch[aria-checked=true] { color: var(--blue); background: var(--selected); }
-@media (max-width:600px) {
-  .device-bindings :is(th,td) { padding: 7px 2px; }
-  .device-bindings .text-button { padding-inline: 3px; }
-}
-
-#proxy-window.range-workspace .proxy-nav,
-#proxy-window.range-workspace :is(#upload-config,#download-config,.proxy-toolbar a) { display: none; }
-#proxy-window.range-workspace .proxy-layout { grid-template-columns: minmax(0,1fr); }
 .rule-advanced { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 10px; }
 .rule-advanced summary { cursor: pointer; color: var(--muted); }
 #proxy-entry-fields .rule-advanced[open] label { margin-top: 10px; }
-.routing-rule-table { width: 100%; font-size: 14px; border-collapse: collapse; }
-.routing-rule-table :is(th,td) { text-align: start; padding: 9px 6px; border-bottom: 1px solid var(--line); }
-.routing-rule-table th { color: var(--muted); font-weight: 500; font-size: 12px; }
-.routing-rule-table td:first-child { font-variant-numeric: tabular-nums; color: var(--muted); }
-.routing-rule-table td:nth-child(3) { overflow-wrap: anywhere; }
-.routing-rule-table td:nth-child(4) { font-weight: 550; overflow-wrap: anywhere; }
-.routing-rule-table :is(th,td):last-child { text-align: end; }
-@media (max-width: 620px) {
-  .routing-rule-table { font-size: 12px; }
-  .routing-rule-table :is(th,td) { padding: 8px 3px; }
-  .routing-rule-table td .text-button { padding-inline: 2px; }
+
+.topbar .range-launch { width: auto; padding-inline: 12px; font-size: 13px; }
+.proxy-titlebar { gap: 9px; }
+.editor-back { background: transparent; border: 0; padding: 3px 8px; min-height: 32px; font-size: 20px; line-height: 1; }
+#proxy-entry-form .window-header { justify-content: flex-start; gap: 8px; }
+.proxy-layout { grid-template-columns: 154px minmax(0, 1fr); }
+.proxy-canvas { padding: 22px 24px; }
+.proxy-browser-heading { margin: 0 0 16px; }
+.proxy-browser-heading h3 { font-size: 18px; }
+.proxy-browser-heading button { flex-shrink: 0; }
+.proxy-filters { grid-template-columns: repeat(auto-fit, minmax(150px, 240px)); margin-bottom: 16px; }
+#proxy-results { overflow-x: auto; }
+.editor-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.editor-table :is(th,td) { padding: 11px 8px; text-align: start; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.editor-table th { font-weight: 500; font-size: 12px; color: var(--muted); background: var(--chrome); }
+.editor-table td:first-child { font-weight: 550; }
+.editor-table :is(td,th):last-child { text-align: end; }
+.editor-table .text-button { white-space: nowrap; padding-inline: 6px; }
+#proxy-pager { margin-top: 10px; align-items: center; flex-wrap: wrap; gap: 7px; }
+#proxy-pager label { display: flex; align-items: center; gap: 6px; margin: 0 auto 0 0; color: var(--muted); font-size: 13px; }
+#proxy-page-size { width: auto; min-height: 30px; padding: 3px 6px; appearance: auto; }
+@media (max-width: 680px) {
+  .proxy-layout { display: grid; grid-template-columns: clamp(82px, 20vw, 126px) minmax(0,1fr); }
+  .proxy-nav { display: block; padding: 6px 3px; border: 0; border-inline-end: 1px solid var(--line); }
+  .proxy-nav button { width: 100%; white-space: normal; padding: 9px 5px; font-size: 12px; }
+  .proxy-canvas { padding: 12px; }
+  .editor-table { font-size: 13px; }
+  .editor-table :is(th,td) { padding: 7px 4px; }
+  #proxy-pager label { flex-basis: 100%; }
 }

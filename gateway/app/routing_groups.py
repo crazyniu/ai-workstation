@@ -4,6 +4,8 @@ PROXY = '🤖 PROXY'
 RELAY = '🔗 PROXY-RELAY'
 NOTES = 'x-gateway-ip-notes'
 DISABLED = 'x-gateway-disabled-groups'
+DOMAIN_EXCLUSIONS = 'x-gateway-domain-exclusions'
+EXIT_NOTE = 'x-gateway-note'
 REQUIRED = (PROXY, RELAY)
 ALIASES = {name: RELAY for name in ('AI-RELAY', '🔗 AI-RELAY', 'Proxy-Reply', 'PROXY-RELAY')}
 ALIASES.update({name: PROXY for name in ('AI', '🤖 AI', 'Proxy', 'PROXY')})
@@ -61,6 +63,21 @@ def toggle(config, name, enabled):
 def apply_switches(config):
     """Keep definitions for re-enabling and for explicit transport dependencies."""
     config.pop(NOTES, None)
+    for node in config.get('proxies', []):
+        node.pop(EXIT_NOTE, None)
+    excludes = config.pop(DOMAIN_EXCLUSIONS, {})
+    if excludes:
+        for rules in [config.get('rules', []), *(config.get('sub-rules') or {}).values()]:
+            for index, rule in enumerate(rules):
+                parts, pos = policy_slot(rule)
+                if parts[0].upper() != 'RULE-SET' or pos != 2:
+                    continue
+                target = parts[pos].strip()
+                exceptions = excludes.get(target, {}).get(parts[1].strip(), [])
+                if exceptions:
+                    original = ','.join(parts[:pos] + parts[pos + 1:])
+                    conditions = ','.join([f'({original})', *[f'(NOT,(({r})))' for r in exceptions]])
+                    rules[index] = f'AND,({conditions}),{target}'
     disabled = set(config.pop(DISABLED, [])) - set(REQUIRED)
     if not disabled:
         return

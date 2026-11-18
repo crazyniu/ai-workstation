@@ -1,44 +1,52 @@
 'use strict';
 
 let liveSelector = {}, proxyModel, proxyTab = 'groups', pendingUpload = false, proxyGeneration = 0;
-const entryTitles = {provider: '节点订阅', exit: '代理出口', binding: '网段绑定', group: '策略组'};
+const entryTitles = {provider: '节点订阅', exit: '代理出口', binding: '网段绑定', group: '策略组', note: '出口备注'};
 
 function showProxyMode(visual) {
   $('#proxy-fields').hidden = !visual;
   $('#config-editor').hidden = visual;
-  for (const tab of $$('[data-proxy-tab]')) tab.setAttribute('aria-pressed', String(visual && tab.dataset.proxyTab === proxyTab));
+  for (const tab of $$('[data-proxy-tab]')) tab.setAttribute('aria-pressed', String(visual && tab.dataset.proxyTab === (proxyTab === 'group-domains' ? 'groups' : proxyTab)));
   $('#proxy-subscription').hidden = !visual || proxyTab !== 'providers';
   if (visual && proxyModel) renderProxyBrowser();
   $('#config-code').setAttribute('aria-pressed', String(!visual));
 }
 
-function proxyRow(list, title, detail, actions) {
-  const row = element('div', undefined, 'proxy-row');
-  const info = element('div');
-  info.append(element('strong', title), element('span', detail));
-  const tools = element('div', undefined, 'proxy-row-actions');
-  tools.append(...actions);
-  row.append(info, tools);
-  list.append(row);
+const proxyHistory = [];
+function navigateProxy(tab, group = '', restore = null) {
+  if (!restore && proxyTab === tab && (!group || group === rulePolicy) && (tab === 'yaml') === !$('#config-editor').hidden) return;
+  const wasCode = !$('#config-editor').hidden;
+  if (!restore) proxyHistory.push({tab:wasCode ? 'yaml' : proxyTab, policy:rulePolicy, page:resultPage,
+    search:$('#proxy-search').value, scroll:$('.proxy-canvas').scrollTop});
+  resetProxyBrowser();
+  proxyTab = tab;
+  rulePolicy = restore?.policy ?? group;
+  resultPage = restore?.page ?? 0;
+  $('#proxy-search').value = restore?.search ?? '';
+  if (tab === 'yaml') { showProxyMode(false); editor.focus?.(); }
+  else if (wasCode) guard(openProxyVisual);
+  else showProxyMode(true);
+  $('.proxy-canvas').scrollTop = restore?.scroll ?? 0;
+}
+function backProxy() {
+  if (busy) return;
+  const previous = proxyHistory.pop();
+  if (previous) navigateProxy(previous.tab, previous.policy, previous);
+  else closeProxyWindow();
 }
 
-function setProxyWorkspace(ranges) {
-  const dialog = $('#proxy-window');
-  dialog.classList.toggle('range-workspace', ranges);
-  $('#proxy-window-title').textContent = ranges ? 'IP 网段出口' : 'Clash 配置编辑器';
-  proxyTab = ranges ? 'bindings' : 'groups';
-  resetProxyBrowser();
-}
 async function openProxyWindow(force = false, ranges = false) {
   const dialog = $('#proxy-window'), workspace = $('#proxy-workspace');
   if (dialog.open && !force) {
-    if (dialog.classList.contains('range-workspace') !== ranges) {
-      setProxyWorkspace(ranges);
-      await openProxyVisual();
-    }
+    if (ranges) navigateProxy('bindings');
     return;
   }
-  if (!dialog.open) { setProxyWorkspace(ranges); dialog.showModal(); }
+  if (!dialog.open) {
+    proxyHistory.length = 0;
+    resetProxyBrowser();
+    proxyTab = ranges ? 'bindings' : 'groups';
+    dialog.showModal();
+  }
   const request = ++proxyGeneration;
   workspace.inert = true;
   const done = beginLoading(workspace);
@@ -148,8 +156,11 @@ function openProxyEntry(kind, item) {
       name.readOnly = Boolean(item);
       name.required = true;
       field('url', '订阅地址（HTTP / HTTPS）', item?.url, 'url').required = true;
+    } else if (kind === 'note') {
+      field('note','出口备注',item['x-gateway-note'] || '');
     } else if (kind === 'exit') {
       field('name', '出口名称', item?.name).required = true;
+      field('note', '出口备注', item?.['x-gateway-note'] || '');
       field('type', '协议', item?.type || 'http', 'text', [['http', 'HTTP'], ['socks5', 'SOCKS5']]);
       field('server', '服务器', item?.server).required = true;
       const port = field('port', '端口', item?.port, 'number');
@@ -158,17 +169,14 @@ function openProxyEntry(kind, item) {
       port.required = true;
       field('username', '用户名', item?.username).autocomplete = 'off';
       field('password', '密码', item?.password, 'password').autocomplete = 'off';
-      const dialers = new Set([...proxyModel.targets, item?.['dialer-proxy']].filter(name => name && name !== item?.name));
+      const dialers = new Set([proxyModel.targets.includes('🔗 PROXY-RELAY') && '🔗 PROXY-RELAY', item?.['dialer-proxy']].filter(Boolean));
       field('dialer-proxy', '前置代理', item ? item['dialer-proxy'] || '' : (dialers.has('🔗 PROXY-RELAY') ? '🔗 PROXY-RELAY' : ''), 'text', [['', '无'], ...[...dialers].map(n => [n, n])]);
       field('tls', '使用 TLS', item?.tls, 'checkbox');
     } else if (kind === 'group') {
-      const name = field('name', '策略组名称', item?.name);
-      name.required = true;
-      name.readOnly = ['🤖 PROXY', '🔗 PROXY-RELAY'].includes(item?.name);
-      const types = [...new Set(['select', 'url-test', 'fallback', 'load-balance', item?.type].filter(Boolean))];
-      field('type', '策略类型', item?.type || 'select', 'text', types.map(t => [t, t]));
-      field('proxies', '成员（每行一个，按顺序）', (item?.proxies || []).join('\n'), 'textarea');
-      field('use', '节点订阅（每行一个）', (item?.use || []).join('\n'), 'textarea');
+      field('name','分组名称','').required = true;
+      const routes = new Set([...proxyModel.deviceExits, ...proxyModel.groups.filter(g => ['🤖 PROXY','🔗 PROXY-RELAY'].includes(g.name)).map(g => g.name), 'DIRECT']);
+      field('route','默认线路',routes.has('🤖 PROXY') ? '🤖 PROXY' : [...routes][0],
+        'text',[...routes].map(n => [n,policyLabel(n)]));
     } else {
       const range = field('ip', '网段或单个 IP', item?.ip);
       range.placeholder = '192.168.1.240-249、192.168.1.0/24 或单个 IP';
@@ -183,13 +191,15 @@ function openProxyEntry(kind, item) {
       const edit = Object.fromEntries(data);
       edit.kind = kind;
       if (kind === 'provider') edit.new = !item;
+      if (kind === 'note') edit.name = item.name;
       if (kind === 'exit') {
         if (item) edit.original = item.name;
         edit.deviceExit = true;
       }
       if (kind === 'group') {
-        if (item) edit.original = item.name;
-        for (const key of ['proxies', 'use']) edit[key] = edit[key].split('\n').map(s => s.trim()).filter(Boolean);
+        edit.type = 'select';
+        edit.proxies = [edit.route];
+        edit.use = [];
       }
       if (kind === 'binding' && item) edit.id = item.id;
       return edit;
@@ -198,14 +208,9 @@ function openProxyEntry(kind, item) {
 }
 
 function setupProxyEditor() {
-  for (const tab of $$('[data-proxy-tab]')) tab.onclick = () => {
-    if (proxyTab !== tab.dataset.proxyTab) resetProxyBrowser();
-    proxyTab = tab.dataset.proxyTab;
-    $('.proxy-canvas').scrollTop = 0;
-    if ($('#proxy-fields').hidden) guard(openProxyVisual);
-    else showProxyMode(true);
-  };
-  $('#open-range-settings').onclick = () => openProxyWindow(false, true);
+  for (const tab of $$('[data-proxy-tab]')) tab.onclick = () => navigateProxy(tab.dataset.proxyTab);
+  $('#back-proxy').onclick = backProxy;
+  $('#back-proxy-entry').onclick = () => $('#proxy-entry').close();
   setupProxyBrowser();
   $('#ai-default-exit').onchange = async event => {
     const target = event.target.value;
@@ -216,10 +221,10 @@ function setupProxyEditor() {
     });
     if (keyboardFocus) $('#ai-default-exit input:checked')?.focus({preventScroll:true});
   };
-  $('#config-code').onclick = () => { showProxyMode(false); editor.focus?.(); };
+  $('#config-code').onclick = () => navigateProxy('yaml');
   $('#proxy-entry-cancel').onclick = () => $('#proxy-entry').close();
   $('#close-proxy').onclick = closeProxyWindow;
-  $('#proxy-window').oncancel = event => { event.preventDefault(); closeProxyWindow(); };
+  $('#proxy-window').oncancel = event => { event.preventDefault(); backProxy(); };
   $('#download-config').onclick = () => {
     const link = element('a'), blob = new Blob([editor.getValue()], {type: 'application/yaml;charset=utf-8'});
     const url = URL.createObjectURL(blob);
