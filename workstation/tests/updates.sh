@@ -31,6 +31,9 @@ wait_ready() {
     return 1
 }
 wait_ready
+# Resolve the image account with its supplementary groups, like a real desktop session.
+# An explicit UID:GID omits the existing sudo group and invalidates this fixture.
+docker exec --user dev "$name" sh -c "id -Gn | tr ' ' '\\n' | grep -qx sudo"
 # The initial Orca is a stopped fixture, never an authenticated personal server.
 # update_orca must replace it with the real verified official release.
 docker exec -i "$name" bash -s <<'SETUP'
@@ -72,7 +75,7 @@ done
 failed=()
 for target in "${targets[@]}" all; do
     echo "REAL upgrade: $target"
-    if docker exec --user 1100:1100 -e HOME=/home/dev -e DISPLAY=:1 \
+    if docker exec --user dev -e HOME=/home/dev -e DISPLAY=:1 \
         -e SUDO_ASKPASS=/home/dev/.local/upgrade-askpass "$name" niu.sh --update "$target" --yes; then
         echo "PASS upgrade: $target"
     else
@@ -80,8 +83,8 @@ for target in "${targets[@]}" all; do
         failed+=("$target")
     fi
 done
-docker exec --user 1100:1100 -e HOME=/home/dev "$name" sh -c 'codex --version && claude --version && node --version && uv --version'
-docker exec --user 1100:1100 -e HOME=/home/dev -e DISPLAY=:1 "$name" node /opt/workstation/scripts/mcp-smoke.mjs
+docker exec --user dev -e HOME=/home/dev "$name" sh -c 'codex --version && claude --version && node --version && uv --version'
+docker exec --user dev -e HOME=/home/dev -e DISPLAY=:1 "$name" node /opt/workstation/scripts/mcp-smoke.mjs
 docker exec "$name" test -x /home/dev/.local/share/orca-server/current/bin/orca-ide
 docker exec "$name" sh -c 'test "$(readlink /home/dev/.local/share/orca-server/current)" != releases/ci-before'
 state > "$fixture/after-upgrade"
