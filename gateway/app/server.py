@@ -8,6 +8,7 @@ from state import ROOT,DASH,CONFIG,LOCK,read,save,atomic,settings,command,config
 import updates
 import web_release
 import favicon
+import lan_transfer
 import proxy_editor
 MAX_BODY=36*1024*1024
 JOBS={}
@@ -238,6 +239,7 @@ class Handler(legacy.Handler):
         if not self.access_allowed():self.reply(401,{'error':'请先登录'});return False
         return True
     def do_GET(self):
+        if self.path.startswith(lan_transfer.PREFIX):return lan_transfer.handle(self)
         try:self.get()
         except Exception as exc:self.reply(400,{'error':str(exc) if isinstance(exc,ValueError) else '暂时无法读取，请检查服务状态'})
     def get(self):
@@ -435,7 +437,12 @@ class Handler(legacy.Handler):
     def do_PATCH(self):
         self.change_card(delete=False)
 
+    def do_PUT(self):
+        if self.path.startswith(lan_transfer.PREFIX):return lan_transfer.handle(self)
+        self.reply(404,{'error':'接口不存在'})
+
     def do_DELETE(self):
+        if self.path.startswith(lan_transfer.PREFIX):return lan_transfer.handle(self)
         self.change_card(delete=True)
 
     def change_card(self,delete):

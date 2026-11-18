@@ -10,7 +10,7 @@
   <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180">
   <link rel="stylesheet" href="/vendor/winbox/winbox.min.css?v=9d6b72dc5f03">
-  <link rel="stylesheet" href="/style.css?v=5d4df929f274">
+  <link rel="stylesheet" href="/style.css?v=d5326fecb2af">
   <link rel="stylesheet" href="/loading.css?v=e549cd70c0dd">
   <link rel="stylesheet" href="/favicon.css?v=941afb91f398">
 </head>
@@ -29,7 +29,7 @@
   </header>
   <main class="desktop-workspace">
     <section class="desktop" id="desktop" aria-label="桌面应用"></section>
-    <footer class="desktop-footer"><span id="home-domain"></span></footer>
+    <footer class="desktop-footer"><span id="home-domain"></span><a class="transfer-entry" href="/transfer/"><img src="/icons/files.svg" width="24" height="24" alt="">局域网互传</a></footer>
   </main>
 
   <dialog id="auth-dialog" aria-labelledby="auth-title">
@@ -39,6 +39,7 @@
       <label>管理员密码<input type="password" id="password" autocomplete="current-password" required maxlength="256" placeholder="输入管理员密码"></label>
       <label id="confirm-field" hidden>确认密码<input type="password" id="confirm-password" autocomplete="new-password" placeholder="再次输入密码"></label>
       <button class="primary" type="submit" id="auth-submit">登录</button>
+      <a class="auth-transfer" href="/transfer/">局域网互传</a>
     </form>
   </dialog>
 
