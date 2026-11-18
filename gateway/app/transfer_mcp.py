@@ -9,6 +9,7 @@ import uuid
 from urllib.parse import urlencode
 
 import lan_transfer as share
+from state import read, save
 
 VERSIONS = ('2025-11-25', '2025-06-18', '2025-03-26')
 INLINE_LIMIT = 1024 * 1024
@@ -38,6 +39,9 @@ TOOLS = {item['name']: item for item in (
     tool('delete_file', '删除指定文件。', {'path': PATH}, ['path'], destructive=True),
     tool('delete_folder', '递归删除指定文件夹及其内容。', {'path': PATH}, ['path'], destructive=True),
     tool('clear_all', '清空整个共享区的所有文件和文件夹。', {}, destructive=True),
+    tool('read_document', '读取局域网共享纯文本文档及其 revision。', {}, read_only=True),
+    tool('save_document', '保存局域网共享文档。先读取最新 revision，防止覆盖其他设备的修改。',
+         {'text': {'type': 'string'}, 'revision': {'type': 'string'}}, ['text', 'revision'], destructive=True),
 )}
 
 
@@ -90,6 +94,17 @@ def upload(path, args, url):
 
 def file_tool(name, args, origin):
     with share.LOCK:
+        if name in ('read_document', 'save_document'):
+            path = share.ROOT / 'lan-transfer-document.json'
+            document = read(path, {'text': '', 'revision': ''})
+            if name == 'read_document':
+                return document
+            if args['text'] != document['text']:
+                if args['revision'] != document['revision']:
+                    raise ValueError('其他设备已更新共享文档。请先复制草稿，再刷新。')
+                document = {'text': args['text'], 'revision': uuid.uuid4().hex}
+                save(path, document)
+            return {'revision': document['revision']}
         share.prepare_share()
         if name == 'clear_all':
             share.clear_share()

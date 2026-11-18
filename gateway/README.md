@@ -128,6 +128,8 @@ curl --noproxy '*' http://192.168.10.2/healthz
 
 Linux LAN 部署的配对工作站默认是 251。它可直接打开 `http://192.168.1.250/transfer/`，免登录使用文件互传及 MCP。该来源访问网关管理页返回 403。
 
+在互传页点击“共享文档”可编辑、保存和复制同一份纯文本，其他设备打开或刷新后即可读取。正文独立保存在网关 `$DATA_DIR/lan-transfer-document.json`，MCP 客户端可使用 `read_document` 和 `save_document`。
+
 文件位于网关 `$DATA_DIR/lan-transfer/`（容器默认为 `/data/lan-transfer/`），随完整数据目录备份。网页导出的配置备份只包含网关配置。下载作为附件处理，同名上传返回冲突。
 
 ## 数据、备份和升级

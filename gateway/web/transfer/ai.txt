@@ -1,2 +1,2 @@
-请连接下面的局域网互传 MCP（Streamable HTTP，无需认证）。先调用 tools/list，再按我的要求上传、下载或管理文件和文件夹。
+请连接下面的局域网互传 MCP（Streamable HTTP，无需认证）。先调用 tools/list，再按我的要求管理文件和文件夹，或读写共享文档。
 http://192.168.1.250/api/transfer/mcp

@@ -15,6 +15,7 @@ body {
 .heading, .location { justify-content: space-between; gap: 16px; }
 .heading { margin-bottom: 18px; }
 .title { gap: 10px; }
+.heading-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-inline-start: auto; }
 .title img { flex: none; }
 h1, h2 { margin: 0; font-weight: 600; }
 h1 { font-size: clamp(21px, 3vw, 28px); }
@@ -73,6 +74,12 @@ h2 { font-size: 19px; margin-bottom: 18px; }
 #empty { color: var(--muted); max-width: none; margin: 0; padding: 48px var(--inset); text-align: center; }
 dialog form { padding: 24px; min-width: min(350px, 80vw); }
 .dialog-actions { justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.document-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.document-heading h2 { margin: 0; }
+#document-form { width: min(680px, calc(100vw - 36px)); min-width: 0; }
+#document-text { display: block; width: 100%; height: clamp(110px, 46dvh, 480px); resize: vertical; line-height: 1.65; }
+#reload-document { margin-inline-end: auto; }
+#shared-document:modal { overscroll-behavior: contain; }
 #prompt { width: min(640px, 75vw); height: 48vh; }
 @media (hover: hover) {
   .entry:hover { background: var(--hover); }
@@ -86,7 +93,7 @@ dialog form { padding: 24px; min-width: min(350px, 80vw); }
   .heading { margin: 0; padding: 18px var(--inset); flex-wrap: wrap; }
   .library { border: 0; border-radius: 0; }
   .toolbar { border-block: 1px solid var(--line); padding-block: 8px; gap: 4px; }
-  .toolbar button, #copy { padding-inline: 9px; }
+  .toolbar button, .heading-actions button { padding-inline: 9px; }
   .location { padding-block: 10px; }
   .columns { display: none; }
   .entry {

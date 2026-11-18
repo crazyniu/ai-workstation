@@ -17,6 +17,7 @@ async function request(url, options) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error.error || '请求失败（HTTP ' + res.status + '）');
   }
+  if (res.status === 202) return;
   return res.json();
 }
 
@@ -176,26 +177,107 @@ $('clear').onclick = () => {
   });
 };
 
-const promptText = `请连接下面的局域网互传 MCP（Streamable HTTP，无需认证）。先调用 tools/list，再按我的要求上传、下载或管理文件和文件夹。
+const promptText = `请连接下面的局域网互传 MCP（Streamable HTTP，无需认证）。先调用 tools/list，再按我的要求管理文件和文件夹，或读写共享文档。
 ${location.origin}${base}mcp`;
-$('copy').onclick = async () => {
+async function copyText(text, label, field) {
+  const message = '已复制' + label;
   if (navigator.clipboard) {
-    try { await navigator.clipboard.writeText(promptText); toast('已复制 AI 提示词'); return; }
-    catch { /* Plain HTTP and browser permissions may require manual selection. */ }
+    try { await navigator.clipboard.writeText(text); toast(message); return; }
+    catch { /* Continue with selection-based copying on plain HTTP. */ }
   }
-  $('prompt').value = promptText;
-  $('manual').showModal();
-  $('prompt').focus();
-  $('prompt').select();
-  $('prompt').oncopy = null;
+  if (!field) {
+    field = $('prompt');
+    field.value = text;
+    $('manual').showModal();
+  }
+  field.focus();
+  field.select();
+  field.oncopy = null;
   let copied = false;
-  try { copied = document.execCommand('copy'); } catch { /* Manual selection remains available. */ }
+  try { copied = document.execCommand('copy'); } catch { /* Keep the text selected. */ }
   if (copied) {
-    $('manual').close();
-    toast('已复制 AI 提示词');
+    if (field === $('prompt')) $('manual').close();
+    toast(message);
   } else {
     toast('自动复制未成功，请复制已选文字', true);
-    $('prompt').oncopy = () => toast('已复制所选文字');
+    field.oncopy = () => toast('已复制所选文字');
   }
+}
+$('copy').onclick = () => copyText(promptText, ' AI 提示词');
+
+const documentDialog = $('shared-document');
+const documentText = $('document-text');
+let documentRevision = '', savedText = '', protocol = '', requestId = 0;
+
+async function rpc(method, params, version = protocol) {
+  const headers = {'Content-Type': 'application/json', Accept: 'application/json, text/event-stream'};
+  if (version) headers['MCP-Protocol-Version'] = version;
+  const message = {jsonrpc: '2.0', method, params};
+  if (method !== 'notifications/initialized') message.id = ++requestId;
+  const reply = await request(base + 'mcp', {method: 'POST', headers, body: JSON.stringify(message)});
+  if (reply?.error) throw new Error(reply.error.message);
+  return reply?.result;
+}
+
+async function documentTool(name, args = {}) {
+  if (!protocol) {
+    const info = await rpc('initialize', {protocolVersion: '2025-11-25', capabilities: {},
+      clientInfo: {name: 'gateway-transfer-web', version: '1.0'}});
+    await rpc('notifications/initialized', {}, info.protocolVersion);
+    protocol = info.protocolVersion;
+  }
+  const result = await rpc('tools/call', {name, arguments: args});
+  const text = result.content[0].text;
+  if (result.isError) throw new Error(text);
+  return JSON.parse(text);
+}
+
+function updateDocumentActions() {
+  $('copy-document').disabled = !documentText.value;
+  $('save-document').disabled = documentText.value === savedText;
+}
+async function readDocument() {
+  const doc = await documentTool('read_document');
+  documentText.value = doc.text;
+  savedText = documentText.value;
+  documentRevision = doc.revision;
+  updateDocumentActions();
+}
+function mayDiscardDocument() {
+  return documentText.value === savedText || confirm('放弃未保存的修改？');
+}
+function editDocument(action) {
+  return run(async () => {
+    documentText.readOnly = true;
+    try { await action(); }
+    finally { documentText.readOnly = false; }
+  });
+}
+
+$('open-document').onclick = () => run(async () => {
+  await readDocument();
+  documentDialog.showModal();
+});
+documentText.oninput = updateDocumentActions;
+$('copy-document').onclick = () => copyText(documentText.value, '共享文本', documentText);
+$('reload-document').onclick = () => {
+  if (!busy && mayDiscardDocument()) editDocument(readDocument);
+};
+$('document-form').onsubmit = event => {
+  event.preventDefault();
+  editDocument(async () => {
+    const text = documentText.value;
+    const doc = await documentTool('save_document', {text, revision: documentRevision});
+    savedText = text;
+    documentRevision = doc.revision;
+    updateDocumentActions();
+    toast('共享文档已保存');
+  });
+};
+$('close-document').onclick = () => {
+  if (!busy && mayDiscardDocument()) documentDialog.close();
+};
+documentDialog.oncancel = event => {
+  if (busy || !mayDiscardDocument()) event.preventDefault();
 };
 run(refresh);
