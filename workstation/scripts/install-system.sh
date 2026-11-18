@@ -7,7 +7,7 @@ if [[ $(dpkg --print-architecture) == arm64 ]]; then VSCODE_VERSION=$VSCODE_ARM6
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends \
-    ca-certificates curl gnupg python3 git gh locales tzdata supervisor openssh-server \
+    ca-certificates curl gnupg python3 python3-tomlkit git gh locales tzdata supervisor openssh-server \
     util-linux procps iproute2 tar unzip xz-utils zstd gcc libc6-dev \
     xfce4-session xfwm4 xfce4-panel xfdesktop4 xfce4-settings xfce4-terminal thunar dbus-x11 \
     tigervnc-standalone-server tigervnc-tools x11-utils x11-xserver-utils \
@@ -21,6 +21,8 @@ fi
 localedef -i en_SG -f UTF-8 en_SG.UTF-8
 useradd --uid 1100 --user-group --create-home --shell /bin/bash dev
 if [[ ${WORKSTATION_INSTALL_MODE:-container} == container ]]; then
+    apt-get install -y --no-install-recommends sudo
+    usermod -aG sudo dev
     passwd --lock root
     passwd --lock dev
     chmod 700 /root
@@ -46,5 +48,20 @@ else
     sed -i 's/Name=Google Chrome/Name=Chromium/; s/Icon=google-chrome/Icon=chromium/' /opt/workstation/home-template/Desktop/google-chrome.desktop
 fi
 if [[ ${WORKSTATION_INSTALL_MODE:-container} == container ]]; then
+    repo=https://downloads.claude.ai/claude-desktop
+    key=/usr/share/keyrings/claude-desktop-archive-keyring.asc
+    curl -fsSLo "$key" "$repo/key.asc"
+    printf '%s  %s\n' "$CLAUDE_DESKTOP_KEY_SHA256" "$key" | sha256sum --check --status
+    printf 'deb [arch=%s signed-by=%s] %s/apt/stable stable main\n' "$arch" "$key" "$repo" \
+        > /etc/apt/sources.list.d/claude-desktop.list
+    apt-get update
+    stage=$(mktemp -d)
+    trap 'rm -rf "$stage"' EXIT
+    package="claude-desktop_${CLAUDE_DESKTOP_VERSION}_${arch}.deb"
+    (cd "$stage" && apt-get download "claude-desktop=$CLAUDE_DESKTOP_VERSION")
+    digest=$CLAUDE_DESKTOP_AMD64_SHA256
+    if [[ $arch == arm64 ]]; then digest=$CLAUDE_DESKTOP_ARM64_SHA256; fi
+    printf '%s  %s\n' "$digest" "$stage/$package" | sha256sum --check --status
+    apt-get install -y --no-install-recommends "$stage/$package" gnome-keyring libayatana-appindicator3-1 libglib2.0-bin
     rm -rf /var/lib/apt/lists/*
 fi

@@ -2,37 +2,48 @@
 
 本指南供执行安装的 AI 使用。根据 [仓库地址](https://github.com/crazyniu/ai-workstation) 在用户指定的主机上安装网关和工作站。先读取当前版本的 [README](README.md)、[compose.yaml](compose.yaml)、[.env.example](.env.example) 和 [deploy.sh](deploy.sh)，再按下述流程执行。仓库配置描述预期行为，实际安装结果必须以目标主机和真实客户端验证为准。
 
-## 安装前先选择平台与运行方式
+## AI 安装约定
 
-先读取 [平台安装说明](docs/platforms.md)。该说明优先于下面 Linux LAN 专用步骤。两个角色不限定 NAS、操作系统品牌或 CPU，按上游软件实际支持范围安装；检查目标用户空间 / Docker Engine 架构，不强制 amd64。上游缺少版本时指出具体组件，区分可构建与已验收。
+默认安装以下两个完整镜像。地址是各自的局域网 IP。
 
-1. **Linux**：可选择原生安装或 Docker；盘点现有运行环境，复用适用工具。原生用 `python3 install-native.py --role all` 预览，满足依赖与冲突保护后，用私有配置执行 `--apply`；分别安装角色可选 `--role gateway` / `workstation`。自动包安装支持 Debian 12+、Ubuntu 24.04+，现场需要 Python 3.11+，自动启用服务需要 systemd。
-2. **Windows / macOS**：安装并启动 Docker Desktop，使用 Linux containers。PowerShell 使用 `deploy.ps1`；macOS 使用 `deploy.sh`。默认 portable：bridge + 回环端口映射，不要求 macvlan、TUN 或宿主路由变更。
-3. **网络目标**：普通应用/开发优先 portable；Linux 确实需要独立 LAN 地址和透明网关时才使用下面 macvlan 流程。原生服务默认也不接管宿主路由/DNS。
-4. **账号**：默认服务器管理员 `root / root`，网关 Web 只输入密码 `root`。工作站应用由 `dev` 运行，默认密码 `root`；VNC 密码 `root`。Linux 原生安装保留宿主现有 root 密码，工作站专用 SSH 为 `dev / root`；已有部署按实际账号配置保留。
+| 角色 | 镜像 | 默认地址 |
+| --- | --- | --- |
+| 网关 | `ghcr.io/crazyniu/ai-workstation-gateway:latest` | `192.168.1.250` |
+| 工作站 | `ghcr.io/crazyniu/ai-workstation:latest` | `192.168.1.251` |
+
+1. 按两个镜像的 Dockerfile、安装脚本和版本清单交付其中的全部软件、服务、桌面程序和 MCP。网关清单见 `gateway/components.lock.json`，工作站清单见 `workstation/versions.env` 和 `workstation/mcp/package-lock.json`。一个角色已经安装时，先核对该实例并保留数据，再继续另一个角色。
+2. 任何偏离既定方案的改动，先向用户说明原值、拟改值、原因和影响，取得对该项的明确同意后再执行。包括改 IP、改镜像或版本、增删或替换组件、更换网络模式或改用原生安装。现有环境变量、私有配置、旧部署和安装失败本身都不代表用户同意修改。
+3. 在授权范围内实际执行安装，遇到可恢复的失败自行诊断、修复并继续。两个角色及其软件全部就位后交付实际地址与结果。仅输出命令、仅拉取镜像或仅完成其中一端时，任务均未完成。遇到需要授权的变更、缺少访问权限或用户要求暂停时，明确说明阻塞项并等待用户，不自行回退、改方案或宣布完成。
+
+## 按平台执行
+
+1. **Linux Docker Engine**。先按[平台说明](docs/platforms.md)和下方步骤核对 CPU、网卡、网段、地址占用、TUN 及现有容器。同机首次安装用 `./deploy.sh ai`；同一 LAN 的两台 Linux 主机分别使用下表的网关、工作站入口。
+2. **Windows / macOS 控制端**。Docker context 指向支持 LAN 部署的 Linux Engine 时仍可按默认地址安装。PowerShell 同机双镜像入口为 `.\deploy.ps1 -Role ai`。本机 Docker Desktop 不支持本方案所需的 macvlan；说明其回环端口方案的实际地址，经用户同意后才使用 portable。
+3. **用户已批准的例外**。记录批准的具体差异，再使用对应的部署入口。用户只批准更改 LAN 地址或镜像时，将批准值填入私有配置；同机执行 `./deploy.sh all` 或 `.\deploy.ps1 -Role all`，分机在对应主机执行 `./deploy.sh gateway` 和 `./deploy.sh workstation`。仅对用户批准的 portable、bridge 或原生方案使用相应入口。其余角色、软件和配置仍按既定方案交付。若改用原生或替代镜像，逐项对照两份镜像清单，补齐受支持的组件；仍缺少的组件也须取得用户同意。
+4. **账号**：默认服务器管理员 `root / root`，网关 Web 只输入密码 `root`。工作站容器的应用由 `dev` 运行，默认密码 `dev`，可使用 sudo；VNC 密码 `root`。Linux 原生安装保留宿主现有 root 密码，工作站专用 SSH 为 `dev / root`；已有部署按实际账号配置保留。
 5. **验收**：必须核对选择的 CPU 版本、真实网页登录、DNS、代理、SSH、桌面应用、重启持久性。Windows/macOS 实机、特定 CPU 或 systemd 开机启动未执行时标为 NOT RUN，不能从锁文件或 CI 定义推定通过。
 
-portable 默认：网关 `http://127.0.0.1:8080/`、工作站 `https://127.0.0.1:6080/`、SSH 2223/2222。同机工作站使用 `gateway:7890` 显式代理。异机按宿主可达地址配置代理，回环映射须通过隧道或明确修改绑定后才能跨机器访问。首次创建命令为 `./deploy.sh` / `.\deploy.ps1`，仅网关为 `gateway-portable`，仅工作站为 `workstation-bridge`。
+经用户同意采用 portable 后，访问入口为：网关 `http://127.0.0.1:8080/`、工作站 `https://127.0.0.1:6080/`、SSH 2223/2222。同机工作站使用 `gateway:7890` 显式代理。异机按宿主可达地址配置代理，回环映射须通过隧道或明确修改绑定后才能跨机器访问。首次创建命令为 `./deploy.sh` / `.\deploy.ps1`，仅网关为 `gateway-portable`，仅工作站为 `workstation-bridge`。
 
 下文描述 Linux LAN Docker 的详细配置与迁移；原生安装和 Docker Desktop 继续使用平台文档中的对应管理及验收命令。
 
 ## 0. 先确定角色、宿主机和网络拓扑
 
-`250` 指网关角色，`251` 指工作站角色，不代表宿主机地址，也不要求这两个角色位于同一设备。先记录下表，再连接对应 Docker context；外部环境可能是 **工作站 251 在宿主机 A、网关 250 在宿主机 B**。不要把当前家庭环境的宿主机地址、网卡名、磁盘 UUID 或容器名带入新环境。
+`250` 指网关角色，`251` 指工作站角色，不代表宿主机地址，也不要求这两个角色位于同一设备。首次部署先记录下表，再连接对应 Docker context；外部环境可能是 **工作站 251 在宿主机 A、网关 250 在宿主机 B**。宿主机地址、网卡名、磁盘及容器名按现场填写。
 
 | 项目 | 宿主机 A：工作站 | 宿主机 B：网关 |
 | --- | --- | --- |
 | 需要现场核实 | SSH 地址、Docker context、LAN 接口、子网、数据盘、已有容器 | SSH 地址、Docker context、LAN 接口、子网、数据盘、已有容器 |
-| 容器角色 | workstation，默认示例 `192.168.1.251` | gateway，默认示例 `192.168.1.250` |
+| 容器角色 | workstation，默认 `192.168.1.251` | gateway，默认 `192.168.1.250` |
 | 私有配置 | A 自己的 `.env`、密码和镜像版本 | B 自己的 `.env`、密码和镜像版本 |
 
 选择与实际环境对应的入口：
 
 | 拓扑 | 首次部署入口 | 前提 |
 | --- | --- | --- |
-| 两角色在同一宿主机、同一 LAN | `./deploy.sh all`，使用 `compose.yaml` | 根 Compose 在同一 Docker Engine 内检查 gateway 健康状态 |
-| 两台宿主机、同一二层 LAN | B 执行 `./deploy.sh gateway`；A 执行 `./deploy.sh workstation` | 使用 `compose.gateway.yaml` / `compose.workstation.yaml`；分别设置各自的 `LAN_INTERFACE`；251 与 250 的地址属于同一 LAN，251 能直接到达 250 |
-| 两台宿主机、不同网段或经 VPN 互通 | B 使用网关入口；A 执行 `./deploy.sh workstation-bridge` | A 使用 `workstation/compose.yaml` 的 bridge 网络，经 `WORKSTATION_HTTP_PROXY` / `WORKSTATION_HTTPS_PROXY` 指向可达的网关私有端点 |
+| 两角色在同一宿主机、同一 LAN | `./deploy.sh ai`，使用 `compose.yaml` | 根 Compose 在同一 Docker Engine 内检查 gateway 健康状态 |
+| 两台宿主机、同一二层 LAN | B 执行 `./deploy.sh ai gateway`；A 执行 `./deploy.sh ai workstation` | 使用 `compose.gateway.yaml` / `compose.workstation.yaml`；分别设置各自的 `LAN_INTERFACE`；251 与 250 的地址属于同一 LAN，251 能直接到达 250 |
+| 两台宿主机、不同网段或经 VPN 互通 | 用户批准改变网络方案后，B 使用网关入口；A 执行 `./deploy.sh workstation-bridge` | A 使用 `workstation/compose.yaml` 的 bridge 网络，经 `WORKSTATION_HTTP_PROXY` / `WORKSTATION_HTTPS_PROXY` 指向可达的网关私有端点 |
 
 两个独立入口没有跨宿主机的 `depends_on`、共享 Docker bridge 或 Docker 服务名解析。分开部署时先验收 B 的网关，再启动 A；可用性必须通过 A 到网关的真实请求验证。
 
@@ -84,7 +95,7 @@ ls -l /dev/net/tun
 | 工作站 HOME | `/home/dev`；配置、项目、登录身份及 SSH 主机密钥留在容器内部 |
 | 工作站国家 / 语言 / 时区 | `WORKSTATION_COUNTRY=SG`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=Asia/Singapore`；初始化为新加坡英文 `en_SG.UTF-8` |
 
-上述地址只有在现场网络匹配且地址空闲时才使用。LAN 模式采用其他网段时，一并调整 `LAN_SUBNET`、`LAN_PREFIX`、`LAN_ROUTER`、角色地址和必要的 `WORKSTATION_NO_PROXY`，不要只替换一个 IP。分开部署时各宿主机使用自己的实际网络参数；工作站 bridge 模式的网关地址通过可达私有代理端点配置。保留 Compose 所需的设备与安全设置，不用 `privileged`、宿主网络或 Docker socket 代替正常配置。
+现场网络必须匹配且地址空闲。地址被占用或网段不匹配时，先取得用户对新地址的同意；采用其他网段时，一并调整 `LAN_SUBNET`、`LAN_PREFIX`、`LAN_ROUTER`、角色地址和必要的 `WORKSTATION_NO_PROXY`，不要只替换一个 IP。分开部署时各宿主机使用自己的实际网络参数；工作站 bridge 模式的网关地址通过可达私有代理端点配置。保留 Compose 所需的设备与安全设置，不用 `privileged`、宿主网络或 Docker socket 代替正常配置。
 
 Docker 的 `data-root` 属于宿主存储设置。**默认不迁移 Docker 数据目录、不改宿主网络、不向公网开放端口。** 如果 SSD 尚未用于 Docker，先报告实际位置、空间及影响；只有用户明确授权后，才另行安排涉及所有受影响容器的存储迁移和回退。容器内部保存业务数据，不代表这些字节脱离宿主 Docker 存储。
 
@@ -175,24 +186,24 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-编辑 `.env`，填入已经核实的 LAN 配置、镜像和初始密码。默认使用仓库提供的 GHCR 镜像；需要固定版本时，选择对应 Actions 已成功发布的 `sha-<完整提交号>` 标签，并记录实际拉取的镜像摘要。不要把未完成的构建或仓库中的示例值说成当前已验证发布。
+编辑 `.env`，填入已经核实的 LAN 配置、镜像和初始密码。默认使用仓库提供的 GHCR 镜像；用户明确同意固定其他版本时，选择对应 Actions 已成功发布的 `sha-<完整提交号>` 标签，并记录实际拉取的镜像摘要。不要把未完成的构建或仓库中的示例值说成当前已验证发布。
 
 密码处理要求：
 
 - `.env` 只保存在目标部署的私有目录，权限为 `600`；不提交 Git，不写入公开日志、截图、命令参数或交付报告。
 - 不使用 `cat .env`、`set -x`、不带 `--quiet` 的 `docker compose config` 来展示配置。通过私密输入或本地安全编辑填写密码，日志只记录“已设置”。
-- 设置自己的 Web、网关 SSH、工作站 SSH 与 VNC 密码，默认值按用户要求为 `root`，向非本机开放前配置私有密码。VNC 密码受协议限制，为 **1–8 个 ASCII 字符**；通过私有 LAN、Tailscale 或 SSH 隧道使用。Compose 默认提供 root/root 管理登录；桌面程序继续由 dev 运行。
+- 设置自己的 Web、网关 SSH、工作站 SSH 与 VNC 密码，工作站容器内 `dev` 的默认密码为 `dev`，其他默认密码为 `root`，向非本机开放前配置私有密码。VNC 密码受协议限制，为 **1–8 个 ASCII 字符**；通过私有 LAN、Tailscale 或 SSH 隧道使用。Compose 默认提供 root/root 管理登录；桌面程序继续由 dev 运行。
 - 网关 Web 密码仅用于新容器首次初始化，后续通过网页账户设置修改。个人代理订阅、Tailscale、Claude、Codex 和 GitHub 授权由用户配置，不导入其他部署的身份。
 
-选择当前主机需要的部署角色后，由入口先执行不回显的配置检查和已有容器检查，再创建：
+同机首次部署在已盘点的 Linux Docker Engine 上执行。AI 入口使用 Python 3 读取 Compose 的有效配置，在拉取前核对镜像和地址，只输出角色、镜像及地址。
 
 ```sh
-set -eu
-deployment_role=all  # 按第 0 节选择 all / gateway / workstation / workstation-bridge
-./deploy.sh "$deployment_role"
+./deploy.sh ai
 ```
 
 `deploy.sh` 在拉取镜像前检查本 Compose 项目是否已有容器，包括停止的容器。它拒绝执行时，保留原容器，回到已有环境评估；不要绕过防护改用 `compose up`。部署失败先检查相关容器状态和有限日志，查明原因后修复，不用删除数据、重置宿主 Docker 或反复重建代替诊断。
+
+若同一 Compose 项目只缺一个角色，先核对已有实例的镜像、地址和内部数据。该实例与计划一致时，沿用原项目和 Compose 文件，拉取缺失角色的镜像，用 `docker compose up -d --no-recreate --wait <缺失角色>` 补齐。已有实例与计划冲突时，先取得用户对变更的同意。
 
 ## 4. 在实际环境验收
 
@@ -201,13 +212,13 @@ deployment_role=all  # 按第 0 节选择 all / gateway / workstation / workstat
 | 检查 | 必须确认的实际结果 |
 | --- | --- |
 | 容器、镜像与网络 | 同机部署应有 `gateway` 与 `workstation` 两个角色；分开部署时 B 只有 gateway、A 只有 workstation。包含停止容器一起核对，记录各自宿主总数、镜像 ID / digest、网络与健康状态，保留其他项目。 |
+| 镜像软件清单 | 分角色核对实际镜像摘要、软件包或可执行文件、服务及工作站 MCP 配置，记录已安装和缺失的项目。发现镜像与约定清单不符时，查明版本并补齐；更换镜像或删减清单需先取得用户同意。 |
 | 内部数据 | 在各自宿主机检查实际容器的 `Mounts` 与镜像 `Config.Volumes`，确认没有外置业务挂载或匿名业务卷。设备映射按所选 Compose 单独核对。 |
 | 网关 Web | 实际打开主页并登录，检查控制面板及服务入口；`/healthz` 成功只说明健康接口可用。 |
 | DNS | 客户端明确向网关查询 `home.arpa`，结果为本次网关 IP；再查询外部域名。确认需要使用本地域名的客户端实际采用该 DNS，而不是被加密 DNS 绕过。 |
 | 代理与出口 | 用户导入配置并选择节点后，从工作站或测试客户端经实际代理发起 HTTPS 请求，检查成功响应和所用出口；按需要核对直连 / 代理分流。干净镜像默认直连，不能据此宣称个人代理已就绪。 |
 | SSH 与桌面 | 使用工作站普通用户 `dev` 实际登录 SSH；用 VNC 客户端连接桌面，确认画面、输入和终端可用。启动 Claude / Codex 的真实桌面入口，确认没有立即退出或连接错误。 |
 | 工作站地区与语言 | 普通用户登录后检查 `locale`、`/etc/timezone` 和 `date`，核对 XFCE 会话与桌面菜单语言。默认应为 `en_SG.UTF-8` / `en_SG:en` / `Asia/Singapore`。重启同一容器后再次确认自定义值生效，HOME、MCP 与登录身份保持。 |
-| Unity（按需） | 默认镜像提供开源 Unity MCP，编辑器和 Hub 使用 [固定版本安装入口](workstation/unity/README.md) 添加到现有工作站。用户在 Hub 完成 Unity Personal 免费许可证激活后，验证项目桥接包、Claude MCP 连接及真实场景操作；工具枚举不能替代编辑器操作。保留已有账号和其他 MCP。 |
 | Tailscale | 用户授权后检查账号连接、子网批准状态，并从另一台已授权设备实际验证所需方向的访问；本机状态显示 connected 不替代 peer 测试。 |
 | NAS / 宿主 | 配置了 `HOST_ADDRESS` 时，从业务实际访问方测试需要的 NAS 页面或服务，核对路径。没有此需求则标为不适用。 |
 | 重启 | 在新部署验收窗口重启同一容器，复查服务、数据、配置、身份和路由；已有服务按用户授权安排。另查各宿主机 Docker 与数据盘启动依赖；经授权重启 A/B 后分别验收，不把一台机器的通过结果当成另一台的结果。不要用重建测试持久性。 |

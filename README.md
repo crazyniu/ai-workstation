@@ -15,22 +15,20 @@
 请帮我安装 https://github.com/crazyniu/ai-workstation 。
 先读取当前版本 README.md、AGENTS.md、AI-INSTALL.md 和 docs/platforms.md。
 
-先只读盘点目标机器：操作系统、CPU 和用户空间架构、现有服务与数据；
-使用 Docker 时核对 context、Engine 的 Linux/CPU 架构、Compose 版本和已有容器。
-网关、工作站都不限定 NAS 或平台，只按各软件上游的真实支持范围选择版本；
-区分 x86/32 位、amd64/x64/x86_64、arm64/aarch64、ARM 变体等。
-遇到缺少上游版本的组件，说明组件名和可用方案，不套用 amd64 程序或承诺已支持。
+请实际部署两个完整的项目镜像，网关使用 192.168.1.250，工作站使用 192.168.1.251。
+包含镜像中的全部软件、服务、桌面应用和 MCP，以各自 Dockerfile、安装脚本和版本清单为准。
+先只读核对 Docker 宿主、CPU、已有容器和数据、实际网卡、网段及两个地址是否可用。
+同一 Linux Docker Engine 首次部署用 ./deploy.sh ai。分开部署时，先在网关宿主机执行
+./deploy.sh ai gateway，再在工作站宿主机执行 ./deploy.sh ai workstation。两端都要交付。
 
-Linux 可选择原生服务或 Docker。已有适用运行环境优先复用；
-原生安装用 install-native.py，先预览再 --apply，核对发行版依赖。
-Windows/macOS 使用 Docker Desktop 的 Linux containers，缺少时先完成安装；
-默认 portable 端口映射，Windows 用 deploy.ps1，Linux/macOS 用 deploy.sh。
-只有需要透明 LAN 网关且目标 Linux 满足 macvlan/TUN/转发条件时才选择 LAN 入口。
-网关和工作站可以同机或异机；按实际网络设置代理、DNS 和客户端访问地址。
-192.168.1.250/251 仅为 LAN 示例，网卡、空闲地址、路由和宿主均现场核实。
+任何偏离默认方案的修改，先告诉我原值、拟改值、原因和影响，等我明确同意再做。
+包括改 IP、改镜像或版本、增删或替换软件、少装一个角色、改端口映射或改用原生安装。
+如果硬件不支持、地址被占用或发现已有配置冲突，不要自行换方案或把部分安装报告为完成。
+可恢复的下载或启动故障请自行诊断、修复并继续。除需要我决定或提供访问权限外，
+请执行到两个角色安装完成，不要只给我安装命令，也不要在第一台装完后就返回。
 
 默认服务器管理员账号/密码统一 root/root；网关网页登录只需密码 root。
-工作站桌面和应用使用 dev，默认密码 root，VNC 默认密码 root。
+工作站桌面和应用使用 dev，默认密码 dev，VNC 默认密码 root。
 Linux 原生安装保留宿主已有 root 密码和现有 SSH 入口，不重置服务器身份。
 配置保存在私有 .env 或原生初始化文件，不回显或提交个人凭据。
 工作站默认 SG/en/Asia/Singapore，需要其他地区时按指南设置三项。
@@ -55,14 +53,14 @@ Docker 数据留在容器内部，不添加业务挂载；原生状态留在文�
 
 Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop 的 Linux 容器。两个角色按上游软件实际支持的 CPU 范围提供构建：完整工作站覆盖 amd64/x64 和 arm64；网关还覆盖 32 位 x86、ARMv5/ARMv7、RISC-V，并锁定其他上游可用架构的依赖。只有软件自身缺少对应版本时才说明限制。完整矩阵、命令和验证边界见[平台安装说明](docs/platforms.md)。
 
-默认管理员账号、密码为 **`root / root`**；工作站应用以普通用户 `dev` 运行，默认密码和 VNC 密码均为 `root`。Linux 原生安装保留宿主已有 root 密码。默认 Docker 端口映射只绑定本机回环地址。
+默认管理员账号、密码为 **`root / root`**；工作站应用以普通用户 `dev` 运行，默认密码为 `dev`，VNC 密码为 `root`。Linux 原生安装保留宿主已有 root 密码。手动选用 portable 模式时，端口默认绑定本机回环地址。
 
 ## 两个服务
 
 | 服务 | 默认地址 | 能力 | 公开镜像 |
 | --- | --- | --- | --- |
 | Gateway | `192.168.1.250` | Mihomo / Clash、AdGuard Home、Tailscale、Web 控制面板 | `ghcr.io/crazyniu/ai-workstation-gateway` |
-| Workstation | `192.168.1.251` | XFCE、Chrome、VS Code、Godot、Codex、Claude、GitHub CLI、MCP 工具 | `ghcr.io/crazyniu/ai-workstation` |
+| Workstation | `192.168.1.251` | XFCE、Chrome、VS Code、Codex、Claude Code、Claude Desktop、GitHub CLI、MCP 工具 | `ghcr.io/crazyniu/ai-workstation` |
 
 - 桌面链接支持自动获取站点 favicon，也可手动选图标；提供壁纸、主题、排序与账户设置。
 - 网关内置工作站网页入口，可修改地址；内置图标与自定义链接统一排序，保存、导入和表单校验通过全局提示反馈。
@@ -91,19 +89,21 @@ Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop �
 | 类别 | 安装的软件 |
 | --- | --- |
 | 桌面与连接 | Debian `13`、XFCE、Thunar 文件管理器、XFCE Terminal、TigerVNC、noVNC `1.7.0`、websockify、OpenSSH Server |
-| 浏览器与编辑器 | Google Chrome `156.0.8078.47`、Visual Studio Code `1.143.1`、Godot `4.7.2` |
+| 浏览器与编辑器 | Google Chrome `156.0.8078.47`、Visual Studio Code `1.143.1` |
 | AI CLI | Codex `0.164.0`、Claude Code `2.1.309` |
 | 开发运行时 | Python 3（Ubuntu 软件包，`3.14` 系列）、Node.js `24.22.1`、npm / npx、GCC |
 | 开发与进程管理 | Git、GitHub CLI、curl、Supervisor；Ubuntu 系统 Python `3.14` 用于系统服务 |
-| 本地 MCP | Context7 `4.4.4`、Playwright `0.0.83`、Chrome DevTools `1.12.0`、Godot MCP `0.1.1`、Unity MCP `10.3.0` |
+| 本地 MCP | Context7 `4.4.4`、Playwright `0.0.83`、Chrome DevTools `1.12.0` |
 | 远程 MCP | GitHub MCP 连接配置，使用个人账号授权 |
-| 可选 Unity 环境 | Unity Editor `6000.3.27f1`（6.3 LTS）、Hub `3.22.4`；使用 Unity Personal 免费许可证，安装方式见 [Unity 说明](workstation/unity/README.md) |
+| AI desktop app | Claude Desktop. **Update Workstation Software** updates it alongside system packages, desktop applications, runtimes, AI CLIs, and local MCP servers. |
 
 工作站通过 `python3` 使用 Ubuntu 提供的 Python `3.14` 系列，补丁版本随系统软件包更新。MCP 配置同时提供给 Codex 和 Claude，浏览器工具使用容器内的 Chrome。详细清单与使用方式见 [工作站说明](workstation/README.md)。
 
 ## 首次部署
 
-默认 portable 模式适用于 Linux、Windows、macOS 的 Docker Linux 容器；需要 Docker Compose 2.33.1+。首次部署：
+AI 首次安装按上面的固定 LAN 地址部署两个镜像。同机使用 `./deploy.sh ai`，PowerShell 连接支持 LAN 部署的 Linux Engine 时使用 `.\deploy.ps1 -Role ai`。这两个入口用 Python 3 核对 Compose 实际解析的角色、镜像和地址。
+
+手动选用 portable 模式时，Linux、Windows、macOS 都可以使用 Docker Linux 容器和 Compose 2.33.1+。
 
 ```sh
 git clone https://github.com/crazyniu/ai-workstation.git
@@ -125,6 +125,7 @@ Linux 不安装 Docker 时使用 `python3 install-native.py` 预览，再按[原
 
 | 部署方式 | 首次创建命令 | Compose 文件 |
 | --- | --- | --- |
+| AI 默认安装（同机） | `./deploy.sh ai` / `.\deploy.ps1 -Role ai` | `compose.yaml` |
 | 通用 Docker 端口映射 | `./deploy.sh` / `.\deploy.ps1` | `compose.portable.yaml` |
 | 同一 Linux 宿主机、同一 LAN | `./deploy.sh all` | `compose.yaml` |
 | 宿主机 B：独立网关 | `./deploy.sh gateway` | `compose.gateway.yaml` |
@@ -189,7 +190,7 @@ reset-claude-user --apply  # 关闭 Claude 后，执行本地身份与历史清�
 | --- | --- |
 | 网关 Web：`http://192.168.1.250/` | 密码来自 `WEB_PASSWORD`，示例值为 `root` |
 | 网关 SSH：`192.168.1.250:22` | `GATEWAY_USER` / `GATEWAY_PASSWORD`，示例均为 `root` |
-| 工作站 SSH：`192.168.1.251:22` | 管理员 `root / root`；应用用户 `dev / root` |
+| 工作站 SSH：`192.168.1.251:22` | 管理员 `root / root`；应用用户 `dev / dev` |
 | 工作站 VNC：`192.168.1.251:5901` | `VNC_PASSWORD`，示例值为 `root` |
 
 部署前设置自己的密码。VNC 密码接受 1–8 个 ASCII 字符；Compose 默认启用工作站 root / root 管理登录，桌面应用仍由 dev 运行。网关 Web 密码首次初始化后由“设置 → 账户”管理。后续环境变量变更与数据处理见各服务文档。

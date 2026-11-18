@@ -4,7 +4,7 @@
 
 此目录是统一仓库中的工作站构建上下文，网关、正式 Compose 和 GHCR 发布由仓库根目录统一管理。完整工作站支持 `linux/amd64` 和 `linux/arm64`，不限定 NAS。Linux 可原生安装；Windows/macOS 使用 Docker Linux 容器。平台差异和安装命令见[平台安装说明](../docs/platforms.md)。可复现的验证步骤及发布记录见 [验证记录](VALIDATION.md)。
 
-包含 Debian Linux、新加坡英文及新加坡时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Godot、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude CLI，以及 Context7、Playwright、Chrome DevTools、Godot、Unity 和 GitHub 六项 MCP 配置。提供 Unity Personal 编辑器与 Hub 的可选安装入口。国家、语言和时区可在初始化时配置。基础镜像固定到官方多架构 index digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Debian 系统软件随 APT 仓库更新。
+包含 Debian Linux、新加坡英文及新加坡时区、XFCE 桌面、Mac 屏幕共享兼容的 VNC、SSH、Chrome、VS Code、Python 3、Node.js、Git、GitHub CLI、Codex CLI、Claude Code CLI、Claude Desktop，以及 Context7、Playwright、Chrome DevTools 和 GitHub 四项 MCP 配置。国家、语言和时区可在初始化时配置。基础镜像固定到官方多架构 index digest，应用版本及公开下载校验值见 [`versions.env`](versions.env)；Debian 系统软件随 APT 仓库更新。
 
 ## 已安装的软件
 
@@ -15,7 +15,7 @@
 | 远程连接 | TigerVNC、OpenSSH Server | VNC 桌面与 SSH 登录 |
 | 浏览器 | amd64：Google Chrome `156.0.8078.47-1`；arm64：Chromium | 桌面浏览器和浏览器 MCP 运行环境 |
 | 编辑器 | Visual Studio Code `1.143.1-1792691907` | 项目编辑与开发 |
-| 游戏开发 | Godot `4.7.2` | 编辑器、命令行与 Godot MCP |
+| AI 桌面端 | Claude Desktop | Anthropic 官方 Linux 应用 |
 | AI CLI | Codex `0.164.0`、Claude Code `2.1.309` | 终端及桌面入口，使用个人模型账号 |
 | Python | Python 3（Ubuntu 软件包，`3.14` 系列） | 脚本、工具与系统服务运行 |
 | JavaScript 开发 | Node.js `24.22.1`、npm / npx | JavaScript 开发与本地 MCP 服务 |
@@ -23,7 +23,7 @@
 | 系统服务 | Supervisor、D-Bus、Ubuntu 系统 Python `3.14` | 会话、SSH/VNC 和工作站启动服务 |
 | 桌面资源 | Arc、Papirus、Inter、Noto CJK、DejaVu、Mesa | 主题、图标、中西文字体与软件图形渲染 |
 
-Chrome、VS Code、AI CLI、Godot 和 Node.js 的固定版本以 [`versions.env`](versions.env) 及 [`Dockerfile`](Dockerfile) 为准；Python 和其他 Ubuntu 软件包按构建时的软件源安装，补丁版本随系统更新。
+Chrome、VS Code、AI CLI、Claude Desktop 和 Node.js 的固定版本以 [`versions.env`](versions.env) 及 [`Dockerfile`](Dockerfile) 为准；Python 和其他 Ubuntu 软件包按构建时的软件源安装，补丁版本随系统更新。
 
 ### MCP 工具
 
@@ -34,17 +34,13 @@ Chrome、VS Code、AI CLI、Godot 和 Node.js 的固定版本以 [`versions.env`
 | Context7 | 本地 `@upstash/context7-mcp` `4.4.4` | 查询开发文档与示例 |
 | Playwright | 本地 `@playwright/mcp` `0.0.83` | 使用容器内 Chrome 进行浏览器操作 |
 | Chrome DevTools | 本地 `chrome-devtools-mcp` `1.12.0` | Chrome 调试与浏览器检查 |
-| Godot | 本地 `@coding-solo/godot-mcp` `0.1.1` | 调用容器内 Godot 工具 |
-| Unity | 本地 `mcpforunityserver` `10.3.0`，MIT | 控制 Unity 场景、对象、脚本、资源和测试；需已激活的编辑器及项目桥接包 |
 | GitHub | 远程 `https://api.githubcopilot.com/mcp/` | GitHub 操作，需个人授权 |
 
-Node.js MCP 通过 `/usr/local/bin/workstation-mcp` 启动，依赖锁定在 [`mcp/package-lock.json`](mcp/package-lock.json)，其中 MCP SDK 为 `1.32.1`。Unity MCP 使用 `/usr/local/bin/unity-mcp` 和独立 Python 环境，完整依赖及 SHA256 锁定在 [`unity/requirements.lock`](unity/requirements.lock)。配置生成方式见 [`scripts/configure-mcp.py`](scripts/configure-mcp.py)。
+Node.js MCP 通过 `/usr/local/bin/workstation-mcp` 启动，依赖锁定在 [`mcp/package-lock.json`](mcp/package-lock.json)，其中 MCP SDK 为 `1.32.1`。配置生成方式见 [`scripts/configure-mcp.py`](scripts/configure-mcp.py)。
 
-### Unity Personal 免费版
+### Update Workstation Software
 
-默认公共镜像包含开源 Unity MCP、`uv` 和固定版本的 Unity 编辑器桥接包。Unity Editor `6000.3.27f1`（6.3 LTS）与 Unity Hub `3.22.4` 通过 [`scripts/install-unity.sh`](scripts/install-unity.sh) 按需安装到现有容器，不重建或替换工作站。安装包下载约 4.57 GB，编辑器解压约 8.77 GB，需预留至少 15 GB 空间。
-
-编辑器安装后，在 Unity Hub 使用自己的账号激活 **Unity Personal 免费许可证**，再在项目中添加已安装的 MCP 桥接包。安装过程不购买 Pro、订阅 AI 服务或预置个人许可证。完整安装、Claude/Codex 接入、已有 HOME 兼容和验收步骤见 [Unity 使用说明](unity/README.md)。
+Sign in as `dev` and double-click **Update Workstation Software**, or run `~/Desktop/upgrade-ai.sh`. Enter the current `dev` password when prompted. The script updates system packages, Chrome or Chromium, VS Code and its extensions, Claude Desktop, the Codex and Claude Code CLIs, Node.js and its bundled npm/npx, uv and its installed tools, noVNC, and the local MCP servers. Node.js stays on its installed major version. Reopen applications after updating.
 
 ### Python 环境
 
@@ -85,16 +81,16 @@ docker build --pull=false \
   -t ai-workstation:test ./workstation
 ```
 
-公开工具大文件也可事先下载到单独缓存目录，构建时附加 `--build-context tool-download-cache=/绝对路径/公开下载缓存`。文件名为 `codex-版本.tar.gz`、`claude-版本.zst`、`godot-版本.zip`；安装脚本仍按 `versions.env` 校验 SHA256，缺失文件从官方源下载。缓存以只读挂载供安装步骤使用，原始压缩包不保留在镜像层中。默认构建使用空缓存，无需准备该目录。
+公开工具大文件也可事先下载到单独缓存目录，构建时附加 `--build-context tool-download-cache=/绝对路径/公开下载缓存`。文件名为 `codex-版本-架构.tar.gz`、`claude-版本-架构.zst`、`uv-版本-架构.tar.gz`；安装脚本仍按 `versions.env` 校验 SHA256，缺失文件从官方源下载。缓存以只读挂载供安装步骤使用，原始压缩包不保留在镜像层中。默认构建使用空缓存，无需准备该目录。
 
-启动需要 `DEV_PASSWORD` 和 `VNC_PASSWORD`，也支持对应的 `_FILE` 变量读取容器内文件。正式 Compose 默认管理员 `root / root`，桌面应用用户 `dev / root`，VNC 密码 `root`。`ROOT_PASSWORD` / `ROOT_PASSWORD_FILE` 控制容器管理员密码；直接运行镜像而未提供时 root 保持锁定。Linux 原生安装保留宿主 root 密码。VNC 使用兼容 Mac 屏幕共享的传统认证，密码为 1–8 个 ASCII 字节。运行时密码不写入镜像。独立 Compose 默认使用运行时环境变量设置密码；`_FILE` 也可读取容器内已准备的文件，无需外置业务挂载。
+可通过 `DEV_PASSWORD`、`ROOT_PASSWORD` 和 `VNC_PASSWORD` 或对应的 `_FILE` 设置密码。正式 Compose 默认管理员 `root / root`，桌面应用用户 `dev / dev`，VNC 密码 `root`。`ROOT_PASSWORD` / `ROOT_PASSWORD_FILE` 控制容器管理员密码。Linux 原生安装保留宿主 root 密码。VNC 使用兼容 Mac 屏幕共享的传统认证，密码为 1–8 个 ASCII 字节。运行时密码不写入镜像。独立 Compose 默认使用运行时环境变量设置密码；`_FILE` 也可读取容器内已准备的文件，无需外置业务挂载。
 
 普通应用使用 `dev`，UID/GID 为 `1100`，HOME 为 `/home/dev`。HOME、项目、编辑器配置、CLI 登录和 `/etc/ssh/keys` 均保存在容器内部，默认部署没有业务绑定挂载或数据卷。容器正常重启保留这些内容；更换或重建容器前，先制作私有备份并在目标容器内恢复。首次初始化只拷贝缺失的桌面文件，MCP 配置合并保留已有设置。迁移其他镜像时，应先核对原用户的 UID/GID、HOME 和启动方式，再选择应用状态迁移或完整私有快照恢复。
 
 
-GitHub CLI 在普通用户会话中运行 `gh auth login`，登录文件保存在容器内部的 HOME，正常重启保留；镜像不携带个人令牌。Codex 和 Claude 分别运行 `codex`、`claude` 完成用户自己的登录。GitHub MCP 已配置远程地址，仍需个人授权；其余四项 MCP 可在无模型账号时执行握手测试。
+GitHub CLI 在普通用户会话中运行 `gh auth login`，登录文件保存在容器内部的 HOME，正常重启保留；镜像不携带个人令牌。Codex 和 Claude 分别运行 `codex`、`claude` 完成用户自己的登录。GitHub MCP 已配置远程地址，仍需个人授权；其余三项 MCP 可在无模型账号时执行握手测试。
 
-Chrome 使用自身沙箱。启动时须使用 `security/seccomp-chrome.json`、`no-new-privileges:true` 和至少 `512m` 共享内存，参照目录中的独立 `compose.yaml` 示例。桌面会话使用专门限定范围的 bwrap 兼容包装程序。
+Chrome 使用自身沙箱。启动时须使用 `security/seccomp-chrome.json` 和至少 `512m` 共享内存，参照目录中的独立 `compose.yaml` 示例。桌面会话使用专门限定范围的 bwrap 兼容包装程序。
 
 桌面默认保持顶部面板常显、普通和最大化窗口的标题栏可见，并禁用合成器。Supervisor 以普通用户运行桌面恢复程序；窗口管理器或面板意外退出时，在当前 XFCE 会话中自动补回，不关闭应用。健康检查同时检查窗口管理器，桌面 smoke 和内部存储测试会验证真实窗口标题栏及重启后的异常恢复。
 

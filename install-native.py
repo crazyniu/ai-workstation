@@ -53,8 +53,8 @@ def preflight(role, config, system=Path('/')):
         paths += ['opt/workstation', 'opt/node', 'etc/workstation', 'home/dev',
                   'usr/local/libexec/workstation-glycin', 'tmp/.X11-unix/X1',
                   'etc/systemd/system/ai-workstation.service']
-        for name in ('node', 'npm', 'npx', 'uv', 'uvx', 'codex', 'claude', 'godot',
-                     'workstation-mcp', 'unity-mcp', 'workstation-entrypoint',
+        for name in ('node', 'npm', 'npx', 'uv', 'uvx', 'codex', 'claude',
+                     'workstation-mcp', 'workstation-entrypoint',
                      'workstation-vnc', 'workstation-desktop', 'configure-workstation-exit-dns', 'reset-claude-user'):
             paths.append('usr/local/bin/' + name)
         paths += ['etc/apt/sources.list.d/workstation-vscode.list',
@@ -153,7 +153,7 @@ def install(role, config, arch, start):
     if role in ('all', 'workstation'):
         dest = Path('/opt/workstation')
         dest.mkdir()
-        for name in ('scripts', 'mcp', 'unity', 'desktop', 'web-desktop', 'licenses'):
+        for name in ('scripts', 'mcp', 'desktop', 'web-desktop', 'licenses'):
             shutil.copytree(ROOT/'workstation'/name, dest/name, ignore=shutil.ignore_patterns('node_modules', '__pycache__', '*.pyc', '.DS_Store'))
         shutil.copyfile(ROOT/'workstation/versions.env', dest/'versions.env')
         shutil.copytree(ROOT/'workstation/desktop/home-template', dest/'home-template', ignore=shutil.ignore_patterns('.DS_Store'))

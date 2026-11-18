@@ -1,7 +1,7 @@
 # Repository guide for AI assistants
 
 This repository builds two separate services: `gateway/` and `workstation/`.
-`compose.portable.yaml` is the default Docker deployment on Linux, Windows and
+`compose.portable.yaml` is the default manual Docker deployment on Linux, Windows and
 macOS; `deploy.ps1` is the Windows entry. Linux may also install native services
 using `install-native.py` (preview first). Read `docs/platforms.md` for the vendor
 architecture matrix, native prerequisites and validation boundaries. Do not
@@ -16,6 +16,16 @@ and timezone initialization through WORKSTATION_* settings or internal
 `/etc/workstation/region.json`.
 
 ## Installation requests
+
+AI installations deploy both complete project images. The gateway LAN IP is
+`192.168.1.250` and the workstation LAN IP is `192.168.1.251`. On a supported
+Linux Docker Engine, use `./deploy.sh ai` for a new combined deployment. On
+separate LAN hosts use `./deploy.sh ai gateway` followed by `./deploy.sh ai workstation`.
+Complete both roles and all components shipped in their images. Diagnose recoverable
+failures and continue. Obtain the user's explicit consent before changing the
+addresses, image, version, component list, deployment mode or other agreed settings.
+Report any real blocker and the specific decision needed. Ordinary manual portable
+defaults do not authorize an AI installer to substitute loopback ports for LAN IPs.
 
 Read [AI-INSTALL.md](AI-INSTALL.md), [README.md](README.md), and `.env.example`
 before installing or changing a deployment. Inspect the actual host and existing

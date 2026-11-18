@@ -2,6 +2,16 @@
 set -eu
 cd "$(dirname "$0")"
 service=
+ai_install=false
+if [ "${1:-}" = ai ]; then
+  ai_install=true
+  shift
+  case "${1:-all}" in
+    all|gateway|workstation) ;;
+    *) printf 'Usage: %s ai [all|gateway|workstation]\n' "$0" >&2; exit 2 ;;
+  esac
+  if [ "$#" -eq 0 ]; then set -- all; fi
+fi
 case "${1:-portable}" in
   portable) compose_file=compose.portable.yaml ;;
   gateway-portable) compose_file=compose.portable.yaml; service=gateway ;;
@@ -9,13 +19,16 @@ case "${1:-portable}" in
   gateway) compose_file=compose.gateway.yaml ;;
   workstation) compose_file=compose.workstation.yaml ;;
   workstation-bridge) compose_file=workstation/compose.yaml ;;
-  *) printf 'Usage: %s [portable|gateway-portable|all|gateway|workstation|workstation-bridge]\n' "$0" >&2; exit 2 ;;
+  *) printf 'Usage: %s ai [all|gateway|workstation] or %s [portable|gateway-portable|all|gateway|workstation|workstation-bridge]\n' "$0" "$0" >&2; exit 2 ;;
 esac
 [ "$#" -le 1 ] || { printf 'Expected at most one deployment role.\n' >&2; exit 2; }
 # Always use the private root .env, including for the nested bridge example.
 compose() { docker compose --env-file .env -f "$compose_file" "$@"; }
 if [ ! -f .env ]; then cp .env.example .env; chmod 600 .env; fi
 compose config --quiet
+if [ "$ai_install" = true ]; then
+  python3 scripts/ai-install-plan.py "$compose_file" "$1"
+fi
 if ! existing_containers=$(compose ps --all --quiet); then
   printf 'Unable to check existing containers. Deployment was not started.\n' >&2
   exit 1

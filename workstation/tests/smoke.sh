@@ -39,7 +39,7 @@ docker volume create "$home_volume" >/dev/null
 docker volume create "$keys_volume" >/dev/null
 docker run -d --name "$name" --hostname workstation-smoke --network none --shm-size 512m \
     --cap-drop NET_ADMIN --cap-drop NET_RAW \
-    --security-opt no-new-privileges:true --security-opt "seccomp=$profile" \
+    --security-opt no-new-privileges:false --security-opt "seccomp=$profile" \
     --mount "type=volume,src=$home_volume,dst=/home/dev" \
     --mount "type=volume,src=$keys_volume,dst=/etc/ssh/keys" \
     --mount "type=bind,src=$secret_dir,dst=/run/secrets,readonly" \
@@ -110,23 +110,23 @@ docker exec -i "$name" python3 - < "$repo/tests/auth-smoke.py"
 dev_exec() {
     docker exec --user 1100:1100 -e HOME=/home/dev -e DISPLAY=:1 "$name" "$@"
 }
-# Root is locked without an optional runtime root-password secret. Host keys are generated now.
+# The container root account has a runtime password and generated SSH host keys.
 docker exec "$name" python3 -c '
 from pathlib import Path
 shadow=dict(line.split(":",2)[:2] for line in Path("/etc/shadow").read_text().splitlines())
-assert shadow["root"].startswith(("!","*"))
+assert not shadow["root"].startswith(("!","*"))
 assert list(Path("/etc/ssh/keys").glob("ssh_host_*_key"))
 '
 # docker exec needs -i for stdin scripts; keep all assertions in one bounded check.
 docker exec -i --user 1100:1100 -e HOME=/home/dev -e DISPLAY=:1 "$name" python3 - <<'PY'
 import json, os, pathlib, shutil, socket, stat, tomllib
-assert os.getuid()==1100 and os.getgid()==1100 and set(os.getgroups())<={1100}
+assert os.getuid()==1100 and os.getgid()==1100
 status=dict(line.split(':',1) for line in pathlib.Path('/proc/self/status').read_text().splitlines() if ':' in line)
 assert int(status['CapEff'].strip(),16)==0
-assert status['NoNewPrivs'].strip()=='1'
+assert status['NoNewPrivs'].strip()=='0'
 assert not os.access('/root',os.R_OK)
 assert not os.access('/var/run/docker.sock',os.R_OK|os.W_OK)
-assert not shutil.which('sudo')
+assert shutil.which('sudo')
 for file in ['/usr/local/bin/codex','/usr/local/bin/claude','/usr/local/bin/workstation-mcp']:
     assert pathlib.Path(file).stat().st_uid==0 and not os.access(file,os.W_OK),file
 home=pathlib.Path('/home/dev')
@@ -134,7 +134,7 @@ for filename in ['.codex/config.toml','.claude.json']:
     path=home/filename
     assert path.stat().st_uid==1100 and stat.S_IMODE(path.stat().st_mode)==0o600
 servers=tomllib.loads((home/'.codex/config.toml').read_text())['mcp_servers']
-assert set(['context7','playwright','chrome-devtools','godot','unity','github'])<=set(servers)
+assert set(['context7','playwright','chrome-devtools','github'])<=set(servers)
 claude=json.loads((home/'.claude.json').read_text())['mcpServers']
 assert set(servers)<=set(claude)
 assert '--sandbox' in servers['playwright']['args']
@@ -144,7 +144,7 @@ for port in [22,5901]:
     with socket.create_connection(('127.0.0.1',port),timeout=5) as conn:
         greeting=conn.recv(256)
         assert greeting.startswith(b'SSH-' if port==22 else b'RFB '),(port,greeting)
-for filename in ['codex.desktop','claude.desktop','godot.desktop','google-chrome.desktop','code.desktop']:
+for filename in ['codex.desktop','claude.desktop','claude-desktop.desktop','upgrade-ai.sh','upgrade-ai.desktop','google-chrome.desktop','code.desktop']:
     assert os.access(home/'Desktop'/filename,os.X_OK),filename
 (home/'Projects/persistence-smoke.txt').write_text('persisted\n')
 (home/'.codex/config.toml').write_text((home/'.codex/config.toml').read_text()+'\n# preserve-my-settings-smoke\n')

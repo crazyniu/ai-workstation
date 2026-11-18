@@ -18,6 +18,7 @@ RUN case "$TARGETARCH" in amd64|arm64) ;; *) echo 'Codex and Claude upstream Lin
 COPY versions.env /opt/workstation/versions.env
 COPY scripts/install-system.sh /opt/workstation/scripts/install-system.sh
 COPY desktop/home-template/ /opt/workstation/home-template/
+COPY --chmod=755 desktop/upgrade-ai.sh desktop/upgrade-ai.desktop desktop/claude-desktop.desktop /opt/workstation/home-template/Desktop/
 RUN bash /opt/workstation/scripts/install-system.sh
 COPY --from=node-runtime /usr/local/bin/node /opt/node/bin/node
 COPY --from=node-runtime /usr/local/lib/node_modules /opt/node/lib/node_modules
@@ -26,7 +27,6 @@ RUN ln -s /opt/node/bin/node /usr/local/bin/node \
     && ln -s /opt/node/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 COPY mcp /opt/workstation/mcp
 COPY scripts /opt/workstation/scripts
-COPY unity /opt/workstation/unity
 RUN --mount=type=bind,from=tool-download-cache,target=/mnt/tool-download-cache \
     WORKSTATION_DOWNLOAD_CACHE=/mnt/tool-download-cache bash /opt/workstation/scripts/install-tools.sh
 COPY desktop/bwrap-desktop-compat.c /opt/workstation/desktop/bwrap-desktop-compat.c

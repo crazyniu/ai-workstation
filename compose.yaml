@@ -31,10 +31,10 @@ services:
     # Routing belongs to Docker/the gateway; apps cannot alter it or send raw frames.
     cap_drop: [NET_ADMIN, NET_RAW]
     security_opt:
-      - no-new-privileges:true
+      - no-new-privileges:false
       - seccomp=./workstation/security/seccomp-chrome.json
     environment:
-      DEV_PASSWORD: ${WORKSTATION_PASSWORD:-root}
+      DEV_PASSWORD: ${WORKSTATION_PASSWORD:-dev}
       VNC_PASSWORD: ${VNC_PASSWORD:-root}
       VNC_AUTH: ${VNC_AUTH:-password}
       NOVNC_TLS: ${NOVNC_TLS:-1}

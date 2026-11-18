@@ -18,9 +18,6 @@ const cases = [
     ['new_page', { url: `data:text/html,<html><body>${marker}</body></html>` }],
     ['evaluate_script', { function: '() => document.body.innerText' }, marker],
   ]],
-  ['godot', [], [['get_godot_version', {}, '4.7.2']]],
-  // Real scene edits additionally need an activated Editor and project bridge.
-  ['unity', [], []],
 ];
 if (process.argv.includes('--online')) {
   cases[0][2].push(['resolve-library-id', { libraryName: 'React', query: 'React useState documentation' }]);
@@ -30,8 +27,7 @@ try {
     const client = new Client({ name: 'workstation-build-smoke', version: '1.0.0' });
     const transport = new StdioClientTransport({
       command: '/usr/local/bin/workstation-mcp', args: [name, ...args], cwd: directory,
-      env: { ...process.env, GODOT_PATH: '/usr/local/bin/godot', DISPLAY: ':1', LIBGL_ALWAYS_SOFTWARE: '1',
-        ...(name === 'unity' ? { UNITY_MCP_SKIP_STARTUP_CONNECT: 'true' } : {}) },
+      env: { ...process.env, DISPLAY: ':1', LIBGL_ALWAYS_SOFTWARE: '1' },
       stderr: 'inherit',
     });
     try {

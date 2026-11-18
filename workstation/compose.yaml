@@ -7,14 +7,14 @@ services:
     # Routing belongs to Docker/the gateway; apps cannot alter it or send raw frames.
     cap_drop: [NET_ADMIN, NET_RAW]
     security_opt:
-      - no-new-privileges:true
+      - no-new-privileges:false
       - seccomp=./security/seccomp-chrome.json
     ports:
       - "127.0.0.1:${SSH_PORT:-2222}:22"
       - "127.0.0.1:${VNC_PORT:-5901}:5901"
       - "127.0.0.1:${NOVNC_PORT:-6080}:6080"
     environment:
-      DEV_PASSWORD: ${WORKSTATION_PASSWORD:-root}
+      DEV_PASSWORD: ${WORKSTATION_PASSWORD:-dev}
       VNC_PASSWORD: ${VNC_PASSWORD:-root}
       VNC_AUTH: ${VNC_AUTH:-password}
       NOVNC_TLS: ${NOVNC_TLS:-1}
