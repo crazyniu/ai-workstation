@@ -27,7 +27,7 @@ for relative in ('.codex/config.toml', '.claude.json'):
 vnc = home / '.config/tigervnc'
 vnc.mkdir(parents=True, exist_ok=True)
 vnc.chmod(0o700)
-if password.rstrip(b'\r\n'):
+if password.rstrip(b'\r\n') and not (vnc / 'passwd').exists():
     encoded = subprocess.run(['tigervncpasswd', '-f'], input=password, stdout=subprocess.PIPE, check=True).stdout
     target = vnc / 'passwd'
     target.write_bytes(encoded)

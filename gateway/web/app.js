@@ -272,7 +272,7 @@ async function loadUpdates(){
   const list=$('#components');list.replaceChildren();
   for(const [component,manifest] of Object.entries(u.components)){
     const checked=u.checked[component],current=manifest.version;
-    if(!current || current==='unknown' || checked?.error)continue;
+    if(!current || current==='unknown')continue;
     const row=element('div',undefined,'service-row'),details=element('div',undefined,'details');
     const updateText=checked?.error?checked.error:checked?.available?'可用 '+checked.latest:checked?.latest?'已是最新版':'';
     details.append(element('strong',names[component]),element('span',[current,updateText].filter(Boolean).join(' · ')));
@@ -282,10 +282,11 @@ async function loadUpdates(){
       await job(await post('/updates/install',{component}));await loadUpdates();
     }));
     row.append(icon(component==='mihomo'?'clash':component),details);
-    if(checked?.available && checked.latest!==current)row.append(install);
+    if(!checked?.error && checked?.available && checked.latest!==current)row.append(install);
     list.append(row);
   }
-  $('#upgrade-status').textContent=u.job?(u.job.status==='running'?'任务进行中':u.job.status==='success'?'上次操作已完成':u.job.error||''):'';
+  const errors=Object.entries(u.checked).filter(([,value])=>value.error).map(([component,value])=>(names[component]||component)+'：'+value.error);
+  $('#upgrade-status').textContent=errors.length?errors.join('；'):u.job?(u.job.status==='running'?'任务进行中':u.job.status==='success'?'上次操作已完成':u.job.error||''):'';
   $('#refresh-job').hidden=u.job?.status!=='running';
   $('#refresh-job').onclick=()=>guard(async()=>{await job(u.job);await loadUpdates();});
   return u.job;

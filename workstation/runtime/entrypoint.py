@@ -15,6 +15,29 @@ def secret(name, required=False, default=''):
         raise ValueError(name + ' contains unsupported characters')
     return value
 
+def initialize_passwords(native, root=Path('/')):
+    # Root-owned state, independent of the editable HOME initialization marker.
+    marker = root / 'etc/workstation/credentials-initialized'
+    if marker.exists():
+        return
+    shadow = dict(line.split(':', 2)[:2] for line in
+                  (root / 'etc/shadow').read_text().splitlines())
+    credentials = []
+    # Preserve existing hashes, including locked hashes, when upgrading an older image.
+    if shadow['dev'] in ('', '!', '!!', '*'):
+        credentials.append('dev:' + secret('DEV_PASSWORD', required=True,
+                                          default='' if native else 'dev'))
+    if not native and shadow['root'] in ('', '!', '!!', '*'):
+        password = secret('ROOT_PASSWORD', default='root')
+        if password:
+            credentials.append('root:' + password)
+        else:
+            subprocess.run(['usermod', '--lock', 'root'], check=True)
+    if credentials:
+        subprocess.run(['chpasswd'], input=('\n'.join(credentials)+'\n').encode(), check=True)
+    marker.touch(mode=0o600)
+
+
 def main():
     if os.getuid() != 0:
         raise ValueError('The entrypoint needs root to start SSH; applications run as dev')
@@ -26,12 +49,12 @@ def main():
             lower = os.environ.get('no_proxy', upper)
             for key, previous in [('NO_PROXY', upper), ('no_proxy', lower)]:
                 os.environ[key] = ','.join(dict.fromkeys(filter(None, [*previous.split(','), *hosts.split(',')])))
-    dev_password = secret('DEV_PASSWORD', required=True, default='' if native else 'dev')
     vnc_auth = os.environ.get('VNC_AUTH', 'password')
     if vnc_auth not in ('password', 'none'):
         raise ValueError('VNC_AUTH must be password or none')
-    vnc_password = secret('VNC_PASSWORD', vnc_auth == 'password')
-    root_password = '' if native else secret('ROOT_PASSWORD', default='root')
+    vnc_password = ''
+    if vnc_auth == 'password' and not Path('/home/dev/.config/tigervnc/passwd').exists():
+        vnc_password = secret('VNC_PASSWORD', required=True)
     if vnc_password and not 1 <= len(vnc_password.encode('ascii')) <= 8:
         raise ValueError('VNC password must be 1–8 ASCII bytes for Mac Screen Sharing')
     # Apply region to system/PAM configuration and every supervised child.
@@ -46,17 +69,12 @@ def main():
     home.chmod(0o700)
     if not native:
         subprocess.run(['python3', '/etc/workstation/desktop-permissions.py'], check=True)
+    initialize_passwords(native)
     for name in ('DEV_PASSWORD', 'ROOT_PASSWORD', 'VNC_PASSWORD', 'GATEWAY_CONTAINER_PASSWORD', 'GATEWAY_ADMIN_PASSWORD'):
         os.environ.pop(name, None)
     child_env = dict(os.environ, HOME=str(home), USER='dev', LOGNAME='dev')
     subprocess.run(['runuser', '-u', 'dev', '--', 'python3', '/etc/workstation/init-home.py'],
                    input=(vnc_password+'\n').encode(), env=child_env, check=True)
-    credentials = 'dev:' + dev_password + '\n'
-    if root_password:
-        credentials += 'root:' + root_password + '\n'
-    elif not native:
-        subprocess.run(['usermod', '--lock', 'root'], check=True)
-    subprocess.run(['chpasswd'], input=credentials.encode(), check=True)
     keys = Path('/etc/workstation/ssh-keys' if native else '/etc/ssh/keys')
     keys.mkdir(parents=True, exist_ok=True)
     keys.chmod(0o700)
