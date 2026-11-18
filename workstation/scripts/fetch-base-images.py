@@ -143,7 +143,7 @@ def fetch(image, cache, output, arch="amd64", variant=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('images', nargs='*', default=['node:24.22.1-bookworm-slim', 'debian:trixie-slim'])
+    parser.add_argument('images', nargs='*', default=['node:24.22.3-bookworm-slim', 'debian:trixie-slim'])
     parser.add_argument('--cache', type=pathlib.Path, default=pathlib.Path('/tmp/workstation-base-cache'))
     parser.add_argument('--output', type=pathlib.Path, default=pathlib.Path('/tmp/workstation-base-images'))
     parser.add_argument('--platform', default='linux/amd64', help='e.g. linux/arm64 or linux/arm/v7')

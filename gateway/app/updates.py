@@ -5,7 +5,7 @@ from pathlib import Path
 from state import ROOT,LOCK,save,read,command
 from releases import discover,install_asset
 
-COMPONENTS=('mihomo','adguard')
+COMPONENTS=('mihomo','adguard','tailscale','panel')
 SUPERVISOR=['supervisorctl','-c','/opt/gateway/runtime/supervisord.conf']
 
 def control(action,service):return command(SUPERVISOR+[action,service],timeout=45)
@@ -73,7 +73,7 @@ def verify_tailscale_identity(before):
         raise ValueError('Tailscale 身份或地址检查失败')
 
 def upgrade(component,manifest=None):
-    if component not in (*COMPONENTS, 'tailscale', 'panel'):raise ValueError('不支持此服务')
+    if component not in COMPONENTS:raise ValueError('不支持此服务')
     with LOCK:
         manifest=manifest or discover(component)
         link=ROOT/'components/current'/component

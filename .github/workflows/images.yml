@@ -121,6 +121,10 @@ jobs:
         run: |
           bash workstation/tests/internal-storage.sh candidate:workstation
           bash workstation/tests/web-desktop.sh candidate:workstation
+      - name: Verify real single and batch workstation upgrades
+        if: matrix.component == 'workstation'
+        timeout-minutes: 30
+        run: bash workstation/tests/updates.sh candidate:workstation
       - name: Audit all image layers
         run: docker image save candidate:${{ matrix.component }} | python3 ${{ matrix.component }}/tests/audit-image.py
       - name: Verify native Linux installation from clean source

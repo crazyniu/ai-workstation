@@ -5,9 +5,9 @@
   "description": "Pinned MCP servers for the private AI workstation image",
   "type": "commonjs",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.32.1",
-    "@playwright/mcp": "0.0.83",
-    "@upstash/context7-mcp": "4.4.4",
-    "chrome-devtools-mcp": "1.12.0"
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@playwright/mcp": "0.0.85",
+    "@upstash/context7-mcp": "4.7.3",
+    "chrome-devtools-mcp": "1.13.0"
   }
 }

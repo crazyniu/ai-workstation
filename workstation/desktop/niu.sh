@@ -16,7 +16,17 @@ latest_tag() {
         python3 -c 'import json, sys; print(json.load(sys.stdin)["tag_name"])'
 }
 
+require_admin() {
+    local validation=(-v)
+    if [[ -n ${SUDO_ASKPASS:-} ]]; then validation=(-A -v); fi
+    if ! command -v sudo >/dev/null || ! sudo "${validation[@]}"; then
+        echo 'This update requires administrator-approved sudo access. Ask the host administrator; no permissions were changed.' >&2
+        return 1
+    fi
+}
+
 update_apt() {
+    require_admin
     "${apt[@]}" -o APT::Update::Error-Mode=any update
     if (( $# )); then
         "${apt[@]}" install --only-upgrade -y "$1"
@@ -26,6 +36,7 @@ update_apt() {
 }
 
 update_node() {
+    require_admin
     node_major=$(node -p 'process.versions.node.split(".")[0]')
     "${fetch[@]}" "https://nodejs.org/dist/latest-v$node_major.x/SHASUMS256.txt" -o node-checksums
     read -r digest archive < <(awk -v arch="$node_arch" '$2 ~ ("-linux-" arch "\\.tar\\.xz$") {print; exit}' node-checksums)
@@ -44,6 +55,7 @@ update_node() {
 }
 
 update_uv() {
+    require_admin
     uv_tag=$(latest_tag astral-sh/uv)
     if [[ $(uv --version | cut -d' ' -f2) != "${uv_tag#v}" ]]; then
         archive="uv-$uv_arch-unknown-linux-gnu.tar.gz"
@@ -58,6 +70,7 @@ update_uv() {
 }
 
 update_novnc() {
+    require_admin
     novnc_tag=$(latest_tag novnc/noVNC)
     if [[ $(node -p "require('$base/novnc/package.json').version") != "${novnc_tag#v}" ]]; then
         "${fetch[@]}" "https://codeload.github.com/novnc/noVNC/tar.gz/refs/tags/$novnc_tag" -o novnc.tar.gz
@@ -74,6 +87,7 @@ update_ai_cli() {
 }
 
 update_mcp() {
+    require_admin
     mkdir mcp
     cp "$base/mcp"/package{,-lock}.json mcp/
     node -p "Object.keys(require('$base/mcp/package.json').dependencies).map(name => name + '@latest').join('\n')" > mcp-packages
@@ -103,6 +117,9 @@ run_update() {
     if (( status != 0 )); then
         failed+=("$label")
         printf 'Update failed for %s.\n' "$label" >&2
+    else
+        succeeded+=("$label")
+        printf 'Update succeeded for %s.\n' "$label"
     fi
 }
 
@@ -127,18 +144,31 @@ update_software() (
     [[ -f $base/mcp/package.json ]] && choices+=('MCP servers')
     [[ -f $base/novnc/package.json ]] && choices+=('noVNC')
     command -v code >/dev/null && choices+=('VS Code extensions')
-    PS3='Choose software (0 to return): '
-    select selection in 'Update all listed software' "${choices[@]}"; do
-        [[ $REPLY != 0 ]] || return 0
-        [[ -n $selection ]] || continue
-        break
-    done
+    orca_installed && choices+=('Orca Server')
+    if [[ -n ${1:-} ]]; then
+        selection=$1
+        if [[ $selection != all ]]; then
+            found=false
+            for app in "${choices[@]}"; do [[ $app != "$selection" ]] || found=true; done
+            if [[ $found != true ]]; then echo 'Requested software is not installed or supported.' >&2; return 1; fi
+        else
+            selection='Update all listed software'
+        fi
+    else
+        PS3='Choose software (0 to return): '
+        select selection in 'Update all listed software' "${choices[@]}"; do
+            [[ $REPLY != 0 ]] || return 0
+            [[ -n $selection ]] || continue
+            break
+        done
+    fi
     [[ -n ${selection:-} ]] || return 0
+    if [[ ${2:-} != --yes ]]; then
+        confirm_action "Update $selection? A running Orca Server will restart if selected and active sessions may disconnect." || return 0
+    fi
     if [[ $selection == 'Update all listed software' ]]; then
-        confirm_action 'Update all the software listed above?' || return 0
         targets=("${choices[@]}")
     else
-        confirm_action "Update $selection?" || return 0
         targets=("$selection")
     fi
 
@@ -153,12 +183,21 @@ update_software() (
         arm64) node_arch=arm64; uv_arch=aarch64 ;;
     esac
     failed=()
+    succeeded=()
     for target in "${targets[@]}"; do
         case "$target" in
-            'All APT packages') run_update "$target" update_apt ;;
+            'All APT packages') run_update "$target" update_apt; apt_update_status=$action_status ;;
             'Google Chrome'|Chromium|'VS Code'|'Claude Desktop'|KasmVNC)
                 # A full APT upgrade already covers every installed desktop package.
-                if [[ $selection == "$target" ]]; then run_update "$target" update_apt "${apt_packages[$target]}"; fi ;;
+                if [[ $selection == "$target" ]]; then
+                    run_update "$target" update_apt "${apt_packages[$target]}"
+                elif (( apt_update_status == 0 )); then
+                    succeeded+=("$target")
+                    printf 'Update succeeded for %s (covered by APT).\n' "$target"
+                else
+                    failed+=("$target")
+                    printf 'Update failed for %s (APT update failed).\n' "$target" >&2
+                fi ;;
             'Node.js and npm') run_update "$target" update_node ;;
             'uv and installed tools') run_update "$target" update_uv ;;
             'Codex CLI') run_update "$target" update_ai_cli @openai/codex ;;
@@ -166,8 +205,10 @@ update_software() (
             'MCP servers') run_update "$target" update_mcp ;;
             noVNC) run_update "$target" update_novnc ;;
             'VS Code extensions') run_update "$target" code --update-extensions ;;
+            'Orca Server') run_update "$target" update_orca ;;
         esac
     done
+    if (( ${#succeeded[@]} )); then printf 'Succeeded: %s\n' "${succeeded[*]}"; fi
     if (( ${#failed[@]} )); then
         printf 'Could not finish: %s\n' "${failed[*]}" >&2
         exit 1
@@ -200,6 +241,7 @@ orca_service_state() {
 }
 
 restart_orca() (
+    require_admin
     lock_orca
     state=$(orca_service_state)
     case "$state" in
@@ -216,6 +258,7 @@ select_orca_release() {
 
 update_orca() (
     set -e
+    require_admin
     lock_orca
     state=$(orca_service_state)
     case "$state" in
@@ -745,8 +788,12 @@ menu() {
 }
 
 self=$(readlink -f -- "${BASH_SOURCE[0]}")
+if [[ $# == 3 && $1 == --update && $3 == --yes ]]; then
+    update_software "$2" --yes
+    exit $?
+fi
 if (( $# )); then
-    echo 'Open niu.sh without arguments and choose a menu number.' >&2
+    echo 'Open the menu without arguments, or use: niu.sh --update SOFTWARE --yes (SOFTWARE: all or an installed menu label).' >&2
     exit 2
 fi
 if [[ ! -t 0 && /dev/stdin -ef /dev/null && -n ${DISPLAY:-} ]]; then
