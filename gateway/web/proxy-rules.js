@@ -4,7 +4,7 @@ const domainTypes = {DOMAIN:'完整域名', 'DOMAIN-SUFFIX':'域名及子域名'
 const ruleLabels = {...domainTypes, 'IP-CIDR':'IPv4 网段', 'IP-CIDR6':'IPv6 网段', GEOIP:'IP 地区', GEOSITE:'域名分类',
   'RULE-SET':'规则集', MATCH:'兜底规则'};
 const hiddenPolicyGroups = new Set(['GLOBAL', '🌐 GLOBAL', '⚡ AUTO', '📥 订阅下载', '🔗 PROXY-RELAY', '🤖 PROXY']);
-const sectionNames = {bindings:'网段出口', exits:'PROXY 出口池', groups:'策略分组', providers:'节点订阅', rules:'分流规则'};
+const sectionNames = {bindings:'固定出口', exits:'PROXY 出口池', groups:'策略分组', providers:'节点订阅', rules:'分流规则'};
 const policyLabel = name => ({DIRECT:'直连',REJECT:'拒绝','REJECT-DROP':'静默丢弃'})[name] || name;
 let resultPage = 0, rulePolicy = '', domainRequest = 0, searchTimer;
 const pageSize = () => Number($('#proxy-page-size').value);

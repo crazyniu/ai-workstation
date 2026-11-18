@@ -22,7 +22,7 @@
       <span class="toolbar-divider"></span><a class="brand" href="/" aria-label="网关桌面">Gateway</a>
     </div>
     <div class="top-actions">
-      <button class="range-launch" data-page="ranges">网段出口</button>
+      <button class="range-launch" data-page="ranges">固定出口</button>
       <button id="add" title="添加链接" aria-label="添加链接"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       <button id="open-personalization" title="个性化设置" aria-label="个性化设置"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m4 16 5-5 4 4 3-3 5 5"/><circle cx="16.5" cy="8.5" r="1.5"/></svg></button>
     </div>
@@ -52,7 +52,7 @@
         <button class="nav-overview" data-page="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>所有设置</span></button>
         <p class="nav-group">连接与访问</p>
         <button data-page="proxy"><img src="/icons/clash.svg" alt=""><span>代理配置</span></button>
-        <button data-page="ranges"><img src="/icons/server.svg" alt=""><span>网段出口</span></button>
+        <button data-page="ranges"><img src="/icons/server.svg" alt=""><span>固定出口</span></button>
         <button data-page="dns"><img src="/icons/globe.svg" alt=""><span>DNS 与访问</span></button>
         <button data-page="tailscale"><img src="/icons/tailscale.svg" alt=""><span>Tailscale</span></button>
         <p class="nav-group">通用设置</p>
@@ -67,7 +67,7 @@
         <section id="settings-overview" data-section="overview">
           <div class="settings-group"><h2>连接与访问</h2><div class="settings-grid">
             <button data-page="proxy"><img src="/icons/clash.svg" alt=""><span>代理配置</span></button>
-        <button data-page="ranges"><img src="/icons/server.svg" alt=""><span>网段出口</span></button>
+        <button data-page="ranges"><img src="/icons/server.svg" alt=""><span>固定出口</span></button>
             <button data-page="dns"><img src="/icons/globe.svg" alt=""><span>DNS 与访问</span></button>
             <button data-page="tailscale"><img src="/icons/tailscale.svg" alt=""><span>Tailscale</span></button>
             <a href="/adguard/" target="_blank" rel="noopener"><img src="/icons/adguard.svg" alt=""><span>广告过滤</span></a>
@@ -201,7 +201,7 @@
         <input id="config-file" type="file" accept=".yaml,.yml" hidden>
       </div>
       <div class="proxy-layout"><nav class="proxy-nav" aria-label="配置分类">
-        <button type="button" data-proxy-tab="bindings" aria-pressed="false">网段出口</button>
+        <button type="button" data-proxy-tab="bindings" aria-pressed="false">固定出口</button>
         <button type="button" data-proxy-tab="exits" aria-pressed="false">PROXY 出口池</button>
         <button type="button" data-proxy-tab="groups" aria-pressed="false">策略分组</button>
         <button type="button" data-proxy-tab="providers" aria-pressed="false">节点订阅</button>
@@ -242,7 +242,7 @@
   </div>
   <script src="/assets/config-editor.bundle.js?v=e91ff9456f76"></script>
   <script src="/vendor/winbox/winbox.min.js?v=cd0b4efd9450"></script>
-  <script src="/proxy-rules.js?v=f49f1797706a"></script>
+  <script src="/proxy-rules.js?v=431487285b34"></script>
   <script src="/proxy-editor.js?v=83f035cae134"></script>
   <script src="/build-info.js?v=98bb99b2069d"></script>
   <script src="/app.js?v=00411235231c"></script>
