@@ -30,7 +30,7 @@ def set_default(config, target, live_members=()):
 
 def exits(config):
     group = pool(config)
-    nodes = {n['name'] for n in config.get('proxies', []) if n.get('type') in ('http', 'socks5')}
+    nodes = {n['name'] for n in config.get('proxies', []) if n.get('name')}
     return [name for name in group.get('proxies', []) if name in nodes]
 
 

@@ -1,7 +1,7 @@
 'use strict';
 
 let liveSelector = {}, proxyModel, proxyTab = 'bindings', pendingUpload = false, proxyGeneration = 0;
-const entryTitles = {provider: '节点订阅', exit: '代理出口', binding: '来源 IP 绑定', group: '策略组'};
+const entryTitles = {provider: '节点订阅', exit: '代理出口', binding: '网段绑定', group: '策略组'};
 
 function showProxyMode(visual) {
   $('#proxy-fields').hidden = !visual;
@@ -157,11 +157,13 @@ function openProxyEntry(kind, item) {
       field('proxies', '成员（每行一个，按顺序）', (item?.proxies || []).join('\n'), 'textarea');
       field('use', '节点订阅（每行一个）', (item?.use || []).join('\n'), 'textarea');
     } else {
-      field('ip', '来源 IP', item?.ip).required = true;
+      const range = field('ip', '网段或单个 IP', item?.ip);
+      range.placeholder = '192.168.1.240-249、192.168.1.0/24 或单个 IP';
+      range.required = true;
       const targets = proxyModel.deviceExits;
       field('target', '固定出口', item?.target || '', 'text',
         [['', '选择 Proxy 出口'], ...targets.map(n => [n, n])]).required = true;
-      field('note', '设备备注', item?.note || '');
+      field('note', '网段备注', item?.note || '');
 
     }
     return data => {

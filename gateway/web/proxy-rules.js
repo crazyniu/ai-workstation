@@ -295,7 +295,7 @@ function openOptionEntry(parent, key, existing) {
 
 function renderProxyBrowser() {
   const collections = {exits: ['Proxy 出口池', 'exit'], providers: ['节点订阅', 'provider'],
-                       groups: ['策略组', 'group'], bindings: ['设备出口', 'binding']};
+                       groups: ['策略组', 'group'], bindings: ['网段出口', 'binding']};
   const collection = collections[proxyTab];
   const config = proxyModel.options;
   const pool = (config['proxy-groups'] || []).find(g => g.name === 'Proxy');
@@ -330,7 +330,7 @@ function renderProxyBrowser() {
   }
   if (collection) {
     const [title, kind] = collection;
-    add.textContent = {binding:'绑定设备',exit:'添加出口',group:'添加分组',provider:'添加订阅'}[kind];
+    add.textContent = {binding:'添加网段',exit:'添加出口',group:'添加分组',provider:'添加订阅'}[kind];
     add.onclick = () => {
       if (kind === 'binding' && !proxyModel.deviceExits.length) { toast('请先在 Proxy 出口池添加出口', true); return; }
       openProxyEntry(kind);
@@ -449,7 +449,7 @@ function renderProxyBrowser() {
   const visible = rows.slice(resultPage * perPage, (resultPage + 1) * perPage);
   if (proxyTab === 'bindings' && visible.length) {
     const table = element('table', undefined, 'device-bindings'), heading = table.createTHead().insertRow();
-    for (const name of ['来源 IP','备注','固定出口','操作']) heading.append(element('th', name));
+    for (const name of ['来源网段','备注','固定出口','操作']) heading.append(element('th', name));
     const body = table.createTBody(), devices = new Map(proxyModel.bindings.map(b => [b.ip,b]));
     for (const row of visible) {
       const item = devices.get(row.title), tr = body.insertRow();
