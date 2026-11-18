@@ -641,6 +641,19 @@ print("Cache cleanup complete.")
 CACHE_PY
 }
 
+manage_lan_ports() {
+    local tool=/etc/workstation/lan_ports.py
+    if [[ ! -f "$tool" ]]; then
+        echo 'Port management requires a workstation image with the LAN firewall helper.' >&2
+        return 1
+    fi
+    if (( EUID == 0 )); then
+        python3 -I "$tool" menu
+    else
+        sudo -- python3 -I "$tool" menu
+    fi
+}
+
 confirm_action() {
     local answer
     printf '%s\n  1. Confirm\n  0. Cancel\n' "$1"
@@ -670,7 +683,7 @@ menu() {
         if orca_installed; then
             printf '  2. Update Orca Server\n  3. Restart Orca Server\n'
         fi
-        printf '  4. Update niu.sh from GitHub\n  5. Reset Claude Code user data\n  6. Clear Claude, Codex and application caches\n  0. Exit\n'
+        printf '  4. Update niu.sh from GitHub\n  5. Reset Claude Code user data\n  6. Clear Claude, Codex and application caches\n  7. Manage outbound LAN ports\n  0. Exit\n'
         read -rp 'Choose a number: ' choice || return 0
         case "$choice" in
             0) return 0 ;;
@@ -693,6 +706,7 @@ menu() {
                confirm_action 'Permanently apply the Claude cleanup shown above?' || continue
                run_action reset_claude apply ;;
             6) run_action clean_caches ;;
+            7) run_action manage_lan_ports ;;
             *) echo 'Choose one of the listed numbers.' ;;
         esac
     done

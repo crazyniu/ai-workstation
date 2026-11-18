@@ -19,7 +19,8 @@ The default Linux LAN workstation keeps its own LAN address and can initiate
 connections to a paired Mac. Only explicit LAN isolation adds `workstation-network`.
 This helper uses the workstation image and holds its LAN address and firewall
 capability. Keep the desktop in that namespace with NET_ADMIN and NET_RAW
-dropped. Preserve the editable Clash source and compile the enforced runtime
+dropped. Preserve admin-approved outbound ports from /etc/workstation/lan-ports.json
+when migrating the workstation, including its paired Orca endpoint. Preserve the editable Clash source and compile the enforced runtime
 policy on startup, reload and restore. The helper contains no user data.
 
 ## Installation requests

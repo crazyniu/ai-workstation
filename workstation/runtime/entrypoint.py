@@ -19,8 +19,13 @@ def main():
     if os.getuid() != 0:
         raise ValueError('The entrypoint needs root to start SSH; applications run as dev')
     native = os.environ.get('WORKSTATION_INSTALL_MODE') == 'native'
-    if os.environ.get('WORKSTATION_LAN_GUARD') == 'required':
-        subprocess.run(['python3', '/etc/workstation/network-guard.py', '--ready'], check=True)
+    if not native and (os.environ.get('WORKSTATION_LAN') or os.environ.get('WORKSTATION_LAN_GUARD') == 'required'):
+        hosts = subprocess.check_output(['python3', '-I', '/etc/workstation/lan_ports.py', 'init'], text=True).strip()
+        if hosts:
+            upper = os.environ.get('NO_PROXY', '')
+            lower = os.environ.get('no_proxy', upper)
+            for key, previous in [('NO_PROXY', upper), ('no_proxy', lower)]:
+                os.environ[key] = ','.join(dict.fromkeys(filter(None, [*previous.split(','), *hosts.split(',')])))
     dev_password = secret('DEV_PASSWORD', required=True, default='' if native else 'dev')
     vnc_auth = os.environ.get('VNC_AUTH', 'password')
     if vnc_auth not in ('password', 'none'):

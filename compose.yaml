@@ -39,6 +39,9 @@ services:
       - no-new-privileges:false
       - seccomp=./workstation/security/seccomp-chrome.json
     environment:
+      WORKSTATION_LAN: ${LAN_SUBNET:-192.168.1.0/24}
+      WORKSTATION_GATEWAY: ${GATEWAY_ADDRESS:-192.168.1.250}
+      WORKSTATION_INITIAL_ORCA_ENDPOINT: ${WORKSTATION_INITIAL_ORCA_ENDPOINT:-}
       DEV_PASSWORD: ${WORKSTATION_PASSWORD:-dev}
       VNC_PASSWORD: ${VNC_PASSWORD:-root}
       VNC_AUTH: ${VNC_AUTH:-password}

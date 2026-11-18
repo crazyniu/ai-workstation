@@ -53,6 +53,14 @@ Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop �
 
 默认管理员账号、密码为 **`root / root`**；工作站应用以普通用户 `dev` 运行，默认密码为 `dev`，VNC 密码为 `root`。Linux 原生安装保留宿主已有 root 密码。手动选用 portable 模式时，端口默认绑定本机回环地址。
 
+## 系统架构
+
+Linux 局域网部署中，250 和 251 可以运行在同一台或不同的 Docker 宿主机。图中的 IP 属于容器。
+
+![系统架构：251 工作站经 250 网关访问互联网，在可选隔离模式下通过菜单 7 管理到局域网设备的出站连接](docs/images/workstation-gateway-architecture.png)
+
+菜单 7 按**目标 IPv4、协议和端口**放行工作站主动发起的连接，例如到 Mac 的 Orca WebSocket。工作站对外提供的 SSH、VNC 和 noVNC 入口仍由部署配置管理。[LAN 隔离与端口放行说明](docs/workstation-egress.md)
+
 ## 两个服务
 
 | 服务 | 默认地址 | 能力 | 公开镜像 |
@@ -64,7 +72,7 @@ Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop �
 - 网关内置工作站网页入口，可修改地址；内置图标与自定义链接统一排序，保存、导入和表单校验通过全局提示反馈。
 - 网关默认使用密码登录，可信私网可在账户设置中关闭；工作站提供 HTTPS noVNC 网页桌面，支持双向文字剪贴板。
 - 网关统一管理代理配置、DNS、子网访问、组件升级与备份恢复。
-- 251 默认直接接入局域网，可主动连接 Mac 的 Orca 配对服务。250 继续负责公网代理。需要限制 251 主动访问其他内网设备时，显式启用[可选隔离](docs/workstation-egress.md#显式启用隔离)。
+- 251 默认直接接入局域网，可主动连接 Mac 的 Orca 配对服务。250 继续负责公网代理。需要限制 251 主动访问其他内网设备时，可用 **niu.sh → 7** 保留 Mac 的 Orca 端口或其他指定设备端口，再显式启用[可选隔离](docs/workstation-egress.md#显式启用隔离)。
 - 在 250 的 Clash 规则里，把软件或来源 IP 绑定到具体 HTTP、HTTPS 或 SOCKS5 出口。该节点连接失败或不支持 UDP 时，命中的流量被拒绝。手动选用的其他节点和独立规则按其自身策略执行。详见[工作站网络策略](docs/workstation-egress.md)。
 - 配置、HOME 和账号身份全部保存在各自容器内部。公开镜像包含程序和默认模板，个人订阅、身份和业务数据由用户自行配置。
 

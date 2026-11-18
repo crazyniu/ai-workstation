@@ -50,6 +50,7 @@ Open **niu.sh** on the desktop or type `niu.sh` in a terminal. The desktop short
 | 4 | Update niu.sh from this repository's GitHub main branch and reopen the menu. |
 | 5 | Preview the Claude Code user data to remove. Close Claude Code before applying the cleanup. |
 | 6 | Preview and clear Claude and Codex image caches, temporary Codex clipboard PNGs, CLI caches, desktop thumbnails, browser and Electron caches, and pip/npm caches. |
+| 7 | List, add, remove or reapply outbound LAN exceptions. Select a paired Orca endpoint, or enter a LAN IPv4, port and TCP/UDP. |
 | 0 | Exit. |
 
 At the confirmation prompt enter **1** to proceed or **0** to cancel. Cache cleanup keeps generated images, project files, conversation history, settings and credentials. Send pending image attachments before clearing their temporary copies.
@@ -153,7 +154,7 @@ Mac 可作为 Orca 桌面控制端，通过 SSH 使用工作站现有的 `dev` �
 
 桌面应用以 `dev` 运行。容器启动时将桌面内 root 所有的目录交还给 `dev`，给已有的用户目录设置可继承的 POSIX 默认 ACL。普通方式新建的子目录会继承桌面用户权限。显式 `0700`、额外挂载和不可变属性有各自的权限语义。修复目录权限无需删除项目、修改普通文件的执行位或开放全员写入。
 
-默认 Linux LAN 模板将 251 地址分配给工作站，允许 Orca 从 251 主动连接配对的 Mac。显式启用隔离后，由同镜像的 `workstation-network` 管理 251 的网络。在此模式下桌面可以回复管理员连接，可通过 250 访问公网；主动访问 NAS、路由器、其他工作站以及 250 管理页面受阻。工作站业务容器始终移除 NET_ADMIN、NET_RAW。见[网络规则、故障行为与迁移](../docs/workstation-egress.md)。
+默认 Linux LAN 模板将 251 地址分配给工作站，允许 Orca 从 251 主动连接配对的 Mac。显式启用隔离后，由同镜像的 `workstation-network` 管理 251 的网络。在此模式下桌面可以回复管理员连接，可通过 250 访问公网；通过 **niu.sh → 7** 可放行到指定内网设备端口的直接连接。其他内网访问仍受限，250 管理页面继续由网关控制。工作站业务容器始终移除 NET_ADMIN、NET_RAW。见[网络规则、故障行为与迁移](../docs/workstation-egress.md)。
 
 ## 数据、备份与恢复
 
@@ -236,6 +237,12 @@ set -eu
 docker cp -a "$container":/etc/workstation/region.json - > "$workstation_backup/region-json.tar"
 ```
 
+若使用了菜单 7 的端口放行功能，按相同方式保存授权规则，并在新工作站首次启动前恢复：
+
+```sh
+docker cp -a "$container":/etc/workstation/lan-ports.json - > "$workstation_backup/lan-ports.tar"
+```
+
 确认归档完整后，在 `.env` 中选择新的公开镜像及运行时密码。创建新容器但暂不启动，将 tar 流直接放回相同父目录：
 
 ```bash
@@ -248,6 +255,9 @@ fi
 if [ -f "$workstation_backup/region-json.tar" ]; then
   tar -tf "$workstation_backup/region-json.tar" > /dev/null
 fi
+if [ -f "$workstation_backup/lan-ports.tar" ]; then
+  tar -tf "$workstation_backup/lan-ports.tar" > /dev/null
+fi
 docker compose pull workstation
 docker compose up --no-start --no-deps --force-recreate workstation
 new_container=$(docker compose ps --all --quiet workstation)
@@ -259,6 +269,9 @@ if [ -f "$workstation_backup/proxy-env.tar" ]; then
 fi
 if [ -f "$workstation_backup/region-json.tar" ]; then
   docker cp - "$new_container":/etc/workstation < "$workstation_backup/region-json.tar"
+fi
+if [ -f "$workstation_backup/lan-ports.tar" ]; then
+  docker cp - "$new_container":/etc/workstation < "$workstation_backup/lan-ports.tar"
 fi
 # tar 流保留数值 UID/GID 与权限；恢复使用归档原值，不启用 cp -a 的目标用户映射。
 # 启动前核对 HOME 根目录、SSH keys 及代理文件的属主和权限与原归档一致：
