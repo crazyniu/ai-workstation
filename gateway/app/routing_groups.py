@@ -1,10 +1,12 @@
 """Device exits and optional service groups in the editable Clash profile."""
 
-PROXY = 'Proxy'
-RELAY = 'Proxy-Reply'
+PROXY = '🤖 PROXY'
+RELAY = '🔗 PROXY-RELAY'
 NOTES = 'x-gateway-ip-notes'
 DISABLED = 'x-gateway-disabled-groups'
 REQUIRED = (PROXY, RELAY)
+ALIASES = {name: RELAY for name in ('AI-RELAY', '🔗 AI-RELAY', 'Proxy-Reply', 'PROXY-RELAY')}
+ALIASES.update({name: PROXY for name in ('AI', '🤖 AI', 'Proxy', 'PROXY')})
 
 
 def policy_slot(rule):

@@ -1,6 +1,6 @@
 'use strict';
 
-let liveSelector = {}, proxyModel, proxyTab = 'bindings', pendingUpload = false, proxyGeneration = 0;
+let liveSelector = {}, proxyModel, proxyTab = 'groups', pendingUpload = false, proxyGeneration = 0;
 const entryTitles = {provider: '节点订阅', exit: '代理出口', binding: '网段绑定', group: '策略组'};
 
 function showProxyMode(visual) {
@@ -22,10 +22,23 @@ function proxyRow(list, title, detail, actions) {
   list.append(row);
 }
 
-async function openProxyWindow(force = false) {
+function setProxyWorkspace(ranges) {
+  const dialog = $('#proxy-window');
+  dialog.classList.toggle('range-workspace', ranges);
+  $('#proxy-window-title').textContent = ranges ? 'IP 网段出口' : 'Clash 配置编辑器';
+  proxyTab = ranges ? 'bindings' : 'groups';
+  resetProxyBrowser();
+}
+async function openProxyWindow(force = false, ranges = false) {
   const dialog = $('#proxy-window'), workspace = $('#proxy-workspace');
-  if (dialog.open && !force) return;
-  if (!dialog.open) dialog.showModal();
+  if (dialog.open && !force) {
+    if (dialog.classList.contains('range-workspace') !== ranges) {
+      setProxyWorkspace(ranges);
+      await openProxyVisual();
+    }
+    return;
+  }
+  if (!dialog.open) { setProxyWorkspace(ranges); dialog.showModal(); }
   const request = ++proxyGeneration;
   workspace.inert = true;
   const done = beginLoading(workspace);
@@ -63,7 +76,7 @@ async function openProxyVisual(visual = true) {
   try {
     const result = await post('/proxy/draft', {content, upload: pendingUpload});
     if (request !== proxyGeneration || content !== editor.getValue()) return;
-    if (result.content !== undefined) { editor.setValue(result.content); pendingUpload = false; updateConfigState(); }
+    if (pendingUpload) { editor.setValue(result.content); pendingUpload = false; updateConfigState(); }
     proxyModel = result.model;
     showProxyMode(visual);
   } catch (error) {
@@ -146,12 +159,12 @@ function openProxyEntry(kind, item) {
       field('username', '用户名', item?.username).autocomplete = 'off';
       field('password', '密码', item?.password, 'password').autocomplete = 'off';
       const dialers = new Set([...proxyModel.targets, item?.['dialer-proxy']].filter(name => name && name !== item?.name));
-      field('dialer-proxy', '前置代理', item ? item['dialer-proxy'] || '' : (dialers.has('Proxy-Reply') ? 'Proxy-Reply' : ''), 'text', [['', '无'], ...[...dialers].map(n => [n, n])]);
+      field('dialer-proxy', '前置代理', item ? item['dialer-proxy'] || '' : (dialers.has('🔗 PROXY-RELAY') ? '🔗 PROXY-RELAY' : ''), 'text', [['', '无'], ...[...dialers].map(n => [n, n])]);
       field('tls', '使用 TLS', item?.tls, 'checkbox');
     } else if (kind === 'group') {
       const name = field('name', '策略组名称', item?.name);
       name.required = true;
-      name.readOnly = ['Proxy', 'Proxy-Reply'].includes(item?.name);
+      name.readOnly = ['🤖 PROXY', '🔗 PROXY-RELAY'].includes(item?.name);
       const types = [...new Set(['select', 'url-test', 'fallback', 'load-balance', item?.type].filter(Boolean))];
       field('type', '策略类型', item?.type || 'select', 'text', types.map(t => [t, t]));
       field('proxies', '成员（每行一个，按顺序）', (item?.proxies || []).join('\n'), 'textarea');
@@ -162,7 +175,7 @@ function openProxyEntry(kind, item) {
       range.required = true;
       const targets = proxyModel.deviceExits;
       field('target', '固定出口', item?.target || '', 'text',
-        [['', '选择 Proxy 出口'], ...targets.map(n => [n, n])]).required = true;
+        [['', '选择 PROXY 出口'], ...targets.map(n => [n, n])]).required = true;
       field('note', '网段备注', item?.note || '');
 
     }
@@ -188,9 +201,11 @@ function setupProxyEditor() {
   for (const tab of $$('[data-proxy-tab]')) tab.onclick = () => {
     if (proxyTab !== tab.dataset.proxyTab) resetProxyBrowser();
     proxyTab = tab.dataset.proxyTab;
+    $('.proxy-canvas').scrollTop = 0;
     if ($('#proxy-fields').hidden) guard(openProxyVisual);
     else showProxyMode(true);
   };
+  $('#open-range-settings').onclick = () => openProxyWindow(false, true);
   setupProxyBrowser();
   $('#ai-default-exit').onchange = event => {
     const target = event.target.value;

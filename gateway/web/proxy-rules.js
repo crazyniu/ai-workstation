@@ -13,8 +13,6 @@ const ruleLabels = {
   'PROCESS-PATH':'进程路径', 'PROCESS-PATH-WILDCARD':'进程路径通配符', 'PROCESS-PATH-REGEX':'进程路径正则',
   UID:'用户 ID', DSCP:'流量标记', 'REMATCH-NAME':'重匹配名称'
 };
-const addressRules = ['DOMAIN-SUFFIX', 'DOMAIN', 'IP-CIDR', 'IP-CIDR6', 'DOMAIN-KEYWORD',
-  'DOMAIN-WILDCARD', 'DOMAIN-REGEX', 'IP-SUFFIX'];
 const configLabels = {
   'proxy-providers': '节点订阅', 'rule-providers': '规则集', 'proxy-groups': '代理组', proxies: '代理节点',
   rules: '主规则', 'sub-rules': '子规则', hosts: '自定义域名解析', sniffer: '流量嗅探', profile: '状态保存',
@@ -26,11 +24,12 @@ const nestedLabels = {payload:'规则条目', name:'名称', type:'类型', beha
   'route-exclude-address':'排除的路由地址', 'skip-src-address':'跳过的来源地址', 'skip-dst-address':'跳过的目标地址'};
 const fieldName = (key, depth) => (depth ? nestedLabels : configLabels)[key] || key;
 const perPage = 20;
-let optionPath = [], ruleScope = '', resultPage = 0;
+let optionPath = [], ruleScope = '', rulePolicy = '', resultPage = 0;
 
 function resetProxyBrowser() {
   optionPath = [];
   ruleScope = '';
+  rulePolicy = '';
   resultPage = 0;
   $('#proxy-search').value = '';
 }
@@ -121,39 +120,60 @@ function conditionFields(type, parts) {
   }};
 }
 
+const policyLabel = name => ({DIRECT:'直连', REJECT:'拒绝', 'REJECT-DROP':'静默丢弃'})[name] || name;
+
 function proxyRuleScopes() {
-  const opts = proxyModel.options;
-  const scopes = [{name: '主规则', path: ['rules'], list: opts.rules || []}];
-  for (const [name, list] of Object.entries(opts['sub-rules'] || {})) {
-    scopes.push({name: '子规则 · ' + name, path: ['sub-rules', name], list});
+  const opts = proxyModel.options, managedIndexes = new Set(), managedSubs = new Set();
+  for (const binding of proxyModel.bindings) {
+    if (!proxyModel.deviceExits.includes(binding.target) && !binding.sub?.startsWith('Gateway-Range-')) continue;
+    for (let i = binding.id; i < binding.end; i++) managedIndexes.add(i);
+    if (binding.sub) managedSubs.add(binding.sub);
   }
-  const directSets = new Set();
+  const main = {name:'主规则', path:['rules'], list:opts.rules || [], skip:managedIndexes};
+  const scopes = [main], visited = new Set(), providerTargets = new Map();
   for (const scope of scopes) {
-    for (const text of scope.list) {
+    scope.list.forEach((text, index) => {
+      if (scope.skip?.has(index)) return;
       const rule = splitProxyRule(text, scope);
-      if (rule.type === 'RULE-SET' && rule.target === 'DIRECT' && !rule.flags.includes('src')) directSets.add(rule.operand);
-    }
+      if (rule.type === 'SUB-RULE' && !visited.has(rule.target) && !managedSubs.has(rule.target)) {
+        visited.add(rule.target);
+        const list = opts['sub-rules']?.[rule.target];
+        if (list) scopes.push({name:'子规则 · ' + rule.target, path:['sub-rules',rule.target], list});
+      }
+      if (rule.type === 'RULE-SET') {
+        if (!providerTargets.has(rule.operand)) providerTargets.set(rule.operand, new Set());
+        providerTargets.get(rule.operand).add(rule.target);
+      }
+    });
   }
   for (const [name, provider] of Object.entries(opts['rule-providers'] || {})) {
-    if ((provider.type === 'inline' || Array.isArray(provider.payload)) && (proxyTab !== 'direct' || directSets.has(name))) {
-      scopes.push({name: '规则集 · ' + name, path: ['rule-providers', name, 'payload'],
-        behavior: provider.behavior || 'classical', list: provider.payload || []});
+    if (provider.type === 'inline' || Array.isArray(provider.payload)) {
+      scopes.push({name:'规则集 · ' + name, path:['rule-providers',name,'payload'], list:provider.payload || [],
+        behavior:provider.behavior || 'classical', targets:[...(providerTargets.get(name) || [])]});
     }
   }
   return scopes;
 }
 
+function showGroupRules(name) {
+  proxyTab = 'rules';
+  resetProxyBrowser();
+  rulePolicy = name;
+  showProxyMode(true);
+  $('.proxy-canvas').scrollTop = 0;
+  $('#proxy-browser-title').focus({preventScroll:true});
+}
+
 function openRuleEntry(scopes, original, index) {
-  const direct = proxyTab === 'direct';
-  proxyDialog((index == null ? '添加' : '编辑') + (direct ? '直连地址' : '分流规则'), field => {
+  proxyDialog(index == null ? '添加分流规则' : '编辑分流规则', (field, fields) => {
     const scopeInput = field('scope', '作用范围', JSON.stringify(original.path), 'text',
       scopes.map(s => [JSON.stringify(s.path), s.name]));
     scopeInput.disabled = index != null;
-    const rule = index == null ? {type: 'DOMAIN-SUFFIX', operand: '', target: direct ? 'DIRECT' : '', flags: []}
+    const rule = index == null ? {type: 'DOMAIN-SUFFIX', operand: '', target: rulePolicy, flags: []}
       : splitProxyRule(original.list[index], original);
     const type = field('type', '匹配类型', '', 'text', []);
     const operand = field('operand', '匹配内容', rule.operand);
-    const target = field('target', '策略', '', 'text', []);
+    const target = field('target', '执行策略', '', 'text', []);
     const position = field('position', '顺序（1 为最先匹配）', '', 'number');
     position.min = 1;
     position.required = true;
@@ -177,31 +197,38 @@ function openRuleEntry(scopes, original, index) {
       operand.required = !operand.parentElement.hidden;
       operand.placeholder = ['DOMAIN', 'DOMAIN-SUFFIX'].includes(type.value) ? 'example.com'
         : type.value === 'IP-CIDR' ? '192.0.2.1 或 192.0.2.0/24' : '';
-      const useTarget = !scope.behavior && !direct;
+      const useTarget = !scope.behavior;
       target.parentElement.hidden = !useTarget;
       target.required = useTarget;
       const choices = type.value === 'SUB-RULE' ? Object.keys(proxyModel.options['sub-rules'] || {})
         : ['DIRECT', 'REJECT', 'REJECT-DROP', 'PASS', 'GLOBAL', 'COMPATIBLE', ...proxyModel.targets];
       const value = choices.includes(target.value) ? target.value : type.value === rule.type ? rule.target : '';
-      target.replaceChildren(new Option('选择策略', ''), ...[...new Set([...choices, value].filter(Boolean))].map(n => new Option(n, n)));
+      target.replaceChildren(new Option('选择策略', ''), ...[...new Set([...choices, value].filter(Boolean))].map(n => new Option(policyLabel(n), n)));
       target.value = value || '';
       const flagsAllowed = !['domain','ipcidr'].includes(scope.behavior) && !match;
       noResolve.parentElement.hidden = !flagsAllowed || !(/IP|GEOIP|RULE-SET/.test(type.value) || rule.flags.includes('no-resolve'));
-      src.parentElement.hidden = !flagsAllowed || direct || !(/IP|GEOIP|RULE-SET/.test(type.value) || rule.flags.includes('src'));
+      src.parentElement.hidden = !flagsAllowed || !(/IP|GEOIP|RULE-SET/.test(type.value) || rule.flags.includes('src'));
     }
     function syncScope() {
       const scope = selectedScope();
       const types = scope.behavior === 'domain' ? ['DOMAIN'] : scope.behavior === 'ipcidr' ? ['IP-CIDR']
-        : direct ? addressRules : [...new Set([...Object.keys(ruleLabels), ...scope.list.map(s => s.split(',')[0]), rule.type])]
+        : [...new Set([...Object.keys(ruleLabels), ...scope.list.map(s => s.split(',')[0]), rule.type])]
           .filter(t => !scope.behavior || !['RULE-SET','SUB-RULE'].includes(t));
       type.replaceChildren(...types.map(v => new Option(ruleLabels[v] || v, v)));
       type.value = types.includes(rule.type) ? rule.type : types[0];
       type.parentElement.hidden = types.length === 1;
       position.max = scope.list.length + (index == null ? 1 : 0);
       const fallback = scope.list.findIndex(s => s.startsWith('MATCH,'));
-      position.value = index != null ? index + 1 : direct ? 1 : fallback < 0 ? scope.list.length + 1 : fallback + 1;
+      const firstGroupRule = rulePolicy && !scope.behavior ? scope.list.findIndex((text, i) =>
+        !scope.skip?.has(i) && splitProxyRule(text,scope).target === rulePolicy) : -1;
+      const insertAt = firstGroupRule >= 0 ? firstGroupRule : fallback >= 0 ? fallback : scope.list.length;
+      position.value = (index ?? insertAt) + 1;
       syncType();
     }
+    const advanced = element('details', undefined, 'rule-advanced');
+    advanced.append(element('summary', '高级设置'), scopeInput.parentElement, position.parentElement,
+                    noResolve.parentElement, src.parentElement);
+    fields.append(advanced);
     scopeInput.onchange = syncScope;
     type.onchange = syncType;
     syncScope();
@@ -210,7 +237,7 @@ function openRuleEntry(scopes, original, index) {
       if (noResolve.checked && !noResolve.parentElement.hidden) flags.push('no-resolve');
       if (src.checked && !src.parentElement.hidden) flags.push('src');
       return {kind: 'rule', path: selectedScope().path, index, type: type.value, operand: conditions ? conditions.read() : operand.value,
-        target: direct ? 'DIRECT' : target.value, flags, position: Number(position.value)};
+        target: target.value, flags, position: Number(position.value)};
     };
   });
 }
@@ -294,11 +321,11 @@ function openOptionEntry(parent, key, existing) {
 }
 
 function renderProxyBrowser() {
-  const collections = {exits: ['Proxy 出口池', 'exit'], providers: ['节点订阅', 'provider'],
+  const collections = {exits: ['PROXY 出口池', 'exit'], providers: ['节点订阅', 'provider'],
                        groups: ['策略组', 'group'], bindings: ['网段出口', 'binding']};
   const collection = collections[proxyTab];
   const config = proxyModel.options;
-  const pool = (config['proxy-groups'] || []).find(g => g.name === 'Proxy');
+  const pool = (config['proxy-groups'] || []).find(g => g.name === '🤖 PROXY');
   const defaults = $('#routing-defaults'), selector = $('#ai-default-exit');
   defaults.hidden = !['bindings','exits','groups'].includes(proxyTab);
   if (!defaults.hidden) {
@@ -312,7 +339,7 @@ function renderProxyBrowser() {
     $('#general-default-policy').textContent = proxyModel.defaultPolicy || '未设置 MATCH';
   }
 
-  const advanced = proxyTab === 'options', direct = proxyTab === 'direct';
+  const advanced = proxyTab === 'options', isRules = proxyTab === 'rules';
   const search = $('#proxy-search').value.trim().toLowerCase();
   const results = $('#proxy-results'), add = $('#add-proxy-item'), select = $('#proxy-scope');
   const pathNav = $('#proxy-path');
@@ -322,8 +349,9 @@ function renderProxyBrowser() {
   if (!advanced && mode !== 'rule') {
     $('#proxy-rule-mode').textContent = (mode === 'direct' ? '直连模式' : '全局模式') + ' · 切换为规则模式';
   }
-  $('#proxy-scope-label').hidden = Boolean(collection) || advanced;
-  $('#proxy-browser-title').textContent = collection ? collection[0] : advanced ? '全部配置项' : direct ? '直连地址' : '分流规则';
+  $('#proxy-scope-label').hidden = !isRules;
+  $('#rule-policy-label').hidden = !isRules;
+  $('#proxy-browser-title').textContent = collection ? collection[0] : advanced ? '全部配置项' : rulePolicy ? policyLabel(rulePolicy) + ' · 分流规则' : '分流规则';
   const rows = [];
   function row(title, detail, actions) {
     if (!search || (title + ' ' + detail).toLowerCase().includes(search)) rows.push({title, detail, actions});
@@ -332,7 +360,7 @@ function renderProxyBrowser() {
     const [title, kind] = collection;
     add.textContent = {binding:'添加网段',exit:'添加出口',group:'添加分组',provider:'添加订阅'}[kind];
     add.onclick = () => {
-      if (kind === 'binding' && !proxyModel.deviceExits.length) { toast('请先在 Proxy 出口池添加出口', true); return; }
+      if (kind === 'binding' && !proxyModel.deviceExits.length) { toast('请先在 PROXY 出口池添加出口', true); return; }
       openProxyEntry(kind);
     };
     function advancedEntry(path) {
@@ -345,7 +373,8 @@ function renderProxyBrowser() {
       row(title, detail, () => {
         const actions = [button('编辑', () => editable ? openProxyEntry(kind, item) : advancedEntry(path), 'text-button')];
         if (editable && path) actions.push(button('全部字段', () => advancedEntry(path), 'text-button'));
-        if (kind === 'group' && !['Proxy','Proxy-Reply'].includes(item.name)) {
+        if (kind === 'group') actions.unshift(button('编辑规则', () => showGroupRules(item.name), 'text-button'));
+        if (kind === 'group' && !['🤖 PROXY','🔗 PROXY-RELAY'].includes(item.name)) {
           const enabled = !proxyModel.disabledGroups.includes(item.name);
           const toggle = button(enabled ? '已启用' : '已关闭', () => guard(() =>
             updateProxyDraft({kind:'toggle-group', name:item.name, enabled:!enabled})), 'group-switch');
@@ -411,34 +440,57 @@ function renderProxyBrowser() {
     }
   } else {
     const scopes = proxyRuleScopes();
-    const selection = direct ? '全部来源' : '全部范围';
-    select.replaceChildren(new Option(selection, ''), ...scopes.map(s => new Option(s.name, JSON.stringify(s.path))));
-    if (!scopes.some(s => JSON.stringify(s.path) === ruleScope)) ruleScope = '';
+    const policySelect = $('#rule-policy-filter');
+    const policies = new Set(['DIRECT','REJECT','REJECT-DROP',...proxyModel.targets]);
+    for (const scope of scopes.filter(s => !s.behavior)) {
+      scope.list.forEach((text, i) => {
+        if (scope.skip?.has(i)) return;
+        const rule = splitProxyRule(text, scope);
+        if (rule.type !== 'SUB-RULE' && rule.target) policies.add(rule.target);
+      });
+    }
+    policySelect.replaceChildren(new Option('全部策略',''), ...[...policies].map(n => new Option(policyLabel(n),n)));
+    policySelect.value = rulePolicy;
+    const allowed = scopes.filter(scope => !scope.behavior || !rulePolicy || scope.targets.includes(rulePolicy));
+    if (!allowed.some(scope => JSON.stringify(scope.path) === ruleScope)) ruleScope = '';
+    select.replaceChildren(new Option(rulePolicy ? '关联规则' : '主规则',''),
+      ...allowed.slice(rulePolicy ? 0 : 1).map(scope => new Option(scope.name,JSON.stringify(scope.path))));
     select.value = ruleScope;
-    const displayed = ruleScope ? scopes.filter(s => JSON.stringify(s.path) === ruleScope) : scopes;
-    add.textContent = direct ? '添加直连地址' : '添加规则';
-    add.onclick = () => openRuleEntry(scopes, displayed[0], null);
+    const displayed = ruleScope ? allowed.filter(s => JSON.stringify(s.path) === ruleScope)
+      : rulePolicy ? allowed.filter(s => !s.behavior) : [scopes[0]];
+    add.textContent = '添加规则';
+    add.onclick = () => openRuleEntry(allowed, displayed[0], null);
     for (const scope of displayed) {
       scope.list.forEach((text, index) => {
+        if (scope.skip?.has(index)) return;
         const rule = splitProxyRule(text, scope);
-        if (direct && rule.type === 'RULE-SET' && rule.target === 'DIRECT' && !rule.flags.includes('src')) {
-          const provider = proxyModel.options['rule-providers']?.[rule.operand];
-          if (provider && provider.type !== 'inline' && !Array.isArray(provider.payload)) {
-            row(rule.operand, scope.name + ' · 外部直连规则集', () => [button('配置来源', () => {
-              proxyTab = 'options';
-              resetProxyBrowser();
-              optionPath = ['rule-providers', rule.operand];
+        if (rulePolicy && !scope.behavior && (rule.type === 'SUB-RULE' || rule.target !== rulePolicy)) return;
+        const type = ruleLabels[rule.type] || rule.type;
+        const content = rule.type === 'MATCH' ? '其余所有流量' : rule.operand;
+        const policy = scope.behavior ? (scope.targets.map(policyLabel).join(' / ') || '由引用规则决定')
+          : rule.type === 'SUB-RULE' ? '子规则 · ' + rule.target : policyLabel(rule.target);
+        if (search && ![content, type, rule.type, policy, rule.target, scope.name].join(' ').toLowerCase().includes(search)) return;
+        rows.push({title:content, type, policy, order:index + 1, scope:scope.name, actions:() => {
+          const actions = [button('编辑', () => openRuleEntry(allowed,scope,index), 'text-button')];
+          if (rule.type === 'RULE-SET') {
+            const provider = proxyModel.options['rule-providers']?.[rule.operand];
+            if (provider) actions.push(button(Array.isArray(provider.payload) || provider.type === 'inline' ? '编辑条目' : '订阅来源', () => {
+              if (Array.isArray(provider.payload) || provider.type === 'inline') {
+                ruleScope = JSON.stringify(['rule-providers',rule.operand,'payload']);
+              } else {
+                proxyTab = 'options';
+                resetProxyBrowser();
+                optionPath = ['rule-providers',rule.operand];
+              }
+              resultPage = 0;
+              $('#proxy-search').value = '';
               showProxyMode(true);
-            }, 'text-button')]);
+              $('.proxy-canvas').scrollTop = 0;
+            }, 'text-button'));
           }
-          return;
-        }
-        if (direct && (!addressRules.includes(rule.type) || rule.flags.includes('src') || (!scope.behavior && rule.target !== 'DIRECT'))) return;
-        const detail = [scope.name + ' · ' + (index + 1), ruleLabels[rule.type] || rule.type, rule.target].filter(Boolean).join(' · ');
-        row(rule.operand || rule.type, detail, () => [
-          button('编辑', () => openRuleEntry(scopes, scope, index), 'text-button'),
-          button('移除', () => guard(() => updateProxyDraft({kind: 'rule', path: scope.path, index, remove: true})), 'text-button')
-        ]);
+          actions.push(button('移除', () => guard(() => updateProxyDraft({kind:'rule',path:scope.path,index,remove:true})), 'text-button'));
+          return actions;
+        }});
       });
     }
   }
@@ -447,7 +499,19 @@ function renderProxyBrowser() {
   $('#proxy-count').textContent = rows.length + ' 项';
   results.replaceChildren();
   const visible = rows.slice(resultPage * perPage, (resultPage + 1) * perPage);
-  if (proxyTab === 'bindings' && visible.length) {
+  if (isRules && visible.length) {
+    const table = element('table', undefined, 'routing-rule-table');
+    const heading = table.createTHead().insertRow();
+    for (const label of ['顺序','匹配类型','匹配内容','执行策略','操作']) heading.append(element('th',label));
+    const body = table.createTBody();
+    for (const item of visible) {
+      const tr = body.insertRow();
+      for (const value of [item.order,item.type,item.title,item.policy]) tr.insertCell().textContent = value;
+      tr.cells[0].title = item.scope;
+      tr.insertCell().append(...item.actions());
+    }
+    results.append(table);
+  } else if (proxyTab === 'bindings' && visible.length) {
     const table = element('table', undefined, 'device-bindings'), heading = table.createTHead().insertRow();
     for (const name of ['来源网段','备注','固定出口','操作']) heading.append(element('th', name));
     const body = table.createTBody(), devices = new Map(proxyModel.bindings.map(b => [b.ip,b]));
@@ -472,6 +536,7 @@ function renderProxyBrowser() {
 
 function setupProxyBrowser() {
   $('#proxy-rule-mode').onclick = () => guard(() => updateProxyDraft({kind:'option', path:['mode'], action:'set', value:'rule'}));
+  $('#rule-policy-filter').onchange = e => { rulePolicy = e.target.value; ruleScope = ''; resultPage = 0; renderProxyBrowser(); };
   $('#proxy-scope').onchange = e => { ruleScope = e.target.value; resultPage = 0; renderProxyBrowser(); };
   $('#proxy-search').oninput = () => { resultPage = 0; renderProxyBrowser(); };
   for (const [id, step] of [['#proxy-prev', -1], ['#proxy-next', 1]]) {

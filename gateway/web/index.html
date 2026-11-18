@@ -9,10 +9,10 @@
   <link rel="icon" href="/favicon-32.png?v=2" type="image/png" sizes="32x32">
   <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180">
-  <link rel="stylesheet" href="/vendor/winbox/winbox.min.css">
-  <link rel="stylesheet" href="/style.css">
-  <link rel="stylesheet" href="/loading.css">
-  <link rel="stylesheet" href="/favicon.css">
+  <link rel="stylesheet" href="/vendor/winbox/winbox.min.css?v=9d6b72dc5f03">
+  <link rel="stylesheet" href="/style.css?v=8be633657ad3">
+  <link rel="stylesheet" href="/loading.css?v=e549cd70c0dd">
+  <link rel="stylesheet" href="/favicon.css?v=941afb91f398">
 </head>
 <body>
   <header class="topbar">
@@ -51,6 +51,7 @@
         <button class="nav-overview" data-page="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>所有设置</span></button>
         <p class="nav-group">连接与访问</p>
         <button data-page="proxy"><img src="/icons/clash.svg" alt=""><span>代理配置</span></button>
+        <button data-page="ranges"><img src="/icons/server.svg" alt=""><span>IP 网段出口</span></button>
         <button data-page="dns"><img src="/icons/globe.svg" alt=""><span>DNS 与访问</span></button>
         <button data-page="tailscale"><img src="/icons/tailscale.svg" alt=""><span>Tailscale</span></button>
         <p class="nav-group">通用设置</p>
@@ -65,6 +66,7 @@
         <section id="settings-overview" data-section="overview">
           <div class="settings-group"><h2>连接与访问</h2><div class="settings-grid">
             <button data-page="proxy"><img src="/icons/clash.svg" alt=""><span>代理配置</span></button>
+        <button data-page="ranges"><img src="/icons/server.svg" alt=""><span>IP 网段出口</span></button>
             <button data-page="dns"><img src="/icons/globe.svg" alt=""><span>DNS 与访问</span></button>
             <button data-page="tailscale"><img src="/icons/tailscale.svg" alt=""><span>Tailscale</span></button>
             <a href="/adguard/" target="_blank" rel="noopener"><img src="/icons/adguard.svg" alt=""><span>广告过滤</span></a>
@@ -198,12 +200,11 @@
         <input id="config-file" type="file" accept=".yaml,.yml" hidden>
       </div>
       <div class="proxy-layout"><nav class="proxy-nav" aria-label="配置分类">
-        <button type="button" data-proxy-tab="bindings" aria-pressed="false">网段出口</button>
-        <button type="button" data-proxy-tab="exits" aria-pressed="false">Proxy 出口池</button>
+        <button type="button" id="open-range-settings">IP 网段出口 ↗</button>
+        <button type="button" data-proxy-tab="exits" aria-pressed="false">PROXY 出口池</button>
         <button type="button" data-proxy-tab="groups" aria-pressed="false">策略分组</button>
         <button type="button" data-proxy-tab="providers" aria-pressed="false">节点订阅</button>
         <button type="button" data-proxy-tab="rules" aria-pressed="false">分流规则</button>
-        <button type="button" data-proxy-tab="direct" aria-pressed="false">直连地址</button>
         <button type="button" data-proxy-tab="options" aria-pressed="false">全部配置项</button>
         <button type="button" id="config-code" aria-pressed="false">YAML 源码</button>
       </nav><div class="proxy-canvas"><div id="proxy-fields">
@@ -216,7 +217,8 @@
               <button id="proxy-rule-mode" class="text-button" hidden></button>
               <nav id="proxy-path" aria-label="配置路径" hidden></nav>
               <div class="proxy-filters">
-                <label id="proxy-scope-label">范围<select id="proxy-scope"></select></label>
+                <label id="rule-policy-label" hidden>执行策略<select id="rule-policy-filter"></select></label>
+                <label id="proxy-scope-label">规则来源<select id="proxy-scope"></select></label>
                 <label>搜索<input id="proxy-search" type="search" placeholder="输入名称或地址" autocomplete="off"></label>
               </div>
               <div id="proxy-results"></div>
@@ -240,11 +242,11 @@
     <p id="toast-message" class="toast-message" role="status" aria-live="polite" aria-atomic="true"></p>
     <button type="button" id="toast-close" class="toast-close" aria-label="关闭提示"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button>
   </div>
-  <script src="/assets/config-editor.bundle.js"></script>
-  <script src="/vendor/winbox/winbox.min.js"></script>
-  <script src="/proxy-rules.js"></script>
-  <script src="/proxy-editor.js"></script>
-  <script src="/build-info.js"></script>
-  <script src="/app.js"></script>
+  <script src="/assets/config-editor.bundle.js?v=e91ff9456f76"></script>
+  <script src="/vendor/winbox/winbox.min.js?v=cd0b4efd9450"></script>
+  <script src="/proxy-rules.js?v=c987a2d9d9f7"></script>
+  <script src="/proxy-editor.js?v=2d65ad9efb23"></script>
+  <script src="/build-info.js?v=98bb99b2069d"></script>
+  <script src="/app.js?v=00411235231c"></script>
 </body>
 </html>

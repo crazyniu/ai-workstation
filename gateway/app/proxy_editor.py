@@ -97,12 +97,13 @@ def policy_names(config):
 
 def live_pool(config):
     names = {g.get('name') for g in config.get('proxy-groups', [])}
-    name = next((n for n in (routing.PROXY, '🤖 AI', 'AI') if n in names), None)
+    name = next((n for n in (routing.PROXY, 'Proxy', 'PROXY', '🤖 AI', 'AI') if n in names), None)
     if not name:
         return {}
     try:
         info = json.loads(legacy.controller_request('/proxies/' + quote(name, safe='')))
-        return {'all': info.get('all', []), 'now': info.get('now', '')}
+        return {'all': [routing.ALIASES.get(n, n) if n in names else n for n in info.get('all', [])],
+                'now': routing.ALIASES.get(info['now'], info['now']) if info.get('now') in names else info.get('now', '')}
     except (OSError, ValueError):
         return {}
 
@@ -138,7 +139,7 @@ def model(config):
         'exits': [{key: node[key] for key in ('name', 'type', 'server', 'port', 'username', 'password',
                                               'dialer-proxy', 'tls') if key in node}
                   for node in nodes if node.get('type') in EDITABLE_TYPES],
-        'bindings': [dict(id=r['id'], ip=r['ip'], target=r['target'], note=(config.get(routing.NOTES) or {}).get(r['ip'], ''))
+        'bindings': [dict(id=r['id'], end=r['end'], sub=r['sub'], ip=r['ip'], target=r['target'], note=(config.get(routing.NOTES) or {}).get(r['ip'], ''))
                      for r in bindings(config)],
         'deviceExits': routing.exits(config), 'defaultPolicy': routing.default_policy(config),
         'disabledGroups': config.get(routing.DISABLED, []),
@@ -199,14 +200,12 @@ def migrate_groups(config, selections=None):
     """Rename legacy managed groups and pin unambiguous group-wide bindings."""
     groups = {g['name']: g for g in config.get('proxy-groups', [])}
     selections = selections or {}
-    renamed = False
-    for old, new in [('AI-RELAY', routing.RELAY), ('🔗 AI-RELAY', routing.RELAY),
-                     ('AI', routing.PROXY), ('🤖 AI', routing.PROXY)]:
+    old_ai_bindings = any(n in groups for n in ('AI', '🤖 AI'))
+    for old, new in routing.ALIASES.items():
         if old not in groups:
             continue
         if new in policy_names(config):
             raise ValueError(f'无法将 {old} 改名为 {new}：名称已被使用')
-        renamed = True
         group = groups.pop(old)
         group['name'] = new
         groups[new] = group
@@ -216,7 +215,7 @@ def migrate_groups(config, selections=None):
     exits = routing.exits(config)
     current = selections.get('🤖 AI') or selections.get('AI')
     selected = current if current in exits else (exits[0] if len(exits) == 1 else None)
-    if renamed and selected:
+    if old_ai_bindings and selected:
         for row in reversed(list(bindings(config))):
             if row['target'] == routing.PROXY:
                 edit_binding(config, dict(id=row['id'], ip=row['ip'], target=selected))
