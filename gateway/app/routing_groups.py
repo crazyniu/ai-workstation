@@ -9,6 +9,10 @@ DISABLED = 'x-gateway-disabled-groups'
 DOMAIN_EXCLUSIONS = 'x-gateway-domain-exclusions'
 EXIT_NOTE = 'x-gateway-note'
 REQUIRED = (PROXY, RELAY)
+SUBSCRIPTION_INFO_FILTER = (
+    r'(?i)免费|流量|到期|过期|過期|有效期|套餐|重置|更新订阅|更新訂閱|'
+    r'\b(?:expire[sd]?|expiration|traffic[ _-]*(?:left|remaining)|remaining[ _-]*(?:traffic|data))\b'
+)
 ALIASES = {name: RELAY for name in ('AI-RELAY', '🔗 AI-RELAY', 'Proxy-Reply', 'PROXY-RELAY')}
 ALIASES.update({name: PROXY for name in ('AI', '🤖 AI', 'Proxy', 'PROXY')})
 
@@ -58,6 +62,12 @@ def merge_subscription_nodes(config, removed=()):
     if not groups and providers:
         groups = [{'name': PROXY, 'type': 'select'}]
         config['proxy-groups'] = groups
+
+    for provider in providers.values():
+        current = provider.get('exclude-filter') or ''
+        filters = current.split('`') if current else []
+        if SUBSCRIPTION_INFO_FILTER not in filters:
+            provider['exclude-filter'] = '`'.join([*filters, SUBSCRIPTION_INFO_FILTER])
 
     sources = list(providers)
     for group in groups:
