@@ -168,6 +168,9 @@ def apply_proxy_config(data):
             if (data.get("refresh_providers") is True or previous_providers.get(name) != provider
                     or not cache or not (MIHOMO_DIR / cache).is_file()):
                 refresh_providers.add(name)
+        removed_providers = previous_providers.keys() - (parsed.get('proxy-providers') or {}).keys()
+        if parsed != current or refresh_providers:
+            routing.merge_subscription_nodes(parsed, removed_providers)
         pool = routing.pool(parsed)
         selected = pool.get('default-selected') if pool.get('type') == 'select' else None
         if selected and not refresh_providers and routing.pool(current):
@@ -299,7 +302,15 @@ def apply_proxy_config(data):
                     raise ValueError(f"节点订阅 {name} 刷新失败") from exc
                 refreshed_providers.append({"name": name, "nodes": count})
             if selected:
-                controller_request('/proxies/' + quote(routing.PROXY, safe=''), method='PUT', body={'name': selected})
+                route = '/proxies/' + quote(routing.PROXY, safe='')
+                if (removed_providers
+                        and selected == routing.pool(current).get('default-selected')
+                        and selected not in pool.get('proxies', [])
+                        and selected not in json.loads(controller_request(route)).get('all', [])):
+                    pool.pop('default-selected')
+                    state.write_config(parsed)
+                else:
+                    controller_request(route, method='PUT', body={'name': selected})
         except Exception as exc:
             state.atomic(MIHOMO_CONFIG,old)
             for destination, previous in changed_resources.items():

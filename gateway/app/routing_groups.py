@@ -1,5 +1,7 @@
 """Device exits and optional service groups in the editable Clash profile."""
 
+import hashlib
+
 PROXY = '🤖 PROXY'
 RELAY = '🔗 PROXY-RELAY'
 NOTES = 'x-gateway-ip-notes'
@@ -17,6 +19,64 @@ def policy_slot(rule):
     while index > 1 and fields[index].strip() in ('no-resolve', 'src', 'dst'):
         index -= 1
     return fields, index
+
+
+def provider_cache(name):
+    return './providers/' + hashlib.sha256(name.encode()).hexdigest()[:16] + '.yaml'
+
+
+def policy_in_use(config, name):
+    groups = config.get('proxy-groups') or []
+    if any(name in (g.get('proxies') or []) or g.get('default-selected') == name for g in groups):
+        return True
+    rulesets = [config.get('rules') or [], *(config.get('sub-rules') or {}).values()]
+    for rules in rulesets:
+        for rule in rules:
+            fields, index = policy_slot(rule)
+            if fields[0].strip().upper() != 'SUB-RULE' and fields[index].strip() == name:
+                return True
+    for entry in [*(config.get('proxies') or []), *(config.get('listeners') or []),
+                  *(config.get('proxy-providers') or {}).values(), *(config.get('rule-providers') or {}).values()]:
+        for options in (entry, entry.get('override') or {}):
+            if options.get('proxy') == name or options.get('dialer-proxy') == name:
+                return True
+    return name in (config.get(DISABLED) or []) or name in (config.get(DOMAIN_EXCLUSIONS) or {})
+
+
+def merge_subscription_nodes(config, removed=()):
+    providers = config.get('proxy-providers') or {}
+    if not providers and not removed:
+        return
+    groups = config.get('proxy-groups') or []
+    # Recognize the exact selector and cache path created by the previous editor.
+    # A selector used by another policy must retain its name and references.
+    for group in list(groups):
+        name = group['name']
+        if (name in providers and name not in REQUIRED and group == {'name': name, 'type': 'select', 'use': [name]}
+                and providers[name].get('path') == provider_cache(name) and not policy_in_use(config, name)):
+            groups.remove(group)
+    if not groups and providers:
+        groups = [{'name': PROXY, 'type': 'select'}]
+        config['proxy-groups'] = groups
+
+    sources = list(providers)
+    for group in groups:
+        if group['type'] not in ('select', 'url-test', 'fallback', 'load-balance'):
+            if removed and group.get('use'):
+                group['use'] = [name for name in group['use'] if name not in removed]
+            continue
+        if group.pop('include-all', False):
+            group['include-all-proxies'] = True
+        group.pop('include-all-providers', None)
+        if sources:
+            group['use'] = sources.copy()
+            if group.pop('x-gateway-empty-subscription', False) and group.get('proxies') == ['REJECT']:
+                del group['proxies']
+        else:
+            group.pop('use', None)
+            if not group.get('proxies') and not group.get('include-all-proxies'):
+                group['proxies'] = ['REJECT']
+                group['x-gateway-empty-subscription'] = True
 
 
 def pool(config):

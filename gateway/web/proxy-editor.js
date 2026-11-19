@@ -96,7 +96,7 @@ async function openProxyVisual(visual = true) {
   try {
     const result = await post('/proxy/draft', {content, upload: pendingUpload});
     if (request !== proxyGeneration || content !== editor.getValue()) return;
-    if (pendingUpload) { editor.setValue(result.content); pendingUpload = false; updateConfigState(); }
+    if (result.content !== undefined) { editor.setValue(result.content); pendingUpload = false; updateConfigState(); }
     proxyModel = result.model;
     showProxyMode(visual);
   } catch (error) {

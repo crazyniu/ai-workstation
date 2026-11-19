@@ -152,20 +152,25 @@ def model(config):
 
 def edit_provider(config, edit):
     name = edit['name'].strip()
+    providers = config.setdefault('proxy-providers', {})
+    if edit.get('remove'):
+        if name not in providers:
+            raise ValueError('请选择已有节点订阅')
+        del providers[name]
+        routing.merge_subscription_nodes(config, removed=(name,))
+        return
     url = edit['url'].strip()
     parsed = urlsplit(url)
     if not name or parsed.scheme not in ('http', 'https') or not parsed.hostname:
         raise ValueError('请填写订阅名称和有效的 HTTP(S) 地址')
-    providers = config.setdefault('proxy-providers', {})
     if edit.get('new'):
         if name in providers or name in policy_names(config) or name in BUILTINS:
             raise ValueError('订阅或代理名称已存在')
-        cache = hashlib.sha256(name.encode()).hexdigest()[:16]
-        providers[name] = {'type': 'http', 'path': f'./providers/{cache}.yaml', 'interval': 3600}
-        config.setdefault('proxy-groups', []).append({'name': name, 'type': 'select', 'use': [name]})
+        providers[name] = {'type': 'http', 'path': routing.provider_cache(name), 'interval': 3600}
     elif providers[name].get('type') != 'http':
         raise ValueError('请选择 HTTP 节点订阅')
     providers[name] = {**providers[name], 'url': url}
+    routing.merge_subscription_nodes(config)
 
 
 def rename_policy(config, old, new):
@@ -501,6 +506,7 @@ def draft(data):
         raise ValueError('请填写 Clash YAML 配置')
     original = deepcopy(config)
     migrate_groups(config)
+    routing.merge_subscription_nodes(config)
     if data.get('upload'):
         legacy.preserve_gateway_settings(config, state.config())
         return {'content': yaml.safe_dump(config, allow_unicode=True, sort_keys=False), 'model': model(config)}
@@ -521,6 +527,8 @@ def draft(data):
     change = {'provider': edit_provider, 'exit': edit_exit, 'note': edit_exit_note, 'binding': edit_binding,
               'option': edit_option, 'rule': edit_rule, 'subscription-domain': edit_subscribed_domain, 'group': edit_group, 'toggle-group': lambda cfg, e: routing.toggle(cfg, e['name'], e['enabled'])}[edit['kind']]
     change(config, edit)
+    if edit['kind'] == 'group':
+        routing.merge_subscription_nodes(config)
     if config != original:
         text = yaml.safe_dump(config, allow_unicode=True, sort_keys=False)
     return {'model': model(config), 'content': text}

@@ -230,7 +230,15 @@ function renderProxyBrowser() {
     rows = Object.entries(config['proxy-providers'] || {}).map(([name,p]) => {
       let source = p.type;
       try { source = new URL(p.url).host; } catch {}
-      return {cells:[name,source],actions:() => p.type === 'http' ? [button('编辑',()=>openProxyEntry('provider',{...p,name}),'text-button')] : []};
+      return {cells:[name,source],actions:() => {
+        const actions = [];
+        if (p.type === 'http') actions.push(button('编辑',()=>openProxyEntry('provider',{...p,name}),'text-button'));
+        actions.push(button('删除',()=>guard(async () => {
+          if (!await askConfirm('从节点订阅中删除“' + name + '”？', '删除节点订阅')) return;
+          if (await updateProxyDraft({kind:'provider',name,remove:true})) toast('订阅已从草稿删除，请保存并应用');
+        }),'text-button'));
+        return actions;
+      }};
     });
   } else {
     headers = ['顺序','匹配类型','匹配内容','执行策略','操作'];
