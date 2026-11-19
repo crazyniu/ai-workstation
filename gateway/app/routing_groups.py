@@ -55,7 +55,7 @@ def restrict_ai_pool(config, providers):
     static = {node['name'] for node in (config.get('proxies') or [])}
     has_relay = RELAY in static or any(g['name'] == RELAY for g in groups)
     members = [name for name in (group.get('proxies') or []) if name in static or (name == RELAY and has_relay)]
-    if not has_relay and (providers or not members):
+    if not has_relay:
         relay = {'name': RELAY, 'type': 'select'}
         if not providers:
             relay.update({'proxies': ['REJECT'], 'x-gateway-empty-subscription': True})
