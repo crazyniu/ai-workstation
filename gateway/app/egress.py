@@ -10,7 +10,7 @@ import sys
 import yaml
 
 import state
-from routing_groups import apply_switches, policy_slot
+from routing_groups import apply_switches, merge_subscription_nodes, policy_slot
 
 RUNTIME_NAME = '.gateway-effective.yaml'
 DIRECT_MARK = 6667
@@ -96,6 +96,13 @@ def parent_groups(groups, names):
 
 def effective(source):
     config = copy.deepcopy(source)
+    merge_subscription_nodes(config)
+    for group in config.get('proxy-groups', []):
+        group.pop('x-gateway-empty-subscription', None)
+        if len(group.get('use') or []) > 1 and not group.get('filter'):
+            # Mihomo's ordered-filter pass unions providers by node name. The
+            # first tier matches every name and preserves provider order.
+            group['filter'] = '.*`^$'
     apply_switches(config)
     clients = isolated_clients()
     nodes = {p['name']: p for p in config.get('proxies') or []}
