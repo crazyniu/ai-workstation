@@ -141,9 +141,8 @@ function drawDefaults(config) {
   defaults.hidden = proxyTab !== 'bindings';
   if (defaults.hidden) return;
   const pool = (config['proxy-groups'] || []).find(g => g.name === '🤖 PROXY');
-  const dynamic = pool?.use?.length || pool?.['include-all'] || pool?.['include-all-providers'] || pool?.['include-all-proxies'];
-  const members = [...new Set([...(pool?.proxies || []), ...(dynamic ? liveSelector.all || [] : [])])];
-  const selected = pool?.['default-selected'] || liveSelector.now || members[0];
+  const members = pool?.proxies || [];
+  const selected = pool?.['default-selected'] || (members.includes(liveSelector.now) ? liveSelector.now : members[0]);
   defaults.hidden = members.length === 0;
   defaults.disabled = pool?.type !== 'select';
   $('#ai-default-exit').replaceChildren(...members.map(name => {

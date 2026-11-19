@@ -98,6 +98,14 @@ def domain_config(value,old=None):
         protect_dns(a, domain)
         atomic(path,yaml.safe_dump(a,sort_keys=False))
 
+def consolidate_proxy_ports(value):
+    # Older profiles bind both the HTTP and mixed listener to the same LAN port.
+    if value.get('port') == value.get('mixed-port') == 7890:
+        del value['port']
+        if value.get('socks-port') in (7890, 7891):
+            del value['socks-port']
+
+
 def seed_adguard_filter(seed,value):
     """Populate only the absent, enabled official default filter cache."""
     target=ROOT/'adguard/work/data/filters/1.txt'
@@ -130,12 +138,14 @@ def initialize():
                 raise ValueError(f'组件 {component} 的当前版本路径失效，请检查组件目录')
             link.symlink_to(target)
     if not CONFIG.exists():
-        write_config({'mixed-port':7890,'socks-port':7891,'allow-lan':True,'bind-address':os.environ.get('GATEWAY_BIND_ADDRESS','*'),'mode':'rule','log-level':'info','ipv6':False,
+        write_config({'mixed-port':7890,'allow-lan':True,'bind-address':os.environ.get('GATEWAY_BIND_ADDRESS','*'),'mode':'rule','log-level':'info','ipv6':False,
           'external-controller':'127.0.0.1:9090','secret':secrets.token_urlsafe(32),'external-ui':str(ROOT/'components/current/panel'),
           'dns':{'enable':True,'listen':os.environ.get('GATEWAY_CORE_DNS_LISTEN','0.0.0.0:53'),'enhanced-mode':'fake-ip','fake-ip-range':'198.18.0.1/16','nameserver':[os.environ.get('GATEWAY_LAN_ROUTER','1.1.1.1')],'proxy-server-nameserver':[os.environ.get('GATEWAY_LAN_ROUTER','1.1.1.1')]},
           'tun':{'enable':os.environ.get('GATEWAY_MODE','true')=='true','device':'Mihomo','stack':'gvisor','auto-route':True,'strict-route':True,'auto-detect-interface':True,'dns-hijack':['any:53','tcp://any:53'],'route-exclude-address':['192.168.0.0/16','10.0.0.0/8','172.16.0.0/12']},
           'proxy-providers':{},'proxies':[],'proxy-groups':[],'sub-rules':{},'rules':['MATCH,DIRECT']})
-    c=config();c['external-controller']='127.0.0.1:9090';c['external-ui']=str(ROOT/'components/current/panel');c.setdefault('secret',secrets.token_urlsafe(32));write_config(c)
+    c=config()
+    consolidate_proxy_ports(c)
+    c['external-controller']='127.0.0.1:9090';c['external-ui']=str(ROOT/'components/current/panel');c.setdefault('secret',secrets.token_urlsafe(32));write_config(c)
     if not (ROOT/'adguard/AdGuardHome.yaml').exists():
         atomic(ROOT/'adguard/AdGuardHome.yaml',yaml.safe_dump({'http':{'address':'127.0.0.1:3000'},'users':[],'language':'zh-cn',
           'dns':{'bind_hosts':[os.environ.get('GATEWAY_BIND_ADDRESS','0.0.0.0')],'port':int(os.environ.get('GATEWAY_DNS_PORT','5353')),'upstream_dns':[os.environ.get('GATEWAY_CORE_DNS_UPSTREAM','127.0.0.1:53')],'fallback_dns':[],'bootstrap_dns':['1.1.1.1'],'ratelimit':100,'cache_size':4194304,'use_private_ptr_resolvers':False},

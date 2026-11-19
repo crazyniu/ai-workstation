@@ -47,10 +47,31 @@ def policy_in_use(config, name):
     return name in (config.get(DISABLED) or []) or name in (config.get(DOMAIN_EXCLUSIONS) or {})
 
 
+def restrict_ai_pool(config, providers):
+    group = pool(config)
+    if not group:
+        return
+    groups = config['proxy-groups']
+    static = {node['name'] for node in (config.get('proxies') or [])}
+    has_relay = RELAY in static or any(g['name'] == RELAY for g in groups)
+    members = [name for name in (group.get('proxies') or []) if name in static or (name == RELAY and has_relay)]
+    if not has_relay and (providers or not members):
+        relay = {'name': RELAY, 'type': 'select'}
+        if not providers:
+            relay.update({'proxies': ['REJECT'], 'x-gateway-empty-subscription': True})
+        groups.append(relay)
+        has_relay = True
+    if has_relay and RELAY not in members:
+        members.append(RELAY)
+    group['proxies'] = members
+    for key in ('use', 'include-all', 'include-all-providers', 'include-all-proxies', 'x-gateway-empty-subscription'):
+        group.pop(key, None)
+    if group.get('default-selected') not in members:
+        group.pop('default-selected', None)
+
+
 def merge_subscription_nodes(config, removed=()):
     providers = config.get('proxy-providers') or {}
-    if not providers and not removed:
-        return
     groups = config.get('proxy-groups') or []
     # Recognize the exact selector and cache path created by the previous editor.
     # A selector used by another policy must retain its name and references.
@@ -63,6 +84,10 @@ def merge_subscription_nodes(config, removed=()):
         groups = [{'name': PROXY, 'type': 'select'}]
         config['proxy-groups'] = groups
 
+    restrict_ai_pool(config, providers)
+    if not providers and not removed:
+        return
+
     for provider in providers.values():
         current = provider.get('exclude-filter') or ''
         filters = current.split('`') if current else []
@@ -71,6 +96,8 @@ def merge_subscription_nodes(config, removed=()):
 
     sources = list(providers)
     for group in groups:
+        if group['name'] == PROXY:
+            continue
         if group['type'] not in ('select', 'url-test', 'fallback', 'load-balance'):
             if removed and group.get('use'):
                 group['use'] = [name for name in group['use'] if name not in removed]
@@ -90,14 +117,14 @@ def merge_subscription_nodes(config, removed=()):
 
 
 def pool(config):
-    return next((g for g in config.get('proxy-groups', []) if g['name'] == PROXY), {})
+    return next((g for g in (config.get('proxy-groups') or []) if g['name'] == PROXY), {})
 
 
-def set_default(config, target, live_members=()):
+def set_default(config, target):
     group = pool(config)
     if group.get('type') != 'select':
         raise ValueError('AI 默认出口需要 Proxy 手动选择组')
-    if target not in group.get('proxies', []) and target not in live_members:
+    if target not in group.get('proxies', []):
         raise ValueError('请选择 Proxy 组内的出口')
     group['default-selected'] = target
 

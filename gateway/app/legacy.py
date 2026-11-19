@@ -48,6 +48,7 @@ def preserve_gateway_settings(candidate, current, edit_network=False):
             candidate[key] = current[key]
         else:
             candidate.pop(key, None)
+    state.consolidate_proxy_ports(candidate)
 
 def validate_providers(parsed):
     """Provider caches must stay inside this deployment's Mihomo data directory."""
