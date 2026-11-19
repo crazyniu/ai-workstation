@@ -2,6 +2,8 @@ import base64,hashlib,hmac,ipaddress,json,os,re,secrets,shutil,subprocess,tempfi
 from pathlib import Path
 import yaml
 
+import routing_groups as routing
+
 ROOT=Path(os.environ.get('DATA_DIR','/data'))
 DASH=ROOT/'dashboard'
 CONFIG=ROOT/'mihomo/config.yaml'
@@ -137,13 +139,16 @@ def initialize():
             if link.is_symlink():
                 raise ValueError(f'组件 {component} 的当前版本路径失效，请检查组件目录')
             link.symlink_to(target)
-    if not CONFIG.exists():
-        write_config({'mixed-port':7890,'allow-lan':True,'bind-address':os.environ.get('GATEWAY_BIND_ADDRESS','*'),'mode':'rule','log-level':'info','ipv6':False,
+    if CONFIG.exists():
+        c=config()
+    else:
+        c={'mixed-port':7890,'allow-lan':True,'bind-address':os.environ.get('GATEWAY_BIND_ADDRESS','*'),'mode':'rule','log-level':'info','ipv6':False,
           'external-controller':'127.0.0.1:9090','secret':secrets.token_urlsafe(32),'external-ui':str(ROOT/'components/current/panel'),
           'dns':{'enable':True,'listen':os.environ.get('GATEWAY_CORE_DNS_LISTEN','0.0.0.0:53'),'enhanced-mode':'fake-ip','fake-ip-range':'198.18.0.1/16','nameserver':[os.environ.get('GATEWAY_LAN_ROUTER','1.1.1.1')],'proxy-server-nameserver':[os.environ.get('GATEWAY_LAN_ROUTER','1.1.1.1')]},
           'tun':{'enable':os.environ.get('GATEWAY_MODE','true')=='true','device':'Mihomo','stack':'gvisor','auto-route':True,'strict-route':True,'auto-detect-interface':True,'dns-hijack':['any:53','tcp://any:53'],'route-exclude-address':['192.168.0.0/16','10.0.0.0/8','172.16.0.0/12']},
-          'proxy-providers':{},'proxies':[],'proxy-groups':[],'sub-rules':{},'rules':['MATCH,DIRECT']})
-    c=config()
+          'proxy-providers':{},'proxies':[],'proxy-groups':[{'name':routing.PROXY,'type':'select'}],
+          'sub-rules':{},'rules':['MATCH,DIRECT']}
+        routing.restrict_ai_pool(c, c['proxy-providers'])
     consolidate_proxy_ports(c)
     c['external-controller']='127.0.0.1:9090';c['external-ui']=str(ROOT/'components/current/panel');c.setdefault('secret',secrets.token_urlsafe(32));write_config(c)
     if not (ROOT/'adguard/AdGuardHome.yaml').exists():
