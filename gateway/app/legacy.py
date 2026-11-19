@@ -68,6 +68,11 @@ def validate_providers(parsed):
         if kind in parsed:
             parsed[kind] = providers
 
+def provider_download_options(provider):
+    # Mihomo applies name exclusions locally when parsing the cached subscription.
+    return {key: value for key, value in provider.items() if key != 'exclude-filter'}
+
+
 def revision(content):
     return hashlib.sha256(content).hexdigest()
 
@@ -165,7 +170,9 @@ def apply_proxy_config(data):
             if provider.get("type") != "http":
                 continue
             cache = provider.get("path")
-            if (data.get("refresh_providers") is True or previous_providers.get(name) != provider
+            previous = previous_providers.get(name, {})
+            if (data.get("refresh_providers") is True
+                    or provider_download_options(previous) != provider_download_options(provider)
                     or not cache or not (MIHOMO_DIR / cache).is_file()):
                 refresh_providers.add(name)
         removed_providers = previous_providers.keys() - (parsed.get('proxy-providers') or {}).keys()
