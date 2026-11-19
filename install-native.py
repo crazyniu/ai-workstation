@@ -45,7 +45,7 @@ def preflight(role, config, system=Path('/')):
     if role in ('all', 'gateway'):
         paths += ['opt/gateway', 'var/lib/ai-gateway', 'run/gateway', 'run/tailscale',
                   'etc/systemd/system/ai-gateway.service']
-        ports += [8080, 2223, 7890, 7891, 1053, 1153, 8787, 9090, 3000, 41641]
+        ports += [8080, 2223, 7890, 1053, 1153, 8787, 9090, 3000, 41641]
         # An existing tailscaled owns this socket even when it has no listener.
         if shutil.which('tailscaled'):
             raise ValueError('Existing host Tailscale detected; retain it and use Docker isolation for this gateway.')

@@ -519,15 +519,12 @@ def draft(data):
             result['content'] = yaml.safe_dump(config, allow_unicode=True, sort_keys=False)
         return result
     if edit['kind'] == 'default-exit':
-        target = edit['target']
-        group = routing.pool(config)
-        live = [] if target in group.get('proxies', []) else live_pool(config).get('all', [])
-        routing.set_default(config, target, live)
+        routing.set_default(config, edit['target'])
         return {'model': model(config), 'content': yaml.safe_dump(config, allow_unicode=True, sort_keys=False)}
     change = {'provider': edit_provider, 'exit': edit_exit, 'note': edit_exit_note, 'binding': edit_binding,
               'option': edit_option, 'rule': edit_rule, 'subscription-domain': edit_subscribed_domain, 'group': edit_group, 'toggle-group': lambda cfg, e: routing.toggle(cfg, e['name'], e['enabled'])}[edit['kind']]
     change(config, edit)
-    if edit['kind'] == 'group':
+    if edit['kind'] in ('group', 'exit'):
         routing.merge_subscription_nodes(config)
     if config != original:
         text = yaml.safe_dump(config, allow_unicode=True, sort_keys=False)
