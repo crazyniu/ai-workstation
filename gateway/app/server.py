@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import base64,hashlib,hmac,http.client,http.cookies,io,ipaddress,json,os,re,secrets,shutil,socket,subprocess,tarfile,tempfile,threading,time,urllib.parse,urllib.request,uuid
+import base64,hashlib,hmac,http.client,io,ipaddress,json,os,re,secrets,shutil,socket,subprocess,tarfile,tempfile,threading,time,urllib.parse,urllib.request,uuid
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 import yaml
@@ -206,6 +206,14 @@ def valid_card_icon(icon):
     if isinstance(catalog,list):allowed.update(item.get('id') for item in catalog if isinstance(item,dict))
     return icon in allowed and (web/'icons'/f'{icon}.svg').is_file()
 
+def session_tokens(header):
+    # Cookies are shared by every service on this host regardless of port.
+    # SimpleCookie drops the whole header when any of them uses a value it
+    # rejects (JSON, spaces), so read only the gateway's own cookie here.
+    for item in header.split(';'):
+        name,separator,value=item.strip().partition('=')
+        if separator and name=='gateway_session':yield value.strip()
+
 class Handler(legacy.Handler):
     def reply(self,status,payload):
         body=json.dumps(payload,ensure_ascii=False).encode();self.send_response(status)
@@ -221,12 +229,14 @@ class Handler(legacy.Handler):
         return value
     def session(self):
         try:
-            cookie=http.cookies.SimpleCookie(self.headers.get('Cookie',''));token=cookie['gateway_session'].value
-            expires,signature=token.split('.')
-            with LOCK:
-                key=(DASH/'session-key').read_text().encode()
-                return int(expires)>time.time() and hmac.compare_digest(signature,hmac.new(key,expires.encode(),hashlib.sha256).hexdigest())
-        except (KeyError,ValueError,FileNotFoundError):return False
+            with LOCK:key=(DASH/'session-key').read_text().encode()
+        except FileNotFoundError:return False
+        for token in session_tokens(self.headers.get('Cookie','')):
+            expires,_,signature=token.partition('.')
+            if (re.fullmatch(r'[0-9]{1,20}',expires) and int(expires)>time.time()
+                    and hmac.compare_digest(signature.encode(),hmac.new(key,expires.encode(),hashlib.sha256).hexdigest().encode())):
+                return True
+        return False
     def login_reply(self):
         expires=str(int(time.time()+43200));signature=hmac.new((DASH/'session-key').read_text().encode(),expires.encode(),hashlib.sha256).hexdigest()
         self.send_response(200);self.send_header('Set-Cookie',f'gateway_session={expires}.{signature}; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200');self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(b'{"ok":true}')
@@ -368,6 +378,8 @@ class Handler(legacy.Handler):
                     # Older clients and the custom-link controls keep builtins in place.
                     ordered=iter(ids);desktop['order']=[next(ordered) if i in custom else i for i in desktop['order']]
                 else:raise ValueError('排序列表已变化，请刷新')
+                # Reordering keeps an unsaved workstation link derived from the deployment.
+                if 'workstation_url' not in read(DASH/'desktop.json',{}):del desktop['workstation_url']
                 save(DASH/'desktop.json',desktop)
                 lookup={c['id']:c for c in cards};legacy.write_cards([lookup[i] for i in desktop['order'] if i in lookup])
             self.reply(200,{'ok':True});return

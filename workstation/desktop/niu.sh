@@ -12,8 +12,21 @@ apt=("${admin[@]}" DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::=--f
 sync_files=("${admin[@]}" rsync -a --checksum --chown=root:root --chmod=a+rX,go-w --delay-updates)
 
 latest_tag() {
-    "${fetch[@]}" "https://api.github.com/repos/$1/releases/latest" |
-        python3 -c 'import json, sys; print(json.load(sys.stdin)["tag_name"])'
+    local tag
+    # Anonymous API calls are limited per address and are often exhausted
+    # behind shared NAT. The release page redirect does not use that quota.
+    if tag=$("${fetch[@]}" "https://api.github.com/repos/$1/releases/latest" 2>/dev/null |
+            python3 -c 'import json, sys; print(json.load(sys.stdin)["tag_name"])' 2>/dev/null) && [[ -n $tag ]]; then
+        printf '%s\n' "$tag"
+        return
+    fi
+    tag=$("${fetch[@]}" --head --output /dev/null --write-out '%{url_effective}' "https://github.com/$1/releases/latest")
+    tag=${tag##*/releases/tag/}
+    if [[ ! $tag =~ ^[A-Za-z0-9._+-]+$ ]]; then
+        echo "Could not determine the latest $1 release." >&2
+        return 1
+    fi
+    printf '%s\n' "$tag"
 }
 
 require_admin() {

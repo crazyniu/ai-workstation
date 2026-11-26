@@ -18,8 +18,11 @@ import urllib.request
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'app'))
+import egress
 import legacy
+import proxy_editor
 import releases
+import routing_groups as routing
 import server
 import state
 import updates
@@ -292,9 +295,42 @@ class AuthTests(DataTest):
         self.assertEqual((self.dash/'admin.json').read_bytes(),before)
 
     def test_invalid_and_expired_sessions_rejected(self):
-        for cookie in ('gateway_session=broken', 'gateway_session=1.invalid'):
+        for cookie in ('gateway_session=broken', 'gateway_session=1.invalid', 'gateway_session=1.é',
+                       'gateway_session=²9999999999.0'):
             with self.request('/api/settings', cookie=cookie) as response:
                 self.assertEqual(response.status, 401)
+
+    def test_session_survives_other_cookies_on_the_same_host(self):
+        # Browsers send cookies from every service on this host, whatever the port.
+        with self.request('/api/auth/setup', {'password': 'strong-password-123'}) as response:
+            session = response.headers['Set-Cookie'].split(';')[0]
+        expired = 'gateway_session=1.' + 'a' * 64
+        for cookie in ('prefs={"theme":"dark"}; ' + session, session + '; label=hello world',
+                       'other="unterminated; ' + session, expired + '; ' + session):
+            with self.request('/api/settings', cookie=cookie) as response:
+                self.assertEqual(response.status, 200, cookie)
+            with self.request('/api/auth/check', cookie=cookie) as response:
+                self.assertEqual(response.status, 204, cookie)
+
+    def test_reordering_desktop_keeps_derived_workstation_link(self):
+        with self.request('/api/auth/setup', {'password': 'strong-password-123'}) as response:
+            cookie = response.headers['Set-Cookie'].split(';')[0]
+        ids = list(reversed(server.DESKTOP_BUILTINS))
+        with self.request('/api/cards/order', {'ids': ids}, cookie=cookie) as response:
+            self.assertEqual(response.status, 200)
+        self.assertEqual(state.read(self.dash / 'desktop.json'), {'order': ids})
+        # The link still follows the deployment's scheme and port after a reorder.
+        with patch.dict(os.environ, {'NOVNC_TLS': '0'}):
+            with self.request('/api/cards', cookie=cookie) as response:
+                self.assertEqual(json.load(response)['desktop'],
+                                 {'workstation_url': 'http://192.168.1.251:6080/', 'order': ids})
+        # A link the administrator saved stays saved through later reorders.
+        url = 'http://192.0.2.20:6080/'
+        with self.request('/api/settings/workstation', {'url': url}, cookie=cookie) as response:
+            self.assertEqual(response.status, 200)
+        with self.request('/api/cards/order', {'ids': ids[::-1]}, cookie=cookie) as response:
+            self.assertEqual(response.status, 200)
+        self.assertEqual(state.read(self.dash / 'desktop.json'), {'workstation_url': url, 'order': ids[::-1]})
 
     def test_cards_are_persistent_and_order_requires_complete_set(self):
         with self.request('/api/auth/setup', {'password': 'strong-password-123'}) as response:
@@ -801,6 +837,40 @@ class UpgradeTests(DataTest):
             updates.wait_health('tailscale',baseline)
         self.assertEqual(health.call_count,2)
         sleep.assert_called_once_with(1)
+
+
+class ProxyDraftTests(DataTest):
+    def draft(self, config, **request):
+        content = yaml.safe_dump(config, allow_unicode=True, sort_keys=False)
+        result = proxy_editor.draft({'content': content, **request})
+        return result.get('content', content), result['model']
+
+    def test_empty_sections_open_in_editor_and_compile(self):
+        exit_node = {'name': 'HK', 'type': 'http', 'server': '192.0.2.10', 'port': 8080}
+        for key in ('proxies', 'proxy-groups', 'rules', 'sub-rules', 'proxy-providers', 'rule-providers'):
+            config = {'mode': 'rule', 'proxies': [exit_node], 'proxy-groups': [{'name': routing.PROXY, 'type': 'select'}],
+                      'rules': ['MATCH,DIRECT'], key: None}
+            with self.subTest(key=key):
+                content, model = self.draft(config)
+                self.assertIsInstance(model['groups'], list)
+                compiled = egress.effective(yaml.safe_load(content))
+                self.assertIsInstance(compiled.get('proxy-groups', []), list)
+                with patch.object(legacy, 'controller_request', side_effect=OSError):
+                    self.assertEqual(proxy_editor.live_pool(config), {})
+
+    def test_legacy_provider_selector_is_retired_in_one_pass(self):
+        provider = {'type': 'http', 'url': 'https://example.com/sub', 'path': routing.provider_cache('sub1')}
+        config = {'mode': 'rule', 'proxy-providers': {'sub1': provider},
+                  'proxies': [{'name': 'HK', 'type': 'http', 'server': '192.0.2.10', 'port': 8080}],
+                  'proxy-groups': [{'name': 'AI', 'type': 'select', 'proxies': ['HK', 'sub1'], 'default-selected': 'sub1'},
+                                   {'name': 'sub1', 'type': 'select', 'use': ['sub1']}],
+                  'rules': ['MATCH,DIRECT']}
+        content, model = self.draft(config)
+        self.assertNotIn('sub1', [group['name'] for group in model['groups']])
+        self.assertEqual(self.draft(yaml.safe_load(content))[0], content)
+        pool = routing.pool(yaml.safe_load(content))
+        self.assertEqual(pool['proxies'], ['HK', routing.RELAY])
+        self.assertNotIn('default-selected', pool)
 
 
 class StateTests(DataTest):
