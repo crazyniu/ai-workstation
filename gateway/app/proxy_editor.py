@@ -97,7 +97,7 @@ def policy_names(config):
 
 
 def live_pool(config):
-    names = {g.get('name') for g in config.get('proxy-groups', [])}
+    names = {g.get('name') for g in config.get('proxy-groups') or [] if isinstance(g, dict)}
     name = next((n for n in (routing.PROXY, 'Proxy', 'PROXY', '🤖 AI', 'AI') if n in names), None)
     if not name:
         return {}
@@ -504,6 +504,7 @@ def draft(data):
         raise ValueError(f'YAML 格式有误{where}') from None
     if not isinstance(config, dict):
         raise ValueError('请填写 Clash YAML 配置')
+    routing.fill_empty_sections(config)
     original = deepcopy(config)
     migrate_groups(config)
     routing.merge_subscription_nodes(config)

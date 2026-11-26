@@ -17,6 +17,18 @@ ALIASES = {name: RELAY for name in ('AI-RELAY', '🔗 AI-RELAY', 'Proxy-Reply', 
 ALIASES.update({name: PROXY for name in ('AI', '🤖 AI', 'Proxy', 'PROXY')})
 
 
+SECTIONS = {'proxies': list, 'proxy-groups': list, 'rules': list,
+            'sub-rules': dict, 'proxy-providers': dict, 'rule-providers': dict}
+
+
+def fill_empty_sections(config):
+    """Mihomo reads a present but empty section key as an empty list or map."""
+    for key, kind in SECTIONS.items():
+        if key in config and config[key] is None:
+            config[key] = kind()
+    return config
+
+
 def policy_slot(rule):
     fields = rule.split(',')
     index = len(fields) - 1
@@ -73,6 +85,9 @@ def restrict_ai_pool(config, providers):
 def merge_subscription_nodes(config, removed=()):
     providers = config.get('proxy-providers') or {}
     groups = config.get('proxy-groups') or []
+    # The AI selector keeps only exits and its relay. Drop other members first,
+    # so a legacy selector listed only there is not mistaken for one in use.
+    restrict_ai_pool(config, providers)
     # Recognize the exact selector and cache path created by the previous editor.
     # A selector used by another policy must retain its name and references.
     for group in list(groups):

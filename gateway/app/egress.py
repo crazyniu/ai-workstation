@@ -10,7 +10,7 @@ import sys
 import yaml
 
 import state
-from routing_groups import apply_switches, merge_subscription_nodes, policy_slot
+from routing_groups import apply_switches, fill_empty_sections, merge_subscription_nodes, policy_slot
 
 RUNTIME_NAME = '.gateway-effective.yaml'
 DIRECT_MARK = 6667
@@ -95,7 +95,7 @@ def parent_groups(groups, names):
 
 
 def effective(source):
-    config = copy.deepcopy(source)
+    config = fill_empty_sections(copy.deepcopy(source))
     merge_subscription_nodes(config)
     for group in config.get('proxy-groups', []):
         group.pop('x-gateway-empty-subscription', None)
