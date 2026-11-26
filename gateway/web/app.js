@@ -138,29 +138,60 @@ function glyph(name){const ns='http://www.w3.org/2000/svg',svg=document.createEl
 function iconButton(name,label,handler,className=''){const el=button('',handler,('icon-button '+className).trim());el.setAttribute('aria-label',label);el.title=label;el.append(glyph(name));return el;}
 function setTone(el,label,tone='idle'){el.textContent=label;el.dataset.tone=tone;}
 function configDirty(){return savedConfig!==null&&editor.getValue()!==savedConfig;}
-async function discardChanges(){return !configDirty()||await askConfirm('配置文件尚未应用。离开后将丢弃这些修改，是否继续？');}
+async function discardChanges(){return !configDirty()||await askConfirm('配置文件尚未应用。离开后将丢弃这些修改，是否继续？','放弃更改',{accept:'放弃',danger:true});}
 function closeSettings(){destroySettings();}
-function destroySettings(){finishSettingsLoading();if(settingsWindow){const w=settingsWindow;settingsWindow=null;w.close(true);}$('#settings-dialog').close();navigation++;currentPage=null;}
+function destroySettings(){finishSettingsLoading();if(settingsWindow){const w=settingsWindow;settingsWindow=null;releaseGatewayWindow(w);}$('#settings-dialog').close();navigation++;currentPage=null;}
 async function guard(work,target=null){
   if(busy)return;
   const done=beginLoading(loadingRegion(target));
-  busy=true;const controls=$$('button,input,select,textarea').filter(el=>!el.disabled&&!el.closest('#auth-dialog, #confirm-dialog, #desktop-toast')&&!['close-settings','close-link'].includes(el.id));
+  busy=true;const controls=$$('button,input,select,textarea').filter(el=>!el.disabled&&!el.closest('#auth-dialog, #confirm-dialog, #desktop-toast')&&el.id!=='close-link');
   controls.forEach(el=>el.disabled=true);editor.setDisabled(true);
-  try{await work();}catch(e){toast(e.message,true);}finally{busy=false;controls.filter(el=>el.isConnected).forEach(el=>el.disabled=el.dataset.stateDisabled==='true');editor.setDisabled(false);done();}
+  try{await work();}catch(e){toast(e.message,true);}finally{busy=false;
+    // Controls that track their own state may have changed it during the work.
+    new Set([...controls.filter(el=>el.isConnected),...$$('[data-state-disabled]')]).forEach(el=>el.disabled=el.dataset.stateDisabled==='true');editor.setDisabled(false);done();}
 }
 function openLinkEditor(card=null){cancelFaviconPreview();editing=card?.id||null;$('#link-title').textContent=card?'编辑链接':'添加链接';$('#link-name').value=card?.name||'';$('#link-url').value=card?.url||'';$('#link-icon').value=card?(card.icon||'link'):'auto';$('#icon-search').value='';drawIconChoices();$('#link-newtab').checked=card?.open_in_new_tab??true;$('#link-dialog').showModal();previewFavicon(0);}
+// System apps live in the Dock; the desktop holds the administrator's own links.
+// On a phone the home screen also lists the apps that do not fit in the Dock.
+const systemApps=[
+  {id:'settings',name:'控制面板',icon:'settings',open:()=>openSettings()},
+  {id:'proxy',name:'代理配置',icon:'clash',open:()=>openProxyWindow()},
+  {id:'transfer',name:'局域网互传',icon:'files',open:()=>openFrameApp('transfer')},
+  {id:'workstation',name:'工作站',icon:'workstation',url:()=>desktopPrefs.workstation_url},
+  {id:'panel',name:'Clash 面板',icon:'speedtest',open:()=>openFrameApp('panel')},
+  {id:'adguard',name:'AdGuard Home',icon:'adguard',open:()=>openFrameApp('adguard')},
+];
+const phoneDock=['settings','proxy','transfer','workstation'];
+const phone=window.matchMedia('(max-width:700px)');
 function desktopItems(){
-  const builtins=[{name:'Clash',icon:'clash',url:'/ui/#/overview'},{name:'AdGuard Home',icon:'adguard',url:'/adguard/'},{name:'Tailscale',icon:'tailscale',page:'tailscale'},{name:'工作站',icon:'workstation',url:desktopPrefs.workstation_url},{name:'局域网互传',icon:'files',url:'/transfer/'},{name:'设置',icon:'settings',page:'overview'}].map(item=>({...item,id:'builtin:'+item.icon,fixed:true}));
-  const items=[...builtins,...cards],lookup=new Map(items.map(item=>[item.id,item]));
-  return [...new Set([...desktopPrefs.order,...lookup.keys()])].map(id=>lookup.get(id)).filter(Boolean);
+  const lookup=new Map(cards.map(card=>[card.id,card]));
+  return [...new Set([...desktopPrefs.order.filter(id=>lookup.has(id)),...lookup.keys()])].map(id=>lookup.get(id));
+}
+function appLauncher(app,className){
+  const el=app.url?element('a'):element('button');el.className=className;el.dataset.app=app.id;el.append(icon(app.icon),element('span',app.name));
+  if(app.url){el.href=app.url();el.target='_blank';el.rel='noopener noreferrer';}else{el.type='button';el.onclick=app.open;}
+  el.setAttribute('aria-label',app.name);
+  el.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();showContext(e.clientX,e.clientY,{...app,system:true},el);});
+  return el;
+}
+function drawDock(){
+  const dock=$('#dock');dock.replaceChildren();
+  for(const app of systemApps){const item=appLauncher(app,'dock-item');item.dataset.label=app.name;if(!phoneDock.includes(app.id))item.classList.add('desktop-only');dock.append(item);}
+  markRunningApps();
+}
+function markRunningApps(){
+  const running=new Set([settingsWindow&&'settings',proxyWindow&&'proxy',...frameWindows.keys()].filter(Boolean));
+  for(const item of $$('.dock-item'))item.classList.toggle('running',running.has(item.dataset.app));
 }
 function clearIconDrag(){draggingIcon=null;$$('.desktop-item').forEach(el=>el.classList.remove('dragging','drop-before','drop-after'));}
 async function saveDesktopOrder(ids){await post('/cards/order',{ids});await loadCards();toast('桌面顺序已保存');}
 function drawDesktop(){
   const desktop=$('#desktop');desktop.replaceChildren();
+  // Phones show every app on the home screen; desktops keep system apps in the Dock.
+  for(const app of systemApps.filter(app=>!phoneDock.includes(app.id))){const el=appLauncher(app,'desktop-item phone-only');desktop.append(el);}
   for(const item of desktopItems()){
-    const el=item.page?element('button'):element('a');el.className='desktop-item';el.title=item.name;el.dataset.id=item.id||item.icon;el._desktopItem=item;el.append(icon(item.icon||'link',item.url),element('span',item.name));
-    if(item.page)el.onclick=()=>openSettings(item.page);else{el.href=item.url;if(item.open_in_new_tab||item.fixed){el.target='_blank';el.rel='noopener noreferrer';}}
+    const el=element('a');el.className='desktop-item';el.title=item.name;el.dataset.id=item.id;el._desktopItem=item;el.append(icon(item.icon||'link',item.url),element('span',item.name));
+    el.href=item.url;if(item.open_in_new_tab){el.target='_blank';el.rel='noopener noreferrer';}
     el.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();showContext(e.clientX,e.clientY,item,el);});
     el.addEventListener('keydown',e=>{if(e.key==='ContextMenu'||(e.shiftKey&&e.key==='F10')){e.preventDefault();const r=el.getBoundingClientRect();showContext(r.right,r.top,item,el);}});
     el.draggable=true;
@@ -171,7 +202,11 @@ function drawDesktop(){
     el.addEventListener('drop',e=>{e.preventDefault();const from=draggingIcon,after=e.clientY>el.getBoundingClientRect().top+el.offsetHeight/2;clearIconDrag();if(!from||from===item.id)return;const ids=desktopItems().map(c=>c.id).filter(id=>id!==from);ids.splice(ids.indexOf(item.id)+(after?1:0),0,from);guard(()=>saveDesktopOrder(ids));});
     el.addEventListener('keydown',e=>{if(!e.altKey||!['ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const ids=desktopItems().map(c=>c.id),i=ids.indexOf(item.id),next=i+(e.key==='ArrowUp'?-1:1);if(next<0||next>=ids.length)return;[ids[i],ids[next]]=[ids[next],ids[i]];guard(async()=>{await saveDesktopOrder(ids);[...desktop.children].find(child=>child.dataset.id===item.id)?.focus();});});
     desktop.append(el);
-  }drawLinks();
+  }
+  if(!cards.length&&initialized&&$('#auth-dialog').open===false){
+    const hint=button('',()=>openLinkEditor(),'desktop-item desktop-add');hint.append(element('span','+','desktop-add-mark'),element('span','添加链接'));desktop.append(hint);
+  }
+  drawDock();drawLinks();
 }
 function moveLink(index,delta){
   return guard(async()=>{
@@ -195,7 +230,7 @@ function drawLinks(){
   });
 }
 async function loadCards(){const data=await api('/cards');cards=data.cards;desktopPrefs=data.desktop;drawDesktop();}
-async function loadStatus(){status=await api('/status');$('#home-domain').textContent='http://'+status.domain;}
+async function loadStatus(){status=await api('/status');}
 let loginRequiredSaved=true;
 function renderLoginSettings(auth){
   loginRequiredSaved=auth.login_required!==false;
@@ -228,15 +263,20 @@ async function readAccess() {
   drawDesktop();
   destroyProxyWindow();
   destroySettings();
+  closeAllWindows();
+  $('#menubar-tailscale').hidden = true;
+  $('#menubar-updates').hidden = true;
   $('#link-dialog').close();
-  $('#home-domain').textContent = '';
+  hideSystemMenu();
   if (!$('#auth-dialog').open) $('#auth-dialog').showModal();
   return false;
 }
 async function authState() {
   if (!await readAccess()) return false;
   await Promise.all([loadCards(), loadStatus(), loadAppearance()]);
-  loadWebRelease(false, true).catch(e => toast(e.message, true));
+  const release = loadWebRelease(false, true).catch(e => toast(e.message, true));
+  refreshMenubarStatus();
+  api('/updates').then(async u => { await Promise.race([release, new Promise(r => setTimeout(r, 4000))]); setUpdateBadge(countUpdates(u, latestWebRelease)); }).catch(() => {});
   return true;
 }
 async function openSettings(page='overview',{force=false}={}){
@@ -277,7 +317,7 @@ function tailscaleSummary(t){
   if(t.state==='Running')return t.online?{label:'已连接',tone:'ok'}:{label:'正在重新连接',tone:'busy'};
   return {label:stateNames[t.state]||t.state||'未知',tone:stateTones[t.state]||'idle'};
 }
-function markTailscale(t){const summary=tailscaleSummary(t),dot=$('#nav-tailscale-dot');dot.hidden=false;dot.dataset.tone=summary.tone;dot.title='Tailscale：'+summary.label;return summary;}
+function markTailscale(t){const summary=tailscaleSummary(t),dot=$('#nav-tailscale-dot'),item=$('#menubar-tailscale');dot.hidden=false;dot.dataset.tone=summary.tone;dot.title='Tailscale：'+summary.label;item.hidden=false;item.dataset.tone=summary.tone;item.title='Tailscale：'+summary.label;$('#menubar-tailscale-label').textContent='Tailscale：'+summary.label;return summary;}
 function serviceSummary(text=''){
   const rows=text.split('\n').map(line=>line.trim().split(/\s+/)).filter(row=>row[0]&&row[1]),stopped=rows.filter(row=>row[1]!=='RUNNING');
   if(!rows.length)return {label:'状态未知',tone:'idle'};
@@ -365,48 +405,18 @@ function countUpdates(u,release){
   for(const [component,manifest] of Object.entries(u?.components||{})){const checked=u.checked?.[component];if(manifest.version&&manifest.version!=='unknown'&&checked?.available&&!checked.error&&checked.latest!==manifest.version)count++;}
   return count;
 }
-function setUpdateBadge(count){const badge=$('#nav-update-badge');badge.hidden=!count;badge.textContent=count?String(count):'';badge.title=count?count+' 项更新可用':'';}
+function setUpdateBadge(count){const badge=$('#nav-update-badge'),item=$('#menubar-updates');badge.hidden=!count;badge.textContent=count?String(count):'';badge.title=count?count+' 项更新可用':'';item.hidden=!count;$('#menubar-updates-count').textContent=count?count+' 项更新':'';item.title=count?count+' 项更新可用':'';}
 async function job(initial,{request=null}={}){let task=initial;while(task.status==='running'){await new Promise(r=>setTimeout(r,1200));if(request!==null&&request!==navigation)return;task=await api('/jobs/'+task.id);}if(request!==null&&request!==navigation)return;if(task.status==='error')throw Error(task.error||'操作失败，请检查服务状态后重试。');toast('操作完成。');return task.result;}
 $('#auth-dialog').addEventListener('cancel',e=>e.preventDefault());
 $('#auth-form').onsubmit=async e=>{e.preventDefault();const password=$('#password').value;if(!initialized&&password!==$('#confirm-password').value){toast('两次密码不一致',true);return;}const done=beginLoading($('#auth-form'));$('#auth-submit').disabled=true;try{await post(initialized?'/auth/login':'/auth/setup',{password});$('#password').value='';$('#confirm-password').value='';await authState();}catch(e){toast(e.message,true);}finally{done();$('#auth-submit').disabled=false;}};
-$('#open-settings').onclick=()=>openSettings();$('#close-settings').onclick=closeSettings;$$('[data-page]').forEach(b=>b.onclick=()=>openSettings(b.dataset.page));$('#add').onclick=()=>openLinkEditor();$('#add-from-settings').onclick=()=>openLinkEditor();$('#close-link').onclick=()=>$('#link-dialog').close();
+$$('[data-page]').forEach(b=>b.onclick=()=>openSettings(b.dataset.page));$$('[data-app]').forEach(b=>b.onclick=()=>openFrameApp(b.dataset.app));$('#add-from-settings').onclick=()=>openLinkEditor();$('#close-link').onclick=()=>$('#link-dialog').close();
 $('#link-form').onsubmit=e=>{e.preventDefault();guard(async()=>{const value={name:$('#link-name').value,url:$('#link-url').value,icon:$('#link-icon').value,tag:'链接',open_in_new_tab:$('#link-newtab').checked};await api(editing?'/cards/'+editing:'/cards',{method:editing?'PATCH':'POST',body:JSON.stringify(value)});$('#link-dialog').close();await loadCards();toast(editing?'链接已更新。':'链接已添加。');},'#link-dialog .form-content');};
 $('#workstation-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/settings/workstation',{url:$('#workstation-url').value.trim()});await loadCards();toast('工作站入口已保存。');});};
 setupProxyEditor();
-$('#config-content').addEventListener('input',updateConfigState);
-$('#upload-config').onclick=()=>$('#config-file').click();
-$('#config-file').onchange=async()=>{
-  const input=$('#config-file'),file=input.files[0];
-  if(!file)return;
-  await guard(async()=>{
-    if(!file.size||file.size>2*1024*1024||! /\.ya?ml$/i.test(file.name))throw Error('选择 2 MB 以内的 YAML 文件');
-    if(!await discardChanges())return;
-    const request=proxyGeneration, draft=await file.text();
-    if(request!==proxyGeneration||!$('#proxy-window').open)return;
-    editor.setValue(draft);
-    pendingUpload=true;
-    $('#config-filename').textContent=file.name+' · 等待应用';
-    await openProxyVisual(!$('#proxy-fields').hidden);
-  });
-  input.value='';
-};
-$('#save-config').onclick=()=>guard(async()=>{
-  const request=proxyGeneration;
-  const draft=await post('/proxy/draft',{content:editor.getValue(),upload:pendingUpload});
-  if(request!==proxyGeneration)return;
-  if(draft.content!==undefined)editor.setValue(draft.content);
-  pendingUpload=false;
-  const result=await post('/proxy/config',{filename:'config.yaml',content:editor.getValue(),revision,edit_network:true});
-  const saved=await api('/proxy/config');
-  if(request!==proxyGeneration)return;
-  revision=saved.revision;savedConfig=saved.content;editor.setValue(saved.content);updateConfigState();
-  if(!$('#proxy-fields').hidden)await openProxyVisual();
-  toast(result.message||'配置已应用。');await loadStatus();
-});
 $('#domain-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/settings/domain',{domain:$('#domain').value});await loadStatus();await openSettings('dns',{force:true});toast('域名已保存。');});};
 $$('[data-ts]').forEach(b=>b.onclick=()=>guard(async()=>{
   const action=b.dataset.ts;
-  if(['disconnect','logout'].includes(action)&&!await askConfirm(action==='logout'?'退出 Tailscale 账号会中断远程访问，之后需要重新授权。是否继续？':'断开 Tailscale 会中断远程访问，登录身份会保留。是否继续？'))return;
+  if(['disconnect','logout'].includes(action)&&!await askConfirm(action==='logout'?'退出 Tailscale 账号会中断远程访问，之后需要重新授权。是否继续？':'断开 Tailscale 会中断远程访问，登录身份会保留。是否继续？',action==='logout'?'退出 Tailscale':'断开 Tailscale',{accept:action==='logout'?'退出':'断开',danger:true}))return;
   if(tailscaleRequest)await tailscaleRequest.catch(()=>{});
   const r=await post('/tailscale/action',{action});if(r.id)await job(r);await loadTailscale();
   toast(action==='logout'?'已退出 Tailscale 账号。':action==='disconnect'?'已断开连接。':'');
@@ -435,25 +445,52 @@ $('#settings-search').addEventListener('keydown',e=>{
 $('#link-cancel').onclick=()=>$('#link-dialog').close();
 $('#login-settings-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/auth/settings',{login_required:$('#login-required').checked,current_password:$('#login-settings-password').value});renderLoginSettings(await api('/auth'));$('#login-settings-password').value='';toast($('#login-required').checked?'密码登录已开启。':'密码登录已关闭，打开网页即可进入网关。');});};
 $('#password-form').onsubmit=e=>{e.preventDefault();const password=$('#new-password').value;if(!$('#current-password').value){toast('请输入当前密码。',true);return;}if(!password){toast('请输入新密码。',true);return;}if(password!==$('#repeat-password').value){toast('两次新密码不一致，请重新输入。',true);return;}guard(async()=>{await post('/password',{current_password:$('#current-password').value,password});$('#password-form').reset();toast('密码已保存。');});};
-$('#logout').onclick=()=>guard(async()=>{if(!await discardChanges())return;await post('/auth/logout');destroyProxyWindow();destroySettings();await authState();});
+$('#logout').onclick=()=>guard(async()=>{if(!await discardChanges())return;await post('/auth/logout');destroyProxyWindow();destroySettings();closeAllWindows();await authState();});
 $('#settings-dialog').addEventListener('cancel',e=>{e.preventDefault();closeSettings();});
 window.addEventListener('beforeunload',e=>{if(configDirty()){e.preventDefault();e.returnValue='';}});
-function createGatewayWindow(shell, title, iconPath, close) {
-  shell.show();
-  const mobile = window.matchMedia('(max-width:700px)').matches;
-  const width = Math.min(1120, innerWidth - 48), height = Math.min(800, innerHeight - 80);
+// Windows follow the desktop's menu bar and Dock: they stay between the two,
+// minimize into the Dock and report the focused app to the menu bar.
+function windowBounds(){const mobile=phone.matches;return {top:mobile?0:34,bottom:mobile?0:Math.min(96,innerHeight*.12)};}
+function createGatewayWindow(shell, title, iconPath, close, {toolbar=null, app='', onCompact=null, width=1120, height=780}={}) {
+  if(shell.tagName==='DIALOG')shell.show();
+  const mobile=phone.matches,bounds=windowBounds();
+  const w=Math.min(width,innerWidth-48),h=Math.min(height,innerHeight-bounds.top-bounds.bottom-24);
   const win = new WinBox({title, icon:iconPath, mount:shell, class:['gateway-window','no-full'],
-    width, height, minwidth:Math.min(420,innerWidth), minheight:Math.min(320,innerHeight), x:'center',
-    y:mobile ? 0 : Math.max(48,(innerHeight-height)/2), top:mobile ? 0 : 48, bottom:mobile ? 0 : 22,
-    header:48, max:mobile, onclose(force) { if (force) return false; close(); return true; }});
-  for (const [cls, action] of [['wb-close','关闭'],['wb-min','最小化'],['wb-max','最大化或还原']]) {
+    width:w, height:h, minwidth:Math.min(420,innerWidth), minheight:Math.min(320,innerHeight), x:'center',
+    y:mobile ? 0 : Math.max(bounds.top+8,bounds.top+(innerHeight-bounds.top-bounds.bottom-h)/2), top:bounds.top, bottom:bounds.bottom,
+    header:52, max:mobile,
+    onclose(force) { if (force) return false; close(); return true; },
+    onfocus(){ lastGatewayWindow=this; $('#menubar-app').textContent=title; },
+    onblur(){ if(!document.querySelector('.winbox.focus'))$('#menubar-app').textContent='Gateway'; },
+    onminimize(){ $('#menubar-app').textContent='Gateway'; }});
+  win.app=app;
+  for (const [cls, action] of [['wb-close','关闭'],['wb-min','最小化'],['wb-max','缩放']]) {
     const control = win.window.querySelector('.'+cls);
     control.setAttribute('role','button');
-    control.setAttribute('aria-label',action+title);
+    control.setAttribute('aria-label',action+' '+title);
+    control.title=action;
     control.tabIndex = 0;
     control.onkeydown = event => { if (['Enter',' '].includes(event.key)) { event.preventDefault(); control.click(); } };
   }
+  if(toolbar){win.toolbar={element:toolbar,home:toolbar.parentNode};win.window.querySelector('.wb-header').append(toolbar);}
+  const sync=()=>{const compact=win.body&&win.body.clientWidth<=720;if(win.window.classList.contains('is-compact')!==compact){win.window.classList.toggle('is-compact',compact);onCompact?.(compact);}};
+  win.resizeObserver=new ResizeObserver(sync);win.resizeObserver.observe(win.body);sync();
+  markRunningApps();
   return win;
+}
+// A sheet or alert takes focus from its window; give it back when the sheet closes.
+let lastGatewayWindow=null;
+document.addEventListener('close',event=>{
+  const win=lastGatewayWindow;
+  if(event.target.tagName!=='DIALOG'||event.target.closest('.winbox')||!win||win.min||!win.window.isConnected)return;
+  if(!document.querySelector('.winbox.focus'))win.focus();
+},true);
+function releaseGatewayWindow(win){
+  win.resizeObserver?.disconnect();
+  if(win.toolbar)win.toolbar.home.prepend(win.toolbar.element);
+  win.close(true);
+  if(!document.querySelector('.winbox.focus'))$('#menubar-app').textContent='Gateway';
+  markRunningApps();
 }
 function focusGatewayWindow(win) {
   if (win.min) win.restore();
@@ -462,25 +499,98 @@ function focusGatewayWindow(win) {
 }
 function showSettingsWindow() {
   if (settingsWindow) focusGatewayWindow(settingsWindow);
-  else settingsWindow = createGatewayWindow($('#settings-dialog'),'控制面板','/icons/settings.svg',closeSettings);
+  else settingsWindow = createGatewayWindow($('#settings-dialog'),'控制面板','/icons/settings.svg',closeSettings,
+    {toolbar:$('#settings-toolbar'),app:'settings',width:1080,onCompact:syncSettingsBack});
+  syncSettingsBack();
 }
-function askConfirm(copy,title='确认操作'){
+function syncSettingsBack(){$('#settings-back').hidden=!(settingsWindow?.window.classList.contains('is-compact')&&currentPage&&currentPage!=='overview');}
+
+// Pages served by this gateway open in a window instead of a new browser tab.
+const frameApps={
+  transfer:{title:'局域网互传',icon:'/icons/files.svg',url:'/transfer/?embed=1',page:'/transfer/',width:980},
+  panel:{title:'Clash 面板',icon:'/icons/speedtest.svg',url:'/ui/#/proxies',page:'/ui/#/proxies',width:1180},
+  adguard:{title:'AdGuard Home',icon:'/icons/adguard.svg',url:'/adguard/',page:'/adguard/',width:1180},
+};
+const frameWindows=new Map();
+function openFrameApp(key){
+  const app=frameApps[key];if(!app)return;
+  const open=frameWindows.get(key);
+  if(open){focusGatewayWindow(open);return;}
+  const shell=element('div',undefined,'frame-shell'),frame=element('iframe'),bar=element('div',undefined,'window-toolbar');
+  frame.src=app.url;frame.title=app.title;frame.setAttribute('allow','clipboard-read; clipboard-write');
+  const reload=iconButton('refresh','重新载入',()=>{try{frame.contentWindow.location.reload();}catch{frame.src=app.url;}},'toolbar-button');
+  const tab=element('a',undefined,'button-link toolbar-button icon-button');tab.href=app.page;tab.target='_blank';tab.rel='noopener';tab.title='在新标签页中打开';tab.setAttribute('aria-label','在新标签页中打开 '+app.title);tab.append(glyph('external'));
+  bar.append(element('span',undefined,'toolbar-spacer'),reload,tab);shell.append(frame,bar);document.body.append(shell);
+  const win=createGatewayWindow(shell,app.title,app.icon,()=>closeFrameApp(key),{toolbar:bar,app:key,width:app.width});
+  frameWindows.set(key,win);markRunningApps();
+}
+function closeFrameApp(key){
+  const win=frameWindows.get(key);if(!win)return;
+  frameWindows.delete(key);
+  const shell=win.body?.firstChild;
+  releaseGatewayWindow(win);shell?.remove();
+}
+function closeAllWindows(){for(const key of [...frameWindows.keys()])closeFrameApp(key);}
+
+// Menu bar: the system menu, the focused app, status items and the clock.
+function systemMenuItems(){
+  return [
+    ['关于这台网关','info',()=>openSettings('overview')],null,
+    ['控制面板…','gear',()=>openSettings()],
+    ['代理配置…','relay',()=>openProxyWindow()],
+    ['局域网互传','window',()=>openFrameApp('transfer')],
+    ['添加桌面链接…','plus',()=>openLinkEditor()],
+    ['个性化…','image',()=>openPersonalization()],null,
+    ['退出登录','logout',()=>$('#logout').click()],
+  ];
+}
+function hideSystemMenu(){const menu=$('#system-menu');if(!menu||menu.hidden)return;menu.hidden=true;$('#system-menu-button').setAttribute('aria-expanded','false');}
+function showSystemMenu(){
+  const menu=$('#system-menu'),anchor=$('#system-menu-button');menu.replaceChildren();
+  const head=element('div',undefined,'menu-heading');head.append(element('strong','Gateway'),element('span',status.domain?'http://'+status.domain:''));menu.append(head);
+  for(const item of systemMenuItems()){
+    if(!item){const line=element('div',undefined,'context-divider');line.setAttribute('role','separator');menu.append(line);continue;}
+    const [label,symbol,action]=item,entry=button('',()=>{hideSystemMenu();Promise.resolve(action()).catch(e=>toast(e.message,true));});
+    entry.setAttribute('role','menuitem');entry.append(glyph(symbol),element('span',label));menu.append(entry);
+  }
+  const rect=anchor.getBoundingClientRect();menu.hidden=false;menu.style.left=Math.max(6,Math.min(rect.left,innerWidth-menu.offsetWidth-6))+'px';menu.style.top=(rect.bottom+4)+'px';
+  anchor.setAttribute('aria-expanded','true');menu.querySelector('button')?.focus();
+}
+function tickClock(){
+  const now=new Date(),clock=$('#menubar-clock');
+  const time=now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false});
+  clock.textContent=phone.matches?time:now.toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'short'})+' '+time;
+  clock.dateTime=now.toISOString();
+}
+async function refreshMenubarStatus(){
+  if(!$('#auth-dialog').open)await api('/tailscale').then(markTailscale).catch(()=>{});
+}
+function setupMenubar(){
+  $('#system-menu-button').onclick=e=>{e.stopPropagation();if($('#system-menu').hidden)showSystemMenu();else hideSystemMenu();};
+  $('#system-menu').addEventListener('keydown',e=>{const items=[...$('#system-menu').querySelectorAll('button')],i=items.indexOf(document.activeElement);if(e.key==='Escape'){e.stopPropagation();hideSystemMenu();$('#system-menu-button').focus();}else if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();items[(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length].focus();}});
+  document.addEventListener('pointerdown',e=>{if(!e.target.closest('#system-menu, #system-menu-button'))hideSystemMenu();});
+  tickClock();setInterval(tickClock,15000);phone.addEventListener('change',()=>{tickClock();drawDock();});
+  setInterval(()=>{if(!document.hidden)refreshMenubarStatus();},60000);
+}
+function askConfirm(copy,title='确认操作',{accept='确定',danger=false}={}){
   return new Promise(resolve=>{
     const dialog=$('#confirm-dialog');if(dialog.open){resolve(false);return;}$('#confirm-title').textContent=title;$('#confirm-copy').textContent=copy;
+    const ok=$('#confirm-accept');ok.textContent=accept;ok.className=danger?'danger solid':'primary';dialog.classList.toggle('is-destructive',danger);
     const finish=value=>{dialog.close();dialog.oncancel=null;resolve(value);};
     $('#confirm-cancel').onclick=()=>finish(false);$('#confirm-accept').onclick=()=>finish(true);dialog.oncancel=e=>{e.preventDefault();finish(false);};
     dialog.showModal();$('#confirm-cancel').focus();
   });
 }
-async function deleteCard(card){if(!await askConfirm('删除链接“'+card.name+'”？此操作仅移除桌面入口。','删除桌面链接'))return;await api('/cards/'+card.id,{method:'DELETE'});await loadCards();toast('链接已删除');}
+async function deleteCard(card){if(!await askConfirm('删除链接“'+card.name+'”？此操作仅移除桌面入口。','删除桌面链接',{accept:'删除',danger:true}))return;await api('/cards/'+card.id,{method:'DELETE'});await loadCards();toast('链接已删除');}
 function hideContext(){const menu=$('#desktop-context-menu');if(menu)menu.hidden=true;}
 function showContext(x,y,item=null,origin=null){
   if($('#auth-dialog').open)return;
   const menu=$('#desktop-context-menu');menu.replaceChildren();
-  const add=(label,symbol,action,danger=false,url='')=>{const b=button('',()=>{hideContext();Promise.resolve(action()).catch(e=>toast(e.message,true));},danger?'danger':'');b.setAttribute('role','menuitem');b.append(icon(symbol,url),element('span',label));menu.append(b);};
+  const add=(label,symbol,action,danger=false,image=null)=>{const b=button('',()=>{hideContext();Promise.resolve(action()).catch(e=>toast(e.message,true));},danger?'danger':'');b.setAttribute('role','menuitem');b.append(image||glyph(symbol),element('span',label));menu.append(b);};
   const line=()=>{const hr=element('div',undefined,'context-divider');hr.setAttribute('role','separator');menu.append(hr);};
-  if(item){add('打开',item.icon||'link',()=>origin.click(),false,item.url);if(!item.fixed){line();add('编辑链接','link',()=>openLinkEditor(item));add('删除链接','trash',()=>guard(()=>deleteCard(item)));}else if(item.id==='builtin:workstation'){line();add('设置入口地址','settings',async()=>{await openSettings('desktop');$('#workstation-url').focus();});}}
-  else{add('添加链接','add',()=>openLinkEditor());add('刷新桌面','refresh',()=>withLoading($('.desktop-workspace'),async()=>{await Promise.all([loadCards(),loadStatus()]);toast('桌面已刷新');}));add('按名称排列','sort',()=>guard(()=>saveDesktopOrder(desktopItems().sort((a,b)=>a.name.localeCompare(b.name,'zh-CN')).map(c=>c.id))));line();add('个性化设置','appearance',()=>openPersonalization());add('控制面板','settings',()=>openSettings());}
+  if(item?.system){add('打开','',()=>origin.click(),false,icon(item.icon));if(item.id==='workstation'){line();add('设置入口地址…','gear',async()=>{await openSettings('desktop');$('#workstation-url').focus();});}}
+  else if(item){add('打开','',()=>origin.click(),false,icon(item.icon||'link',item.url));line();add('编辑链接…','edit',()=>openLinkEditor(item));add('删除链接','trash',()=>guard(()=>deleteCard(item)),true);}
+  else{add('添加链接…','plus',()=>openLinkEditor());add('刷新桌面','refresh',()=>withLoading($('.desktop-workspace'),async()=>{await Promise.all([loadCards(),loadStatus()]);toast('桌面已刷新');}));add('按名称排列','list',()=>guard(()=>saveDesktopOrder(desktopItems().sort((a,b)=>a.name.localeCompare(b.name,'zh-CN')).map(c=>c.id))));line();add('个性化…','image',()=>openPersonalization());add('控制面板…','gear',()=>openSettings());}
   menu.hidden=false;menu.style.left=Math.max(8,Math.min(x,innerWidth-menu.offsetWidth-8))+'px';menu.style.top=Math.max(8,Math.min(y,innerHeight-menu.offsetHeight-8))+'px';menu.querySelector('button')?.focus();
   menu.onkeydown=e=>{const items=[...menu.querySelectorAll('button')],i=items.indexOf(document.activeElement);if(e.key==='Escape'){e.stopPropagation();hideContext();origin?.focus();}else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?items.length-1:(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;items[next].focus();}};
 }
@@ -504,15 +614,14 @@ function setupDesktop(){
   setupIconPicker();
   document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('#desktop-context-menu').hidden){hideContext();return;}if(!document.querySelector('dialog:modal')){if(proxyWindow?.focused){e.preventDefault();backProxy();}else if(settingsWindow?.focused){e.preventDefault();closeSettings();}}});
   document.addEventListener('pointerdown',e=>{if(!e.target.closest('#desktop-context-menu'))hideContext();});
-  document.addEventListener('contextmenu',e=>{if(e.target.closest('dialog,.winbox,.topbar,#desktop-context-menu'))return;e.preventDefault();showContext(e.clientX,e.clientY);});
+  document.addEventListener('contextmenu',e=>{if(e.target.closest('dialog,.winbox,.menubar,.dock,.frame-shell,#desktop-context-menu,#system-menu'))return;e.preventDefault();showContext(e.clientX,e.clientY);});
   let hold=null,point=null;
   $('#desktop').addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')return;point=[e.clientX,e.clientY];const target=e.target.closest('.desktop-item');hold=setTimeout(()=>{const item=target?._desktopItem;showContext(e.clientX,e.clientY,item,target);hold=null;},600);});
   $('#desktop').addEventListener('pointermove',e=>{if(point&&Math.hypot(e.clientX-point[0],e.clientY-point[1])>10){clearTimeout(hold);hold=null;}});
   for(const type of ['pointerup','pointercancel'])$('#desktop').addEventListener(type,()=>{clearTimeout(hold);hold=null;point=null;});
   $('#desktop').addEventListener('click',e=>{if(!$('#desktop-context-menu').hidden){e.preventDefault();e.stopImmediatePropagation();}},true);
-  $('#show-desktop').onclick=()=>{const windows=[settingsWindow,proxyWindow].filter(Boolean);if(windows.some(w=>!w.min)){windows.forEach(w=>{if(!w.min)w.minimize();});}else{windows.forEach(focusGatewayWindow);}};
-  $('#open-personalization').onclick=openPersonalization;$$('[data-personalization]').forEach(el=>el.onclick=openPersonalization);
-  $('#minimize-settings').onclick=()=>settingsWindow?.minimize();$('#maximize-settings').onclick=()=>{if(settingsWindow?.max)settingsWindow.restore();else settingsWindow?.maximize();};
+  $$('[data-personalization]').forEach(el=>el.onclick=openPersonalization);
+  setupMenubar();
   for(const id of ['close-personalization','wallpaper-cancel'])$('#'+id).onclick=()=>$('#personalization-dialog').close();
   $('#personalization-dialog').addEventListener('close',finishWallpaperRead);
   $('#wallpaper-preview').onclick=()=>$('#wallpaper-file').click();$('#wallpaper-upload').onclick=()=>$('#wallpaper-file').click();$$('[name=appearance-theme]').forEach(el=>el.onchange=()=>pendingAppearance.theme=el.value);

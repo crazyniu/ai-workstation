@@ -1,183 +1,200 @@
 ---
-name: "251 Gateway Desktop"
-description: "蓝色海岸主题的轻量网关桌面与二级设置后台"
+name: "Gateway Desktop"
+description: "macOS 27 视觉语言的网关桌面：菜单栏、Dock、统一工具栏窗口与 iOS 式手机主屏"
 colors:
-  primary: "#075cff"
-  primary-hover: "#004cdd"
-  surface: "#ffffff"
-  canvas: "#f4f6f9"
-  chrome: "#eef1f5"
-  sidebar: "#e9edf2"
-  field: "#f5f7f9"
-  text: "#262b32"
-  muted: "#5d6773"
-  border: "#d4dae2"
-  line: "#e4e8ed"
-  selected: "#e6efff"
-  danger: "#c42f3b"
-  success: "#17704a"
-  warning: "#8a5300"
-  dark-surface: "#232a33"
-  dark-canvas: "#1b2129"
-  dark-chrome: "#2a323d"
-  dark-text: "#e8edf5"
-  dark-muted: "#a9b6c6"
-  dark-accent: "#8ab7ff"
-  dark-success: "#8bdbb0"
-  dark-warning: "#f2c26f"
+  accent: "#007aff"
+  accent-hover: "#0068d9"
+  label: "#1d1d1f"
+  secondary: "#6e6e73"
+  tertiary: "#8e8e93"
+  separator: "#3c3c4324"
+  window: "#f5f5f7"
+  group: "#ffffff"
+  sheet: "#fbfbfd"
+  glass: "#fafafcb8"
+  sidebar: "#ececf0c7"
+  fill: "#7878801f"
+  green: "#1f8a3c"
+  orange: "#b25f00"
+  red: "#d70015"
+  dark-accent: "#0a84ff"
+  dark-label: "#f5f5f7"
+  dark-secondary: "#a1a1a6"
+  dark-window: "#1e1e20"
+  dark-group: "#2c2c2e"
+  dark-glass: "#28282cb8"
 typography:
-  title:
-    fontFamily: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
-    fontSize: "22px"
-    fontWeight: 650
+  page-title:
+    fontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"PingFang SC\", \"Segoe UI\", \"Microsoft YaHei\", sans-serif"
+    fontSize: "20px"
+    fontWeight: 700
     lineHeight: 1.3
   body:
-    fontFamily: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
-    fontSize: "14px"
-    lineHeight: 1.75
-  label:
-    fontFamily: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
-    fontSize: "12px"
-  toast:
-    fontFamily: "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif"
+    fontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"PingFang SC\", \"Segoe UI\", \"Microsoft YaHei\", sans-serif"
     fontSize: "13px"
-    lineHeight: 1.6
+    lineHeight: 1.45
+  caption:
+    fontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"PingFang SC\", \"Segoe UI\", \"Microsoft YaHei\", sans-serif"
+    fontSize: "11.5px"
+  mono:
+    fontFamily: "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
+    fontSize: "12.5px"
 rounded:
-  control: "7px"
-  card: "10px"
-  menu: "9px"
-  window: "12px"
-  dialog: "13px"
+  control: "8px"
+  button: "999px"
+  group: "12px"
+  menu: "12px"
+  window: "16px"
+  sheet: "20px"
 spacing:
-  small: "6px"
-  control-inline: "18px"
-  content: "30px"
+  menubar: "30px"
+  toolbar: "52px"
+  sidebar: "210-220px"
+  content: "22px 28px"
 components:
   button-primary:
-    backgroundColor: "{colors.primary}"
+    backgroundColor: "{colors.accent}"
     textColor: "#ffffff"
-    rounded: "{rounded.control}"
-    padding: "7px 14px"
-    height: "36px"
-  button-primary-hover:
-    backgroundColor: "{colors.primary-hover}"
+    rounded: "{rounded.button}"
+    height: "28px"
   button-secondary:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.text}"
-    rounded: "{rounded.control}"
-    padding: "7px 14px"
+    backgroundColor: "{colors.group}"
+    textColor: "{colors.label}"
+    rounded: "{rounded.button}"
+    height: "28px"
+  toolbar-button:
+    backgroundColor: "{colors.glass}"
+    rounded: "{rounded.button}"
+    height: "30px"
   input:
-    backgroundColor: "{colors.field}"
-    textColor: "{colors.text}"
+    backgroundColor: "{colors.group}"
     rounded: "{rounded.control}"
-    padding: "8px 12px"
-    height: "38px"
-  application-icon:
-    width: "64px"
-    height: "64px"
-  picker-icon:
-    width: "40px"
-    height: "40px"
+    height: "30px"
+  dock-icon:
+    width: "50px"
+    height: "50px"
+  desktop-icon:
+    width: "58px"
+    height: "58px"
 ---
 
 # Design System: Gateway Desktop
 
 ## Overview
 
-**Creative North Star: "蓝色海岸上的轻量 NAS 桌面"**
+**North Star: "macOS 27 的桌面秩序，iOS 的手机主屏"**
 
-蓝色海岸壁纸承托图标与名称，白色设置窗口保留熟悉的桌面秩序。彩色图标采用同一浅色圆角底板；主要操作使用清晰的蓝色按钮，内容与设置停留在二级界面。
+网关的 80 端口页面是一张桌面：顶部是半透明菜单栏，底部是玻璃 Dock，壁纸上是用户添加的链接。控制面板、代理配置、局域网互传、Clash 面板和 AdGuard Home 都在同一页面的窗口里打开；只有工作站桌面（外部 HTTPS）在新标签页打开。
 
-桌面保持轻量、疏朗，管理表单采用紧凑而有留白的布局。深色模式通过同一组语义变量切换窗口、表单、编辑器与菜单的表面和文字；自动模式跟随系统偏好，保持同一布局与图标比例。
+视觉参照 macOS 27：窗口使用统一圆角，标题与工具栏合并为一条玻璃工具栏，侧栏贴边并配彩色符号，设置内容使用内嵌分组列表。参考资料：
+[9to5Mac](https://9to5mac.com/2026/06/09/macos-27-golden-gate-includes-these-changes-that-tahoe-critics-will-appreciate/)、
+[MacRumors](https://macrumors.com/2026/06/09/macos-golden-gate-liquid-glass/)、
+[Cult of Mac](https://www.cultofmac.com/news/liquid-glass-changes-ios-27-macos-27)、
+[Michael Tsai](https://mjtsai.com/blog/2026/06/09/golden-gate-sidebars-and-toolbars/)。
 
 **Key Characteristics:**
-- 蓝色自然摄影壁纸与白色浮动窗口。
-- 统一彩色应用图标和纯图标选择网格。
-- 控制面板以概览为首页：状态卡片汇总网关、Tailscale 与版本，全部设置按网络、桌面与账户、系统分组。
-- 具体设置使用卡片与设置行：左侧标题与说明，右侧开关或操作；手机端通过“所有设置”返回概览。
-- 亮色、暗色和跟随系统的自动模式。
+- 菜单栏：左侧是系统菜单和当前应用名，右侧是更新数、Tailscale 状态和时钟。
+- Dock：系统应用固定在 Dock，运行中的应用显示圆点；最小化的窗口收进 Dock。
+- 窗口：16px 圆角，52px 玻璃工具栏，红黄绿控制点在左，标题左对齐，操作按钮在右。
+- 内容：浅灰窗口底上的白色分组列表；行左侧为彩色符号，右侧为路线标签、开关或操作。
+- 亮色、暗色和跟随系统三种外观，同一套语义变量驱动。
 
 ## Colors
 
-主色是明亮的操作蓝；浅冷灰区分窗口外壳、侧栏、内容底与分隔线，白色卡片承载设置。实际值以前面的令牌和 `web/style.css` 开头的变量为准。
+颜色以系统蓝为唯一操作强调色。标签文字分三级（主、次、三级），分隔线和填充色使用带透明度的灰。实际值以 `web/style.css` 开头的变量为准；`--blue`、`--text`、`--muted`、`--surface`、`--chrome`、`--line`、`--border`、`--selected`、`--danger` 是给登录页、图标和局域网互传样式保留的别名。
 
-### Primary
-- **操作蓝**：主要按钮、链接、选中边框与焦点。
-- **悬停深蓝**：亮色主要按钮的悬停反馈。
-
-### Neutral
-- **白色卡片**、**浅灰内容底**和**冷灰窗口壳**：设置卡片、内容区与标题栏。
-- **状态色**：成功绿、提醒琥珀、危险红仅用于状态胶囊、提示条与破坏性操作，各自配浅色底。
-- **浅灰侧栏**与**浅灰输入区**：导航和可编辑区域。
-- **深灰正文**与**辅助灰文字**：正文、说明及占位文字。
-- **深色窗口面**、**浅色正文**和**浅蓝强调**：暗色主题的对应角色；实心主按钮仍保持操作蓝。
-
-**The Single Accent Rule.** 操作强调使用蓝色；彩色应用图标和壁纸承担其余颜色，避免为设置模块各造一套颜色。
+- **系统蓝**：主要按钮、选中的侧栏项、链接和焦点光圈。
+- **绿 / 橙 / 红**：只用于状态胶囊、路线标签和破坏性操作，各自配浅色底。
+- **玻璃**：菜单栏、Dock、菜单、工具栏和通知使用半透明底加背景模糊；`prefers-reduced-transparency` 下改为不透明。
+- **彩色符号**：侧栏和列表行的 28px 符号底板使用蓝、紫、绿、橙等系统色，区分对象类型（设备、分组、出口、中转）。
 
 ## Typography
 
-系统字体栈同时覆盖 macOS、Windows 与中文，无外部字体下载。页面标题为 22px、650，卡片标题 14.5px、600，正文与设置行标题 14px，说明文字 12.5px；手机页面标题降为 20px，输入文字使用 16px。地址等技术值使用等宽字体。正文段落最大宽度为 72ch。桌面图标名称为 14px，手机为 13px；窗口标题为 14px、600。
+系统字体栈覆盖 macOS、Windows 与中文，不下载外部字体。正文 13px，页面标题 20px/700，分组标题 12px/600 次级色，说明文字 11.5–12.5px。IP、域名和 YAML 使用等宽字体。手机输入框使用 16px，避免 iOS 自动放大。
 
 ## Layout
 
-桌面图标从左侧按列排列，112px 网格配合 8px × 20px 间距，图标实际为 64px。700px 以下改为三列行式网格、62px 图标与紧凑间距。顶部保留工具栏，主页保持图标入口。
+### 桌面
 
-桌面设置由 WinBox 承载，可移动、缩放、最小化和最大化。标题栏下方为 236px 侧栏（搜索框、概览与全部分组入口）和独立滚动的浅灰内容区，内容最大宽度 860px。窗口宽度低于 720px 时隐藏侧栏，概览的设置入口变为分组列表，子页面顶部固定“所有设置”返回按钮；手机全屏显示设置。
+- 菜单栏 30px，固定在顶部。
+- 桌面链接从右上角起按列排列，网格 96 × 112px，图标 58px，名称最多两行。
+- Dock 居中贴底，图标 50px，悬停时放大并显示名称。
+- 窗口默认居中，可移动、缩放、最小化和最大化，不会盖住菜单栏和 Dock。
 
-图标选择器使用六列纯图标网格，手机四列；每个选择按钮至少 60px 高，内部图标 40px。桌面和手机均使用同一 52 项本地图标目录，其中包括 Hermes 与 WorkBuddy。
+### 窗口内部
+
+控制面板和代理配置都是“贴边侧栏 + 内容区”。侧栏 210–220px，内容最大宽度 780–860px 并居中。窗口宽度不足 720px 时隐藏侧栏，工具栏出现返回按钮，侧栏变成内容区里的分组列表。
+
+### 手机（700px 以下）
+
+- 主屏：顶部状态栏（时间在左），四列图标网格，底部 4 个应用的 Dock；其余系统应用以图标形式出现在主屏。
+- 应用全屏打开，此时隐藏状态栏和 Dock；左上角 36px 关闭按钮返回主屏。
+- 列表行改为两行：第一行是标题和开关或操作，第二行是路线标签、状态或下拉框。
+- 常用控件至少 36–44px 高。
 
 ## Elevation & Depth
 
-窗口阴影表达桌面层级，浅灰侧栏、浅灰内容底与白色卡片表达窗口内部结构；卡片只用细边框和极浅阴影，可点击卡片悬停时加深阴影。右键菜单、确认框和个性化设置叠在桌面之上，背景遮罩使用轻微模糊。
-
-- 窗口：`0 20px 64px #14314240, 0 4px 16px #14314214`。
-- 深色窗口：`0 20px 64px #08101970, 0 4px 16px #08101933`。
-- 右键菜单：`0 10px 32px #14364240, 0 2px 8px #1436421a`。
+层级依次为：壁纸、桌面链接、窗口、Dock / 菜单栏、菜单和通知、模态对话框。窗口用两层阴影加 0.5px 描边，分组列表只用极浅描边，不用投影。
 
 ## Shapes
 
-应用 SVG 使用 96 × 96 viewBox，76 × 76 底板位于 (10, 8)，圆角 21。图像用 `object-fit: contain` 保持比例。表单与按钮圆角 7px，卡片 10px，菜单 9px，窗口 12px，普通对话框 13px。窗口左上方采用红黄绿控制点，手机将关闭操作扩大为 44px 命中区域并保留红色圆点。
+窗口 16px，对话框 20px，菜单 12px，分组列表 12px，输入框 8px，按钮为胶囊形。应用 SVG 使用 96 × 96 viewBox 和统一的圆角底板，`object-fit: contain` 保持比例。
 
 ## Components
 
-### Desktop shortcuts and icon picker
+### Toolbar
 
-桌面快捷方式是图标加名称；选择器是纯图标。选中项使用浅蓝底与蓝色边框，名称仅由悬停 `title` 与 `aria-label` 提供；方向键、Home、End 可移动焦点。搜索按名称、ID 和分类筛选。图标均由本地 SVG 提供，不加载远程图标或字体。
+工具栏位于窗口标题栏内，空白处仍可拖动窗口。代理配置的工具栏显示“有未应用的更改”状态、放弃更改和应用；内嵌网页窗口的工具栏提供重新载入和在新标签页打开。
 
-### Buttons and forms
+### Lists and rows
 
-主要按钮蓝底白字，次要按钮使用内容面、细边框与正文色，危险操作使用红字或红底。行内图标按钮（编辑、移动、删除）无边框，悬停显示浅底。键盘焦点为 2px 蓝色描边；输入区使用浅灰底与细边框，聚焦后转为内容面并显示蓝色边框和浅蓝光圈。开关用于即时可见的布尔设置，需要密码确认的更改在开关变化后才显示确认区。常规按钮 36px、输入 38px，手机常用控件至少 44px。原生表单语义保留，视觉样式由页面定义。
+`list-row` 由符号、标题与副标题、尾部内容和行操作组成。可进入的行在末尾显示箭头，整行可点击。路线标签（`route-chip`）用颜色区分：出口为绿色，分组或中转为蓝色，直连为灰色，拦截为红色。
 
-### Settings and proxy configuration
+### Clash editor
 
-概览页顶部三张状态卡片显示网关地址与服务状态、Tailscale 连接与地址、网关 Web 版本与可用更新数；下方是带说明的设置卡片入口。侧栏搜索按名称与关键词筛选，回车打开第一项；Tailscale 项显示连接状态圆点，服务升级项显示可用更新数。每个设置页由页标题、说明和若干卡片组成：状态用胶囊（绿色已连接、琥珀待处理、蓝色进行中、红色异常），说明用提示条，恢复备份等破坏性操作放在红色边框卡片中，并在选择文件且确认后才可执行。Clash/Mihomo 编辑器沿用同一侧栏与表格样式，表单和 YAML 代码编辑同一份草稿，YAML 编辑器填满窗口高度，可上传、下载或保存并应用。桌面 Clash 图标打开此页，节点面板从页首进入。出口与订阅、直连地址、分流规则和自定义配置项分别展示。规则列表显示来源与顺序，可搜索、筛选和分页。账户页面提供登录后修改密码和退出。广告过滤、Tailscale、DNS、升级、桌面管理与备份保持独立设置入口。
+代理配置分为三组页面：
 
-### Context menu
+- **分流**
+  - 设备出口：IP、IP 段或网段 → 出口。设备的全部外网流量从所选出口发出。
+  - 分组：名称 + 域名 + 出口。可以新建（例如 Google、YouTube）、改名、停用和删除，未匹配任何分组的流量由“其他网站”决定。
+- **线路**
+  - 出口：HTTP / SOCKS5 固定 IP 代理。“前置代理”默认选中转节点（设备 → 中转 → 出口），也可以设为“无”。
+  - 中转订阅：机场订阅地址，从这里打开 Clash 面板。
+- **高级**：全部规则（排序、搜索、筛选）和 YAML 编辑器。
 
-桌面与图标提供自定义右键菜单。菜单宽 206px，内边距 6px，条目为 12px；悬停或键盘焦点使用蓝底白字。手机以相同视觉语言提供可触摸操作。
+所有修改先写入草稿，工具栏统一应用或放弃。编辑器发送与之前相同的草稿请求，应用流程不变；新增的只有删除出口、删除分组和批量添加域名。分组的出口是默认出口，在 Clash 面板中手动选过的节点优先。删除仍被设备、规则或其他分组使用的出口或分组时会说明原因并拒绝。
+
+### Menus, alerts and notifications
+
+- 菜单使用玻璃底，悬停项为蓝底白字。
+- 确认框居中显示；破坏性操作使用红色图标和红色“删除 / 放弃”按钮。
+- 通知在桌面右下角、Dock 上方，在手机上放在顶部安全区。成功提示会自动收起，错误提示会停留。
+
+### Embedded apps
+
+局域网互传、Clash 面板和 AdGuard Home 在窗口内通过 iframe 打开。局域网互传使用 `?embed=1` 隐藏自身标题，文件夹链接保持该参数，并跟随桌面的外观设置。nginx 为面板和 AdGuard 去掉上游的 `X-Frame-Options`，统一使用同源策略。
 
 ### Personalization
 
-四张本地默认壁纸为晴日海岸、山湖晨光、海岸暮色和林间薄雾，海岸为默认。用户可上传图片，选择填充、适应、拉伸、居中或平铺；亮色、暗色、自动主题使用分段选择。自动主题响应系统颜色偏好，设置保存后保持。
+四张本地壁纸：晴日海岸（默认）、山湖晨光、海岸暮色、林间薄雾。用户可上传图片，并选择填充、适应、拉伸、居中或平铺。外观可选亮色、暗色或跟随系统，设置保存在网关上。
 
-### Motion and accessibility
+## Motion and accessibility
 
-操作反馈统一使用桌面右上角的全局 Toast，手机放在顶部安全区。Toast 使用内容面、窗口阴影、状态图标和关闭按钮，不改变设置内容的布局；通过顶层 popover 覆盖窗口和原生对话框。成功提示自动收起，错误提示停留更久，鼠标悬停或键盘聚焦时暂停计时。
-
-界面状态使用 120ms ease-out 的背景和边框过渡。`prefers-reduced-motion: reduce` 会停用过渡、动画及平滑滚动。反馈和错误信息保持文本形式；纯图标选择项保留可访问名称。
+- 动效：过渡为 120–220ms；Dock 图标悬停时放大；对话框以轻微缩放出现。`prefers-reduced-motion` 会停用全部过渡和动画。
+- 键盘：可聚焦元素显示 3px 蓝色焦点环；窗口控制点也支持键盘操作。
+- 屏幕阅读器：纯图标按钮都有 `aria-label`。
 
 ## Do's and Don'ts
 
-### Do:
-- 沿用已有的蓝色海岸桌面、统一图标底板和窗口层级。
-- 所有应用图标保持正方形并使用 object-fit: contain。
-- 图标选择区只显示图形，通过 title 和 aria-label 提供名称。
-- 将配置、服务升级、备份和账户操作放在设置的二级页面。
-- 手机端保留至少 44px 的常用操作触摸区域，并遵循减少动态效果偏好。
+### Do
 
-### Don't:
-- 下拉框沿用主题颜色和原生选择行为，应用图标使用统一风格。
-- 不要在纯图标选择区增加逐项文字、文件路径或卡片说明。
-- 不要拉伸图标或用大号线条菜单图形替代彩色应用底板。
-- 不要把管理表单、长说明和全部服务状态堆到桌面首页。
-- 不要把截图或浏览器检查当作真实手机硬件验收。
+- 把新功能放进窗口里的设置页，或 Dock 里的应用，不放到桌面上。
+- 列表优先用分组行；对象类型用彩色符号区分，操作强调色只用蓝色。
+- 修改代理配置一律先进草稿，在工具栏统一应用。
+- 在真实手机和 Safari / Firefox 上验收；浏览器响应式截图不能代替真机测试。
+
+### Don't
+
+- 不要在窗口内再画一条标题栏或独立的保存栏。
+- 不要为功能模块另造主题色，也不要拉伸应用图标。
+- 不要让通知或浮层盖住窗口工具栏的操作按钮。

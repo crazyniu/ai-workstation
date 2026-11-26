@@ -145,9 +145,24 @@ def model(config):
         'deviceExits': routing.exits(config), 'defaultPolicy': routing.default_policy(config),
         'disabledGroups': config.get(routing.DISABLED, []),
         'targets': policy_names(config),
-        'groups': [{'name': group['name'], 'members': group.get('proxies') or []} for group in groups],
+        'groups': [group_summary(config, group) for group in groups],
+        'relayReady': any(isinstance(entry, dict) and entry.get('type') == 'http'
+                          for entry in (config.get('proxy-providers') or {}).values()),
         'options': options, 'fixed': fixed,
     }
+
+
+def group_summary(config, group):
+    name, members = group['name'], group.get('proxies') or []
+    counts = {'domains': 0, 'ruleSets': 0, 'otherRules': 0}
+    for rule in config.get('rules') or []:
+        if rule_target(rule) == name:
+            kind = rule.split(',', 1)[0].strip().upper()
+            counts['domains' if kind in DOMAIN_TYPES else 'ruleSets' if kind == 'RULE-SET' else 'otherRules'] += 1
+    selected = group.get('default-selected')
+    route = selected if name == routing.PROXY and selected in members else members[0] if members else ''
+    return {'name': name, 'members': members, 'use': group.get('use') or [], 'type': group.get('type', ''),
+            'exit': route, **counts}
 
 
 def edit_provider(config, edit):
@@ -241,7 +256,60 @@ def edit_exit_note(config, edit):
         node.pop(routing.EXIT_NOTE, None)
 
 
+def rule_lists(config):
+    """The top-level rules and every sub-rule body, as the lists stored in the config."""
+    return [config['rules'] if isinstance(config.get('rules'), list) else [],
+            *(rules for rules in (config.get('sub-rules') or {}).values() if isinstance(rules, list))]
+
+
+def rule_target(rule):
+    """The policy a rule sends traffic to, or None for SUB-RULE dispatch entries."""
+    fields, index = routing.policy_slot(rule)
+    if fields[0].strip().upper() == 'SUB-RULE' or not index:
+        return None
+    return fields[index].strip()
+
+
+def transport_users(config, name):
+    return [entry.get('name', '') for entry in [*(config.get('proxies') or []), *(config.get('proxy-groups') or []),
+                                                *(config.get('listeners') or []),
+                                                *(config.get('proxy-providers') or {}).values(),
+                                                *(config.get('rule-providers') or {}).values()]
+            if isinstance(entry, dict) and any(options.get(key) == name for options in (entry, entry.get('override') or {})
+                                               for key in ('dialer-proxy', 'proxy'))]
+
+
+def remove_exit(config, name):
+    nodes = config.get('proxies') or []
+    node = next((n for n in nodes if isinstance(n, dict) and n.get('name') == name and n.get('type') in EDITABLE_TYPES), None)
+    if node is None:
+        raise ValueError('出口已变化，请重新打开')
+    devices = [row['ip'] for row in bindings(config) if row['target'] == name]
+    if devices:
+        raise ValueError('这些设备仍在使用该出口，请先修改设备出口：' + '、'.join(devices))
+    if any(rule_target(rule) == name for rules in rule_lists(config) for rule in rules):
+        raise ValueError('分流规则仍在使用该出口，请先修改相关规则')
+    for group in config.get('proxy-groups') or []:
+        members = group.get('proxies') or []
+        if name not in members:
+            continue
+        if group['name'] != routing.PROXY and members[0] == name:
+            raise ValueError(f'分组「{group["name"]}」的出口是它，请先为分组换一个出口')
+        group['proxies'] = [member for member in members if member != name]
+        if group.get('default-selected') == name:
+            group.pop('default-selected')
+    users = [user for user in transport_users(config, name) if user != name]
+    if users:
+        raise ValueError('以下配置通过该出口连接，请先修改：' + '、'.join(users))
+    nodes.remove(node)
+    if routing.policy_in_use(config, name):
+        raise ValueError('配置中仍有引用该出口的项目，请在 YAML 中检查后再删除')
+
+
 def edit_exit(config, edit):
+    if edit.get('remove'):
+        remove_exit(config, edit['original'])
+        return
     name = edit['name'].strip()
     old = edit.get('original')
     protocol = edit['type']
@@ -294,7 +362,117 @@ def edit_exit(config, edit):
                 group['proxies'] = [member for member in members if member != name]
 
 
+DOMAIN_TYPES = ('DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD', 'DOMAIN-WILDCARD')
+# Rules from here on match by address; domain rules belong before them so a
+# domain decision never waits on DNS resolution.
+ADDRESS_RULES = ('GEOIP', 'IP-CIDR', 'IP-CIDR6', 'IP-SUFFIX', 'IP-ASN', 'SRC-GEOIP', 'MATCH')
+
+
+def domain_operand(text, kind):
+    value = text.strip()
+    if kind != 'DOMAIN-KEYWORD':
+        value = value.lower()
+        if '://' in value:
+            value = urlsplit(value).hostname or ''
+        value = value.split('/', 1)[0].rsplit(':', 1)[0] if value.count(':') == 1 else value.split('/', 1)[0]
+        if kind == 'DOMAIN-SUFFIX':
+            value = value.removeprefix('+.').removeprefix('*.').lstrip('.')
+        value = value.rstrip('.')
+    if not value or re.search(r'[\s,()/]', value):
+        raise ValueError(f'请填写有效的域名：{text.strip()}')
+    return value
+
+
+def group_insert_position(config, group):
+    rules = config.get('rules') or []
+    own = [index for index, rule in enumerate(rules) if rule_target(rule) == group]
+    if own:
+        return own[-1] + 1
+    start = max((row['end'] for row in binding_blocks(config)), default=0)
+    for index in range(start, len(rules)):
+        if rules[index].split(',', 1)[0].strip().upper() in ADDRESS_RULES:
+            return index
+    return len(rules)
+
+
+def add_domains(config, group, texts, kind='DOMAIN-SUFFIX'):
+    """Send each listed domain to a group; existing entries for that group are kept once."""
+    if kind not in DOMAIN_TYPES:
+        raise ValueError('请选择域名匹配方式')
+    if group not in {g.get('name') for g in config.get('proxy-groups') or []}:
+        raise ValueError('分组已变化，请重新打开')
+    if isinstance(texts, str):
+        texts = [texts]
+    values = [domain_operand(part, kind) for text in texts for part in re.split(r'[\s,，;；]+', str(text)) if part.strip()]
+    if not values:
+        raise ValueError('请至少填写一个域名')
+    rules = config.setdefault('rules', [])
+    existing = set()
+    for rule in rules:
+        fields = rule.split(',')
+        if rule_target(rule) == group and len(fields) > 2:
+            existing.add((fields[0].strip().upper(), fields[1].strip().lower()))
+    added = [f'{kind},{value},{group}' for value in dict.fromkeys(values) if (kind, value.lower()) not in existing]
+    position = group_insert_position(config, group)
+    rules[position:position] = added
+    return len(added)
+
+
+def remove_group(config, name):
+    if name in routing.REQUIRED:
+        raise ValueError('内置分组不能删除')
+    groups = config.get('proxy-groups') or []
+    group = next((g for g in groups if g.get('name') == name), None)
+    if group is None:
+        raise ValueError('分组已变化，请重新打开')
+    users = [g['name'] for g in groups if g is not group and (g.get('proxies') or [None])[0] == name]
+    if users:
+        raise ValueError('这些分组的出口是它，请先修改：' + '、'.join(users))
+    users = transport_users(config, name)
+    if users:
+        raise ValueError('以下配置通过该分组连接，请先修改：' + '、'.join(users))
+    rule_sets = set()
+    for rules in rule_lists(config):
+        kept = []
+        for rule in rules:
+            if rule_target(rule) != name:
+                kept.append(rule)
+                continue
+            kind = rule.split(',', 1)[0].strip().upper()
+            if kind == 'MATCH':
+                raise ValueError('兜底规则使用了该分组，请先修改兜底出口')
+            if kind == 'RULE-SET':
+                rule_sets.add(rule.split(',')[1].strip())
+        rules[:] = kept
+    for other in groups:
+        if name in (other.get('proxies') or []):
+            other['proxies'] = [member for member in other['proxies'] if member != name]
+    groups.remove(group)
+    disabled = [n for n in config.get(routing.DISABLED, []) if n != name]
+    if disabled:
+        config[routing.DISABLED] = disabled
+    else:
+        config.pop(routing.DISABLED, None)
+    exclusions = config.get(routing.DOMAIN_EXCLUSIONS)
+    if isinstance(exclusions, dict):
+        exclusions.pop(name, None)
+        if not exclusions:
+            config.pop(routing.DOMAIN_EXCLUSIONS)
+    # Drop rule sets that only this group used; shared sets stay in place.
+    providers = config.get('rule-providers') or {}
+    for provider in rule_sets:
+        if provider in providers and not any(
+                rule.split(',', 1)[0].strip().upper() == 'RULE-SET' and rule.split(',')[1].strip() == provider
+                for rules in rule_lists(config) for rule in rules):
+            del providers[provider]
+    if routing.policy_in_use(config, name):
+        raise ValueError('配置中仍有引用该分组的项目，请在 YAML 中检查后再删除')
+
+
 def edit_group(config, edit):
+    if edit.get('remove'):
+        remove_group(config, edit['original'])
+        return
     groups = config.setdefault('proxy-groups', [])
     name, original = edit['name'].strip(), edit.get('original')
     if not name or ',' in name or (name != original and name in set(policy_names(config)) | BUILTINS):
@@ -523,7 +701,8 @@ def draft(data):
         routing.set_default(config, edit['target'])
         return {'model': model(config), 'content': yaml.safe_dump(config, allow_unicode=True, sort_keys=False)}
     change = {'provider': edit_provider, 'exit': edit_exit, 'note': edit_exit_note, 'binding': edit_binding,
-              'option': edit_option, 'rule': edit_rule, 'subscription-domain': edit_subscribed_domain, 'group': edit_group, 'toggle-group': lambda cfg, e: routing.toggle(cfg, e['name'], e['enabled'])}[edit['kind']]
+              'option': edit_option, 'rule': edit_rule, 'subscription-domain': edit_subscribed_domain, 'group': edit_group, 'toggle-group': lambda cfg, e: routing.toggle(cfg, e['name'], e['enabled']),
+              'domains': lambda cfg, e: add_domains(cfg, e['group'], e['domains'], e.get('type') or 'DOMAIN-SUFFIX')}[edit['kind']]
     change(config, edit)
     if edit['kind'] in ('group', 'exit'):
         routing.merge_subscription_nodes(config)

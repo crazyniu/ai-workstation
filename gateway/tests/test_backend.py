@@ -873,6 +873,103 @@ class ProxyDraftTests(DataTest):
         self.assertNotIn('default-selected', pool)
 
 
+
+class ProxyEditorEditTests(DataTest):
+    """The visual editor's draft edits: the previous requests, plus removing exits and groups and adding domains."""
+
+    def base(self):
+        provider = {'type': 'http', 'url': 'https://example.com/sub', 'path': routing.provider_cache('sub')}
+        return {'mode': 'rule', 'proxy-providers': {'sub': provider},
+                'proxies': [{'name': 'US', 'type': 'http', 'server': '192.0.2.10', 'port': 8080, 'dialer-proxy': routing.RELAY},
+                            {'name': 'JP', 'type': 'socks5', 'server': '192.0.2.20', 'port': 1080}],
+                'proxy-groups': [{'name': routing.PROXY, 'type': 'select', 'proxies': ['US', 'JP'], 'default-selected': 'JP'},
+                                 {'name': 'Google', 'type': 'select', 'proxies': [routing.PROXY, 'DIRECT']}],
+                'rule-providers': {'google': {'type': 'inline', 'behavior': 'domain', 'payload': ['+.google.com']},
+                                   'shared': {'type': 'inline', 'behavior': 'domain', 'payload': ['+.example.org']}},
+                'rules': ['DOMAIN-SUFFIX,openai.com,' + routing.PROXY, 'RULE-SET,google,Google', 'RULE-SET,shared,Google',
+                          'RULE-SET,shared,' + routing.PROXY, 'GEOIP,CN,DIRECT', 'MATCH,DIRECT']}
+
+    def edit(self, config, **edit):
+        content = yaml.safe_dump(config, allow_unicode=True, sort_keys=False)
+        result = proxy_editor.draft({'content': content, 'edit': edit})
+        return yaml.safe_load(result['content']), result['model']
+
+    def node(self, config, name):
+        return next(n for n in config['proxies'] if n['name'] == name)
+
+    def test_exit_keeps_the_chosen_dialer(self):
+        config, model = self.edit(self.base(), kind='exit', name='SG', type='http', server='192.0.2.30', port='3128',
+                                  deviceExit=True, **{'dialer-proxy': routing.RELAY})
+        self.assertEqual(self.node(config, 'SG')['dialer-proxy'], routing.RELAY)
+        self.assertIn('SG', model['deviceExits'])
+        self.assertTrue(model['relayReady'])
+        config, _ = self.edit(config, kind='exit', original='US', name='US', type='http', server='192.0.2.10',
+                              port='8080', deviceExit=True, **{'dialer-proxy': ''})
+        self.assertNotIn('dialer-proxy', self.node(config, 'US'))
+        with self.assertRaisesRegex(ValueError, '自身'):
+            self.edit(self.base(), kind='exit', original='JP', name='JP', type='socks5', server='192.0.2.20',
+                      port='1080', deviceExit=True, **{'dialer-proxy': 'JP'})
+
+    def test_exit_removal_keeps_devices_and_groups_working(self):
+        config = self.base()
+        proxy_editor.edit_binding(config, {'ip': '192.0.2.40-49', 'target': 'US'})
+        with self.assertRaisesRegex(ValueError, '192.0.2.40-192.0.2.49'):
+            self.edit(config, kind='exit', original='US', remove=True)
+        config = self.base()
+        config['proxy-groups'][1]['proxies'] = ['US', 'DIRECT']
+        with self.assertRaisesRegex(ValueError, 'Google'):
+            self.edit(config, kind='exit', original='US', remove=True)
+        config, model = self.edit(self.base(), kind='exit', original='JP', remove=True)
+        self.assertNotIn('JP', [n['name'] for n in config['proxies']])
+        pool = routing.pool(config)
+        self.assertEqual(pool['proxies'], ['US', routing.RELAY])
+        self.assertNotIn('default-selected', pool)
+        self.assertEqual(model['deviceExits'], ['US'])
+
+    def test_group_lifecycle_routes_domains_to_its_exit(self):
+        create = {'kind': 'group', 'name': 'YouTube', 'type': 'select', 'proxies': ['US'], 'use': []}
+        config, model = self.edit(self.base(), **create)
+        config, model = self.edit(config, kind='domains', group='YouTube', type='DOMAIN-SUFFIX',
+                                  domains='https://www.youtube.com/watch?v=1\n+.googlevideo.com, ytimg.com  youtube.com')
+        rules = config['rules']
+        added = ['DOMAIN-SUFFIX,www.youtube.com,YouTube', 'DOMAIN-SUFFIX,googlevideo.com,YouTube',
+                 'DOMAIN-SUFFIX,ytimg.com,YouTube', 'DOMAIN-SUFFIX,youtube.com,YouTube']
+        self.assertEqual(rules[rules.index('GEOIP,CN,DIRECT') - 4:rules.index('GEOIP,CN,DIRECT')], added)
+        group = next(g for g in model['groups'] if g['name'] == 'YouTube')
+        self.assertEqual((group['exit'], group['domains'], group['use']), ('US', 4, ['sub']))
+        config, _ = self.edit(config, kind='domains', group='YouTube', domains=['youtube.com', 'youtu.be'])
+        self.assertEqual(config['rules'].count('DOMAIN-SUFFIX,youtube.com,YouTube'), 1)
+        self.assertEqual(config['rules'].index('DOMAIN-SUFFIX,youtu.be,YouTube'),
+                         config['rules'].index('DOMAIN-SUFFIX,youtube.com,YouTube') + 1)
+        config, model = self.edit(config, kind='group', original='YouTube', name='Video', type='select',
+                                  proxies=['DIRECT', 'US'], use=group['use'])
+        video = next(g for g in config['proxy-groups'] if g['name'] == 'Video')
+        self.assertEqual((video['proxies'], video['use']), (['DIRECT', 'US'], ['sub']))
+        self.assertIn('DOMAIN-SUFFIX,youtu.be,Video', config['rules'])
+        config, model = self.edit(config, kind='group', original='Video', remove=True)
+        self.assertFalse([rule for rule in config['rules'] if rule.endswith(',Video')])
+        self.assertNotIn('Video', [g['name'] for g in model['groups']])
+        config, _ = self.edit(config, kind='group', original='Google', remove=True)
+        self.assertNotIn('google', config['rule-providers'])
+        self.assertIn('shared', config['rule-providers'])
+
+    def test_group_changes_that_would_break_routing_are_refused(self):
+        config = self.base()
+        config['rules'][-1] = 'MATCH,Google'
+        with self.assertRaisesRegex(ValueError, '兜底'):
+            self.edit(config, kind='group', original='Google', remove=True)
+        with self.assertRaisesRegex(ValueError, '内置'):
+            self.edit(self.base(), kind='group', original=routing.PROXY, remove=True)
+        with self.assertRaisesRegex(ValueError, '自身'):
+            self.edit(self.base(), kind='group', original='Google', name='Google', type='select',
+                      proxies=['Google', 'DIRECT'], use=[])
+        with self.assertRaisesRegex(ValueError, '域名'):
+            self.edit(self.base(), kind='domains', group='Google', domains='exa(mple).com')
+        config, model = self.edit(self.base(), kind='default-exit', target='US')
+        self.assertEqual(routing.pool(config)['default-selected'], 'US')
+        self.assertEqual(next(g for g in model['groups'] if g['name'] == routing.PROXY)['exit'], 'US')
+
+
 class StateTests(DataTest):
     def test_portable_desktop_link_tracks_scheme_port_and_preserves_saved_target(self):
         with patch.dict(os.environ, {'GATEWAY_MODE':'false', 'NOVNC_TLS':'0', 'GATEWAY_WORKSTATION_PORT':'16080'},clear=True):
