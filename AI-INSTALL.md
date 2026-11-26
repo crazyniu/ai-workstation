@@ -1,19 +1,19 @@
 # 给 AI 的容器安装与升级指南
 
-从 [README 的四条指令](README.md#让-ai-安装或升级容器) 选择本次操作。每条只授权安装或升级一个角色，250 和 251 都是容器的局域网地址。
+从 [README 的四条指令](README.md#让-ai-安装或升级容器) 选择本次操作。每条只授权安装或升级一个角色。250 和 251 是两个容器默认局域网地址的末段，用来称呼网关和工作站；首次安装时由用户确认默认值或改为其他空闲地址。
 
 | 目标 | GitHub 发布镜像 | 首次安装入口 |
 | --- | --- | --- |
-| 250 网关 · `192.168.1.250` | `ghcr.io/crazyniu/ai-workstation-gateway:latest` | `./deploy.sh ai gateway` |
-| 251 工作站 · `192.168.1.251` | `ghcr.io/crazyniu/ai-workstation:latest` | `./deploy.sh ai workstation` |
+| 250 网关 · 默认 `192.168.1.250` | `ghcr.io/crazyniu/ai-workstation-gateway:latest` | `./deploy.sh ai gateway` |
+| 251 工作站 · 默认 `192.168.1.251` | `ghcr.io/crazyniu/ai-workstation:latest` | `./deploy.sh ai workstation` |
 
 只使用表中对应的项目镜像和仓库自带的 Compose 配置。软件随镜像交付，禁止自行选型、另外装包、本地构建替代镜像或改用宿主机原生安装。镜像无法拉取、地址冲突、宿主缺少必要工具或 251 无法使用现有 250 网关时，报告具体阻塞。安装前发现已有目标容器时停止；升级找不到原容器时也停止。
 
 新容器的管理员为 `root/root`，网关网页密码为 `root`。工作站桌面用户为 `dev/dev`，VNC 密码为 `root`。升级保留用户已有的配置和身份。
 
-## 首次安装先确认国家
+## 首次安装先确认国家和地址
 
-部署所选角色前，先向用户询问国家并等待答复。使用用户已确认的选项时，例如美国，执行 `AI_INSTALL_COUNTRY=US ./deploy.sh ai workstation`；PowerShell 中先设置 `$env:AI_INSTALL_COUNTRY='US'`。交互式安装可直接在终端选择。非交互安装缺少确认时会停止。升级沿用已有地区设置。
+部署所选角色前，先向用户询问国家和两个局域网地址，并等待答复。使用用户已确认的选项时，例如美国，执行 `AI_INSTALL_COUNTRY=US ./deploy.sh ai workstation`；PowerShell 中先设置 `$env:AI_INSTALL_COUNTRY='US'`。交互式安装可直接在终端选择。非交互安装缺少确认时会停止。升级沿用已有地区设置。
 
 | 国家 | 系统语言 | 时区 |
 | --- | --- | --- |
@@ -23,14 +23,22 @@
 
 其他国家另行确认语言代码和 IANA 时区，分别通过 `AI_INSTALL_LANGUAGE` 和 `AI_INSTALL_TIMEZONE` 传入。地区只应用于本次选择的容器；代理出口由网络设置决定。
 
+地址同时询问网关和工作站两项，默认 `192.168.1.250` 与 `192.168.1.251`。只安装一个角色也需要两项：网关为工作站地址设置直连保护，工作站把默认路由、DNS 和代理指向网关。用户确认后分别通过 `AI_INSTALL_GATEWAY_ADDRESS` 和 `AI_INSTALL_WORKSTATION_ADDRESS` 传入，例如：
+
+```sh
+AI_INSTALL_COUNTRY=TW AI_INSTALL_GATEWAY_ADDRESS=192.168.0.250 AI_INSTALL_WORKSTATION_ADDRESS=192.168.0.251 ./deploy.sh ai gateway
+```
+
+PowerShell 中先设置对应的 `$env:` 变量。另一角色已经部署时，填写它的实际地址。按第 1 节的盘点结果在私有 `.env` 中填写 `LAN_INTERFACE`、`LAN_SUBNET`、`LAN_PREFIX` 和 `LAN_ROUTER`。入口核对两个地址互不相同、位于该 LAN 内，并与 Compose 的实际计划一致，再把确认的地址写入 `.env` 的 `GATEWAY_ADDRESS` 和 `WORKSTATION_ADDRESS`。交互式安装可在终端直接回车接受默认值；非交互安装缺少确认时会停止。升级沿用已有地址。
+
 ## 0. 先确定角色、宿主机和网络拓扑
 
-`250` 指网关角色，`251` 指工作站角色，不代表宿主机地址，也不要求这两个角色位于同一设备。首次部署先记录下表，再连接对应 Docker context；外部环境可能是 **工作站 251 在宿主机 A、网关 250 在宿主机 B**。宿主机地址、网卡名、磁盘及容器名按现场填写。
+`250` 指网关角色，`251` 指工作站角色，不代表宿主机地址，也不要求这两个角色位于同一设备；实际地址以用户确认的值为准。首次部署先记录下表，再连接对应 Docker context；外部环境可能是 **工作站 251 在宿主机 A、网关 250 在宿主机 B**。宿主机地址、网卡名、磁盘及容器名按现场填写。
 
 | 项目 | 宿主机 A：工作站 | 宿主机 B：网关 |
 | --- | --- | --- |
 | 需要现场核实 | SSH 地址、Docker context、LAN 接口、子网、数据盘、已有容器 | SSH 地址、Docker context、LAN 接口、子网、数据盘、已有容器 |
-| 容器角色 | workstation，默认 `192.168.1.251` | gateway，默认 `192.168.1.250` |
+| 容器角色 | workstation，默认 `192.168.1.251`，可自定义 | gateway，默认 `192.168.1.250`，可自定义 |
 | 私有配置 | A 自己的 `.env`、密码和镜像版本 | B 自己的 `.env`、密码和镜像版本 |
 
 在所选角色的 Linux Docker 宿主机上使用表中入口。同机也可分别安装；每个入口使用独立的 Compose 项目。工作站的默认路由和 DNS 指向现有的 250。已有部署升级时沿用其实际的容器定义、网络和地址，流程见第 5 节。
@@ -70,8 +78,8 @@ ls -l /dev/net/tun
 
 | 项目 | 默认值或要求 |
 | --- | --- |
-| 网关 | `192.168.1.250`，Clash / Mihomo、DNS、Web 后台、Tailscale |
-| 工作站 | `192.168.1.251`，Claude / Codex、XFCE、SSH / VNC |
+| 网关 | 默认 `192.168.1.250`，Clash / Mihomo、DNS、Web 后台、Tailscale |
+| 工作站 | 默认 `192.168.1.251`，Claude / Codex、XFCE、SSH / VNC |
 | 上游路由器 | 示例为 `192.168.1.1`，以现场路由为准 |
 | control bridge | 示例为 `172.30.100.0/24`，必须避开 LAN、现有 Docker 与 VPN 路由 |
 | NAS / 宿主访问 | 需要时填写 `HOST_ADDRESS`，随后验证实际访问路径 |
@@ -79,7 +87,7 @@ ls -l /dev/net/tun
 | 工作站 HOME | `/home/dev`；配置、项目、登录身份及 SSH 主机密钥留在容器内部 |
 | 工作站国家 / 语言 / 时区 | `WORKSTATION_COUNTRY=SG`、`WORKSTATION_LANGUAGE=en`、`WORKSTATION_TIMEZONE=Asia/Singapore`；初始化为新加坡英文 `en_SG.UTF-8` |
 
-首次安装时确认目标地址属于现场 LAN 且空闲；有冲突时报告并停止。按实际网卡填写 `LAN_INTERFACE`，保留目标角色的 Compose 网络、设备及安全设置。
+首次安装时确认用户选定的地址属于现场 LAN 且空闲；有冲突时报告并停止，由用户另选地址。按实际网卡填写 `LAN_INTERFACE`，保留目标角色的 Compose 网络、设备及安全设置。
 
 Docker 的 `data-root` 属于宿主存储设置。**默认不迁移 Docker 数据目录、不改宿主网络、不向公网开放端口。** 如果 SSD 尚未用于 Docker，先报告实际位置、空间及影响；只有用户明确授权后，才另行安排涉及所有受影响容器的存储迁移和回退。容器内部保存业务数据，不代表这些字节脱离宿主 Docker 存储。
 
@@ -165,7 +173,7 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-按实际网络填写私有 `.env`，保留表中的镜像、IP 和初始账号设置。网关使用 `GATEWAY_USER=root`、`GATEWAY_PASSWORD=root`、`WEB_PASSWORD=root`；工作站使用 `WORKSTATION_ROOT_PASSWORD=root`、`WORKSTATION_PASSWORD=dev`、`VNC_PASSWORD=root`、`VNC_AUTH=password`。不要在日志中输出私有配置。
+按实际网络填写私有 `.env`，保留表中的镜像和初始账号设置；地址使用用户确认的值。网关使用 `GATEWAY_USER=root`、`GATEWAY_PASSWORD=root`、`WEB_PASSWORD=root`；工作站使用 `WORKSTATION_ROOT_PASSWORD=root`、`WORKSTATION_PASSWORD=dev`、`VNC_PASSWORD=root`、`VNC_AUTH=password`。不要在日志中输出私有配置。
 
 执行表中所选角色的首次安装命令。入口在拉取前核对角色、镜像和地址，并拒绝覆盖已有的 Compose 容器。记录实际拉取的镜像摘要。
 

@@ -27,13 +27,22 @@ policy on startup, reload and restore. The helper contains no user data.
 
 For each new AI installation, ask the user to confirm the country before deploying. Pass that answer through `AI_INSTALL_COUNTRY`. SG uses English and Asia/Singapore, TW uses Traditional Chinese and Asia/Taipei, and US uses English and America/Los_Angeles. Preserve existing region settings on upgrades.
 
-Each AI request installs or upgrades only the named role. For a new gateway at
-`192.168.1.250`, run `./deploy.sh ai gateway` with
-`ghcr.io/crazyniu/ai-workstation-gateway:latest`. For a new workstation at
-`192.168.1.251`, run `./deploy.sh ai workstation` with
+Also ask the user to confirm both LAN addresses, offering the defaults
+`192.168.1.250` (gateway) and `192.168.1.251` (workstation). Each role needs
+both: the gateway blocks direct egress for the workstation, and the workstation
+routes through the gateway. Pass the answers through `AI_INSTALL_GATEWAY_ADDRESS`
+and `AI_INSTALL_WORKSTATION_ADDRESS`, and fill `LAN_INTERFACE`, `LAN_SUBNET`,
+`LAN_PREFIX` and `LAN_ROUTER` in the private `.env` from the inspected network.
+The plan check saves the confirmed addresses to `.env` and refuses addresses
+outside that LAN. Preserve existing addresses on upgrades.
+
+Each AI request installs or upgrades only the named role. For a new gateway, run
+`./deploy.sh ai gateway` with `ghcr.io/crazyniu/ai-workstation-gateway:latest`.
+For a new workstation, run `./deploy.sh ai workstation` with
 `ghcr.io/crazyniu/ai-workstation:latest`. Use the published project image and
 its shipped services. Do not install additional software or substitute images,
-IP addresses, host packages or deployment modes. Report any blocking conflict.
+host packages or deployment modes, and use only the addresses the user
+confirmed. Report any blocking conflict.
 For an upgrade, identify the existing target, back up its private state and
 follow the role-specific migration procedure in AI-INSTALL.md.
 

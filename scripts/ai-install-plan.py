@@ -1,4 +1,5 @@
 """Check the effective Compose plan before the default AI installation starts."""
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -49,7 +50,33 @@ def confirmed_region(role):
     return values
 
 
-def save_region(values):
+DEFAULT_ADDRESSES = {'GATEWAY_ADDRESS': '192.168.1.250', 'WORKSTATION_ADDRESS': '192.168.1.251'}
+
+
+def confirmed_addresses():
+    """Both roles need both addresses: each one points at its peer."""
+    values = {}
+    for key, default in DEFAULT_ADDRESSES.items():
+        value = os.environ.get('AI_INSTALL_' + key, '').strip()
+        if not value:
+            if not sys.stdin.isatty():
+                sys.exit('Ask the user to confirm the gateway and workstation LAN addresses '
+                         f'(defaults {DEFAULT_ADDRESSES["GATEWAY_ADDRESS"]} and {DEFAULT_ADDRESSES["WORKSTATION_ADDRESS"]}). '
+                         'Pass their answer in AI_INSTALL_GATEWAY_ADDRESS and AI_INSTALL_WORKSTATION_ADDRESS.')
+            label = key.split('_')[0].capitalize()
+            value = input(f'{label} LAN address [{default}]: ').strip() or default
+        try:
+            values[key] = str(ipaddress.IPv4Address(value))
+        except ValueError:
+            sys.exit(f'{value} is not an IPv4 address.')
+    if values['GATEWAY_ADDRESS'] == values['WORKSTATION_ADDRESS']:
+        sys.exit('The gateway and the workstation need different LAN addresses.')
+    if any(key in os.environ and os.environ[key] != value for key, value in values.items()):
+        sys.exit('Shell address variables conflict with the confirmed addresses. Remove those overrides before deploying.')
+    return values
+
+
+def save_env(values):
     path = Path('.env')
     content = path.read_text(encoding='utf-8')
     for key, value in values.items():
@@ -67,11 +94,13 @@ def save_region(values):
 
 def main(compose_file, role, *overlays):
     region = confirmed_region(role)
+    addresses = confirmed_addresses()
     engine = docker('info', '--format', '{{.OSType}}/{{.OperatingSystem}}').strip()
     if not engine.startswith('linux/') or 'docker desktop' in engine.lower():
         sys.exit('当前 Docker Engine 不支持本方案的独立 LAN 地址。请先取得用户对替代方案的同意。')
 
     os.environ.update(region)
+    os.environ.update(addresses)
     files = [arg for path in (compose_file, *overlays) for arg in ('-f', path)]
     config = json.loads(docker('compose', '--env-file', '.env', *files, 'config', '--format', 'json'))
     services = config['services']
@@ -81,8 +110,8 @@ def main(compose_file, role, *overlays):
     if set(services) != expected:
         sys.exit('实际部署角色与本次安装范围不符。请先取得用户同意。')
 
-    gateway_ip = '192.168.1.250'
-    workstation_ip = '192.168.1.251'
+    gateway_ip = addresses['GATEWAY_ADDRESS']
+    workstation_ip = addresses['WORKSTATION_ADDRESS']
     for name, service in services.items():
         if name == 'workstation-network':
             continue
@@ -92,6 +121,11 @@ def main(compose_file, role, *overlays):
             desired = gateway_ip
             peer = service['environment']['GATEWAY_BLOCK_DIRECT_CLIENTS']
             expected_peer = workstation_ip
+            lan = ipaddress.IPv4Interface(service['environment']['GATEWAY_LAN_ADDRESS']).network
+            outside = [ip for ip in (service['environment']['GATEWAY_LAN_ROUTER'], workstation_ip)
+                       if ipaddress.IPv4Address(ip) not in lan]
+            if outside:
+                sys.exit(f'{", ".join(outside)} 不在网关网段 {lan} 内。请按实际 LAN 填写 LAN_PREFIX 和 LAN_ROUTER。')
             if 'compose.gateway-isolation.yaml' in overlays and workstation_ip not in service['environment'].get('GATEWAY_ISOLATED_CLIENTS', '').split():
                 sys.exit('网关的隔离来源必须包含指定的工作站 IP。')
         else:
@@ -103,19 +137,25 @@ def main(compose_file, role, *overlays):
                     sys.exit('隔离模式需要同版本工作站镜像提供网络。')
             address = owner['networks']['workstation_lan']['ipv4_address']
             desired = workstation_ip
-            peer = config['networks']['workstation_lan']['ipam']['config'][0]['gateway']
+            ipam = config['networks']['workstation_lan']['ipam']['config'][0]
+            peer = ipam['gateway']
+            lan = ipaddress.IPv4Network(ipam['subnet'], strict=False)
+            outside = [ip for ip in (address, peer) if ipaddress.IPv4Address(ip) not in lan]
+            if outside:
+                sys.exit(f'{", ".join(outside)} 不在工作站网段 {lan} 内。请按实际 LAN 填写 LAN_SUBNET。')
             expected_peer = gateway_ip
         for label, actual, default in [('镜像', service['image'], image),
                                        ('LAN 地址', address, desired),
                                        ('对端地址', peer, expected_peer)]:
             if actual != default:
-                sys.exit(f'{name} 的{label}为 {actual}，默认值为 {default}。请先取得用户同意。')
+                sys.exit(f'{name} 的{label}为 {actual}，与确认的 {default} 不符。请先取得用户同意。')
         print(f'{name}  {image}  {address}')
         prefix = name.upper() + '_'
         if any(service['environment'].get(key) != value for key, value in region.items() if key.startswith(prefix)):
             sys.exit(f'{name} does not use the confirmed region in the effective Compose plan.')
-    save_region(region)
+    save_env({**region, **addresses})
     print('Confirmed region:', ', '.join(f'{key}={value}' for key, value in region.items()))
+    print('Confirmed addresses:', ', '.join(f'{key}={value}' for key, value in addresses.items()))
 
 
 

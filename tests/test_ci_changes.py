@@ -11,9 +11,9 @@ spec.loader.exec_module(CI)
 
 class ChangeScopeTests(unittest.TestCase):
     def test_documentation_only_does_not_need_images(self):
-        self.assertFalse(CI.requires_images(['README.md', 'AI-INSTALL.md',
+        self.assertFalse(CI.requires_images(['README.md', 'README.en.md', 'AI-INSTALL.md',
             'docs/images/example.png', 'workstation/README.md',
-            '.github/ISSUE_TEMPLATE/bug.yml']))
+            '.github/ISSUE_TEMPLATE/bug.yml', 'CODE_OF_CONDUCT.md']))
 
     def test_code_and_mixed_changes_need_images(self):
         for code in ['compose.yaml', 'workstation/Dockerfile', 'gateway/app/server.py',
@@ -21,6 +21,12 @@ class ChangeScopeTests(unittest.TestCase):
                      '.github/workflows/images.yml', 'docs-example.py']:
             with self.subTest(code=code):
                 self.assertTrue(CI.requires_images(['README.md', code]))
+
+    def test_workflow_skips_exactly_the_documentation_paths(self):
+        workflow = (ROOT / '.github/workflows/images.yml').read_text()
+        block = workflow.split('paths-ignore:\n', 1)[1].split('\n  #', 1)[0]
+        ignored = tuple(line.strip()[3:-1] for line in block.splitlines() if line.strip().startswith('- '))
+        self.assertEqual(ignored, CI.DOCUMENTATION)
 
     def test_renames_out_of_docs_are_still_checked(self):
         self.assertTrue(CI.requires_images(['docs/source.py', 'gateway/app/source.py']))
