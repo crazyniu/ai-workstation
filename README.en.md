@@ -150,7 +150,7 @@ python3 -m unittest discover -s tests -p 'test_*.py' -v
 for test in workstation/tests/test-*.py; do python3 "$test"; done
 ```
 
-Container builds and smoke tests need Linux Docker; the full command list is in the [Chinese README](README.md#开发与验证). GitHub Actions builds clean images for each CPU architecture, runs startup, internal-storage, native-install and image-layer checks, and publishes `latest` and `sha-<commit>` tags from `main`. Pin a SHA tag to use a verified build.
+Container builds and smoke tests need Linux Docker; the full command list is in the [Chinese README](README.md#开发与验证). Pull requests run the fast checks; one that changes an image's build definition also builds that image for amd64, and the `full-ci` label verifies every architecture. After a merge, GitHub Actions rebuilds the changed images for each CPU architecture, runs startup, internal-storage, native-install and image-layer checks, and publishes `latest` and `sha-<commit>` tags from `main`. Pin a SHA tag to use a verified build.
 
 | Path | Contents |
 | --- | --- |

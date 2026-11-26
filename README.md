@@ -325,9 +325,9 @@ bash workstation/tests/web-desktop.sh workstation-local:test
 docker image save workstation-local:test | python3 workstation/tests/audit-image.py
 ```
 
-容器验证需要 Linux Docker 环境。GitHub Actions 按 CPU 架构构建两个角色的干净镜像，运行启动、内部存储、原生安装和镜像层检查；主分支验证通过后发布 `latest` 与 `sha-<完整提交号>` 标签。使用固定 SHA 标签可选择已验证的版本。实时进度见 [Actions](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml)。
+容器验证需要 Linux Docker 环境。PR 默认只运行快速检查；改动镜像构建定义时构建对应镜像的 amd64 版本，加 `full-ci` 标签可验证全部架构。合并到主分支后，GitHub Actions 按 CPU 架构重新构建有变化的镜像，运行启动、内部存储、原生安装和镜像层检查，通过后发布 `latest` 与 `sha-<完整提交号>` 标签。使用固定 SHA 标签可选择已验证的版本。实时进度见 [Actions](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml)。
 
-默认分支通过 PR 和 `Required checks` 合并门槛保护，要求分支保持最新、审查讨论已解决，并禁止强推和删除。代码 PR 验证两个镜像；纯文档 PR 执行轻量检查并报告同一个必过结果。规则说明见 [贡献指南](CONTRIBUTING.md#默认分支保护)，版本化定义见 [main Ruleset](.github/rulesets/main.json)。
+默认分支通过 PR 和 `Required checks` 合并门槛保护，要求分支保持最新、审查讨论已解决，并禁止强推和删除。各类 PR 运行的检查见贡献指南，都报告同一个必过结果。规则说明见 [贡献指南](CONTRIBUTING.md#默认分支保护)，版本化定义见 [main Ruleset](.github/rulesets/main.json)。
 
 | 路径 | 内容 |
 | --- | --- |

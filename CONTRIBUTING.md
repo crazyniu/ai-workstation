@@ -43,7 +43,14 @@ python3 gateway/runtime/build-info.py
 
 `main` 通过 GitHub Ruleset 保护：变更经 PR 合并，要求 `Required checks` 由 GitHub Actions 成功报告、分支与目标分支保持最新、所有审查讨论已解决，并保持线性历史；禁止强推和删除，管理员不设绕过。
 
-代码或构建相关 PR 必须完成网关与工作站的构建、运行验收及镜像审计；纯文档 PR 运行变更范围检查后报告同一个必过检查，避免等待被路径过滤跳过的任务。测试失败、取消或未正常报告都会阻止通过。合并使用 squash 或 rebase。
+`scripts/ci-changes.py` 按改动决定要跑的任务，所有 PR 都报告同一个必过检查 `Required checks`：
+
+- **纯文档**：只做变更范围检查。
+- **代码**：运行快速检查（网关、仓库和工作站的单元测试，以及网关 JavaScript 语法），通常一两分钟。
+- **镜像构建定义**：改动网关的 `Dockerfile`、组件锁定文件、`scripts/`、`runtime/` 或冒烟测试脚本，或改动工作站目录中单元测试以外的文件时，只构建对应镜像的 amd64 版本并运行启动验收、镜像审计和原生安装检查。PowerShell 入口、Compose 文件或 AI 安装检查变化时运行 Windows 部署检查。
+- **完整验证**：给 PR 加 `full-ci` 标签，或手动运行工作流并勾选 `full`，会构建并验证所有镜像和架构。修改 CI 本身（`scripts/ci-changes.py` 或 `images.yml`）时自动完整验证。
+
+合并到 `main` 后，只重新构建自上次成功发布以来源码有变化的镜像，覆盖全部架构并验证通过后发布；未变化的镜像把上次发布的版本标记为本次提交的 `sha-<提交号>` 和 `latest`。发布失败时 `latest` 保持上一个通过验证的版本。其他架构的问题可能在合并后才发现，需要提前确认时使用 `full-ci`。测试失败、取消或未正常报告都会阻止通过。合并使用 squash 或 rebase。
 
 仓库已开启 GitHub 自动合并。完成授权开发并创建非草稿 PR 后，立即执行 `gh pr merge <编号> --auto --squash --match-head-commit <当前提交>`，由 GitHub 在必过检查及其他保护条件满足后合并。依赖 PR 按顺序合并，后续分支移到最新 `main` 再验证；提交者持续处理 CI 失败并确认最终合并状态。
 
