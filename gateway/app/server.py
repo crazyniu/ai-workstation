@@ -14,10 +14,10 @@ MAX_BODY=36*1024*1024
 JOBS={}
 FAILURES={}
 JOB_LOCK=threading.Lock()
-DESKTOP_BUILTINS=('builtin:clash','builtin:adguard','builtin:tailscale','builtin:workstation','builtin:files','builtin:settings','builtin:proxy')
+DESKTOP_BUILTINS=('builtin:clash','builtin:adguard','builtin:tailscale','builtin:workstation','builtin:files','builtin:settings','builtin:proxy','builtin:terminal')
 # Gateway apps, in their default Dock order. Each one and every link sits either
 # in the Dock or at a cell of the desktop grid.
-SYSTEM_APPS=('builtin:settings','builtin:proxy','builtin:files','builtin:workstation','builtin:clash','builtin:adguard')
+SYSTEM_APPS=('builtin:settings','builtin:proxy','builtin:files','builtin:workstation','builtin:terminal','builtin:clash','builtin:adguard')
 GRID_LIMIT=100
 
 def default_workstation_url():
@@ -85,15 +85,17 @@ def save_desktop(value,keep_url=False):
 def ts(args,timeout=15):
     return command([str(ROOT/'components/current/tailscale/tailscale'),'--socket=/run/tailscale/tailscaled.sock']+args,timeout=timeout,check=False)
 
-def tailscale_local_api(path,payload):
+def tailscale_local_api(path,payload=None,method='POST'):
     # Use the same private Unix socket as the CLI; never expose identity preferences in argv.
     connection=http.client.HTTPConnection('local-tailscaled.sock',timeout=8)
     connection.sock=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
     try:
         connection.sock.settimeout(8);connection.sock.connect('/run/tailscale/tailscaled.sock')
-        connection.request('POST','/localapi/v0/'+path,json.dumps(payload),{'Content-Type':'application/json'})
-        response=connection.getresponse();response.read()
+        if method=='GET':connection.request('GET','/localapi/v0/'+path)
+        else:connection.request(method,'/localapi/v0/'+path,json.dumps(payload),{'Content-Type':'application/json'})
+        response=connection.getresponse();body=response.read()
         if response.status not in (200,204):raise ValueError('Tailscale 连接请求失败，请检查服务后重试')
+        return body
     finally:connection.close()
 
 def tailscale_raw_status():
@@ -121,7 +123,52 @@ def tailscale_status():
             'name':me.get('HostName',''),'login_url':s.get('AuthURL',''),'has_identity':bool(s.get('HaveNodeKey') or s.get('TailscaleIPs')),
             'routes':{'routes':','.join(networks),'accept_routes':True,'auto_routes':True},'route_state':route_state,
             'peers':sum(bool(p.get('Online')) for p in (s.get('Peer') or {}).values()),
-            'primary_routes':primary,'approval_note':note,'health':s.get('Health') or []}
+            'primary_routes':primary,'approval_note':note,'health':s.get('Health') or [],
+            'devices':tailscale_devices(s) if s.get('BackendState')=='Running' else []}
+
+def tailscale_regions():
+    # Region names from the DERP map in use, including a tailnet's own DERP servers.
+    try:value=json.loads(tailscale_local_api('derpmap',method='GET'))
+    except (ValueError,OSError,AttributeError,http.client.HTTPException):return {}
+    regions=value.get('Regions') if isinstance(value,dict) else None
+    return {r['RegionCode']:r.get('RegionName') or r['RegionCode'] for r in (regions or {}).values()
+            if isinstance(r,dict) and isinstance(r.get('RegionCode'),str)}
+
+def tailscale_path(peer,regions):
+    """How traffic to a peer travels right now, as `tailscale status` reports it."""
+    if not peer.get('Active'):return {'kind':'idle'}
+    if peer.get('CurAddr'):return {'kind':'direct','address':peer['CurAddr']}
+    if peer.get('PeerRelay'):return {'kind':'peer-relay','address':peer['PeerRelay'].split(':vni:')[0]}
+    if peer.get('Relay'):return {'kind':'derp','region':peer['Relay'],'name':regions.get(peer['Relay'],'')}
+    return {'kind':'idle'}
+
+def tailscale_devices(s,regions=None):
+    users=s.get('User') or {}
+    def device(node,path):
+        user=users.get(str(node.get('UserID')),{}) if not node.get('Tags') else {}
+        seen=node.get('LastSeen') or ''
+        return {'id':str(node.get('ID','')),'name':node.get('HostName') or (node.get('DNSName') or '').split('.')[0] or '—',
+                'dns':(node.get('DNSName') or '').rstrip('.'),'os':node.get('OS',''),'ips':node.get('TailscaleIPs') or [],
+                'online':bool(node.get('Online')),'last_seen':'' if seen.startswith('0001-') else seen,
+                'owner':', '.join(node.get('Tags') or []) or user.get('LoginName') or user.get('DisplayName') or '',
+                'routes':[r for r in node.get('PrimaryRoutes') or [] if r not in ('0.0.0.0/0','::/0')],
+                'exit_node':bool(node.get('ExitNode')),'rx':node.get('RxBytes',0),'tx':node.get('TxBytes',0),'path':path}
+    me=s.get('Self')
+    devices=[device(me,{'kind':'self'})] if me else []
+    # Mullvad exit locations are listed as peers too; they are not devices of this tailnet.
+    peers=[p for p in (s.get('Peer') or {}).values() if isinstance(p,dict) and not p.get('Location')]
+    peers.sort(key=lambda p:(not p.get('Online'),(p.get('HostName') or p.get('DNSName') or '').lower()))
+    regions=tailscale_regions() if regions is None and any(p.get('Active') and p.get('Relay') for p in peers) else regions or {}
+    return devices+[device(p,tailscale_path(p,regions)) for p in peers[:500]]
+
+TTYD=Path('/usr/local/bin/ttyd')
+
+def terminal_state(login_required):
+    # The terminal ships with the gateway image: an online Web upgrade cannot add it.
+    if os.environ.get('GATEWAY_INSTALL_MODE')=='native':return {'available':False,'reason':'native'}
+    if not os.access(TTYD,os.X_OK):return {'available':False,'reason':'image'}
+    if not login_required:return {'available':False,'reason':'login'}
+    return {'available':True,'reason':''}
 
 def configure_tailscale_routes():
     # Serialize with upgrades/restore; always verify against daemon preferences after a restart.
@@ -294,6 +341,10 @@ class Handler(legacy.Handler):
             self.reply(200,value);return
         if path=='/api/auth/check':
             self.send_response(204 if self.access_allowed() else 401);self.end_headers();return
+        if path=='/api/auth/terminal':
+            # A root shell always needs a password session, and its WebSocket must come from this page.
+            with LOCK:allowed=self.login_required() and self.session()
+            self.send_response(401 if not allowed else 204 if self.same_origin() else 403);self.end_headers();return
         if not self.authorized():return
         if path=='/api/favicon':
             query=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
@@ -319,6 +370,7 @@ class Handler(legacy.Handler):
             self.reply(200,{'services':r.stdout,'configured':read(DASH/'proxy-state.json',{}).get('configured',False),'domain':settings()['domain'],'address':lan_ip()});return
         if path=='/api/settings':self.reply(200,settings());return
         if path=='/api/tailscale':self.reply(200,tailscale_status());return
+        if path=='/api/terminal':self.reply(200,terminal_state(self.login_required()));return
         if path=='/api/web-release':self.reply(200,web_release.info());return
         if path=='/api/web-release/job':self.reply(200,web_release.progress());return
         if path=='/api/updates':

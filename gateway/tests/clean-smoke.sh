@@ -47,6 +47,57 @@ with tempfile.TemporaryDirectory() as folder:
     assert result.stdout.strip()=='root'
 print('PASS fresh login, access control, empty private state, appearance, cards, password and SSH authentication')
 PY
+docker exec -i "$name" python3 - <<'PY'
+import base64,json,os,socket,time,urllib.request,urllib.error,http.cookiejar
+jar=http.cookiejar.CookieJar();client=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+def get(path):
+    try:
+        with client.open('http://127.0.0.1'+path,timeout=10) as response:return response.status,response.read()
+    except urllib.error.HTTPError as error:return error.code,b''
+def terminal(origin,command=None):
+    # Open ttyd's WebSocket through Nginx, as the desktop window does, and run one command.
+    cookie='; '.join(c.name+'='+c.value for c in jar)
+    sock=socket.create_connection(('127.0.0.1',80),timeout=30)
+    sock.sendall(('GET /terminal/ws HTTP/1.1\r\nHost: 127.0.0.1\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n'
+                  'Sec-WebSocket-Key: '+base64.b64encode(os.urandom(16)).decode()+'\r\nSec-WebSocket-Version: 13\r\n'
+                  'Sec-WebSocket-Protocol: tty\r\nOrigin: '+origin+'\r\nCookie: '+cookie+'\r\n\r\n').encode())
+    data=b''
+    while b'\r\n\r\n' not in data:
+        chunk=sock.recv(4096)
+        if not chunk:break
+        data+=chunk
+    code=int(data.split(b' ')[1]);data=data.partition(b'\r\n\r\n')[2]
+    if code!=101 or command is None:sock.close();return code,''
+    def send(payload,opcode):
+        mask=os.urandom(4);n=len(payload)
+        sock.sendall(bytes([0x80|opcode])+(bytes([0x80|n]) if n<126 else bytes([0xfe])+n.to_bytes(2,'big'))+mask+bytes(b^mask[i%4] for i,b in enumerate(payload)))
+    def need(size):
+        nonlocal data
+        while len(data)<size:
+            chunk=sock.recv(65536)
+            if not chunk:raise AssertionError('terminal closed early')
+            data+=chunk
+    send(json.dumps({'AuthToken':'','columns':120,'rows':30}).encode(),1)
+    send(b'0'+command.encode()+b'\r',2)
+    output=b'';deadline=time.time()+60
+    while time.time()<deadline and b'TERMINAL-USER=root' not in output:
+        need(2);size=data[1]&127;offset=2
+        if size==126:need(4);size=int.from_bytes(data[2:4],'big');offset=4
+        elif size==127:need(10);size=int.from_bytes(data[2:10],'big');offset=10
+        need(offset+size);frame=data[offset:offset+size];data=data[offset+size:]
+        if frame[:1]==b'0':output+=frame[1:]
+    sock.close();return code,output.decode(errors='replace')
+assert get('/terminal/')[0]==401,'anonymous terminal page'
+assert terminal('http://127.0.0.1')[0]==401,'anonymous terminal socket'
+request=urllib.request.Request('http://127.0.0.1/api/auth/login',data=json.dumps({'password':'test'}).encode(),headers={'Content-Type':'application/json'})
+client.open(request,timeout=10).close()
+with client.open('http://127.0.0.1/api/terminal',timeout=10) as response:assert json.load(response)=={'available':True,'reason':''}
+code,page=get('/terminal/');assert code==200 and b'ttyd' in page.lower(),('terminal page',code)
+assert terminal('http://elsewhere.invalid')[0]==403,'cross-origin terminal socket'
+code,output=terminal('http://127.0.0.1','echo TERMINAL-USER=$(id -un)')
+assert code==101 and 'TERMINAL-USER=root' in output,(code,output[-500:])
+print('PASS terminal: login required, same-origin WebSocket only, root shell through Nginx and the private socket')
+PY
 docker restart "$name" >/dev/null
 wait_ready
 docker exec -i "$name" python3 - <<'PY'

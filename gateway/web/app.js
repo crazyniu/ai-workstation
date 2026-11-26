@@ -1,7 +1,7 @@
 'use strict';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 let initialized=false,cards=[],revision=null,editing=null,busy=false,status={};
-const DEFAULT_DOCK=['builtin:settings','builtin:proxy','builtin:files','builtin:workstation','builtin:clash','builtin:adguard'];
+const DEFAULT_DOCK=['builtin:settings','builtin:proxy','builtin:files','builtin:workstation','builtin:terminal','builtin:clash','builtin:adguard'];
 let desktopPrefs={workstation_url:'https://192.168.1.251:6080/',order:[],dock:[...DEFAULT_DOCK],positions:{}};
 let currentPage=null,navigation=0,savedConfig=null,settingsWindow=null;
 let tailscaleRequest=null,tailscaleNavigation=0,settingsLoadingDone=null,wallpaperRead=0,wallpaperLoadingDone=null;
@@ -159,6 +159,7 @@ const systemApps=[
   {id:'builtin:proxy',key:'proxy',name:'代理配置',image:'proxy',open:()=>openProxyWindow()},
   {id:'builtin:files',key:'transfer',name:'局域网互传',image:'transfer',open:()=>openFrameApp('transfer')},
   {id:'builtin:workstation',key:'workstation',name:'工作站',image:'workstation',open:()=>openFrameApp('workstation')},
+  {id:'builtin:terminal',key:'terminal',name:'终端',image:'terminal',open:()=>openTerminal().catch(e=>toast(e.message,true))},
   {id:'builtin:clash',key:'panel',name:'Clash 面板',image:'panel',open:()=>openFrameApp('panel')},
   {id:'builtin:adguard',key:'adguard',name:'AdGuard Home',image:'adguard',open:()=>openFrameApp('adguard')},
 ].map(app=>({...app,system:true}));
@@ -512,6 +513,45 @@ async function renderTailscale(){
     action.dataset.stateDisabled=String(t.state==='Starting');action.disabled=busy||t.state==='Starting';
     $('#tailscale-account').hidden=!t.has_identity||['NeedsLogin','NoState','Unavailable'].includes(t.state);
     const refresh=$('#tailscale-refresh-status');refresh.className='callout warn';refresh.textContent=(t.health||[]).join('；');
+    renderDevices(t);
+}
+// Tailscale devices, and how this gateway currently reaches each one.
+const osNames={linux:'Linux',windows:'Windows',macOS:'macOS',iOS:'iOS',android:'Android',freebsd:'FreeBSD',openbsd:'OpenBSD',tvOS:'tvOS',illumos:'illumos'};
+const derpNames={tok:'东京',hkg:'香港',sin:'新加坡',syd:'悉尼',blr:'班加罗尔',lax:'洛杉矶',sfo:'旧金山',sea:'西雅图',den:'丹佛',dfw:'达拉斯',ord:'芝加哥',mia:'迈阿密',nyc:'纽约',tor:'多伦多',hnl:'檀香山',sao:'圣保罗',jnb:'约翰内斯堡',fra:'法兰克福',par:'巴黎',ams:'阿姆斯特丹',lhr:'伦敦',mad:'马德里',waw:'华沙'};
+function formatBytes(value){const units=['B','KB','MB','GB','TB'];let n=Number(value)||0,i=0;while(n>=1024&&i<units.length-1){n/=1024;i++;}return (i&&n<10?n.toFixed(1):Math.round(n))+' '+units[i];}
+function lastSeen(value){
+  const time=Date.parse(value);if(!value||Number.isNaN(time))return '离线';
+  const minutes=Math.max(0,Math.round((Date.now()-time)/60000));
+  return '离线 · '+(minutes<1?'刚刚':minutes<60?minutes+' 分钟前':minutes<1440?Math.round(minutes/60)+' 小时前':Math.round(minutes/1440)+' 天前')+'在线';
+}
+function devicePath(path){
+  if(path.kind==='direct')return ['直连 · '+path.address,'ok'];
+  if(path.kind==='peer-relay')return ['中转 · '+path.address,'ok'];
+  if(path.kind==='derp')return ['DERP 中继 · '+(derpNames[path.region]||path.name||path.region),'warn'];
+  return ['空闲','idle'];
+}
+function renderDevices(t){
+  const card=$('#tailscale-devices-card'),list=$('#tailscale-devices'),devices=t.devices||[];
+  card.hidden=t.state!=='Running'||!devices.length;if(card.hidden)return;
+  const peers=devices.filter(d=>d.path.kind!=='self');
+  $('#tailscale-devices-summary').textContent=peers.length?peers.length+' 台其他设备，'+peers.filter(d=>d.online).length+' 台在线。“DERP 中继”表示流量经中继服务器转发，后面是中继所在地或自建中继的名称。':'这个 Tailscale 网络中还没有其他设备。';
+  list.replaceChildren(...devices.map(d=>{
+    const self=d.path.kind==='self',row=element('div',undefined,'list-row device-row'),symbol=element('span',undefined,'row-symbol');
+    symbol.style.setProperty('--tint',self?'var(--accent)':d.online?'#34a853':'#8e8e93');symbol.append(glyph(self?'gateway':d.os==='linux'?'server':'devices'));
+    const copy=element('div',undefined,'row-copy'),name=element('strong',d.name);
+    if(self)name.append(element('span','本机','device-badge'));
+    const ip=(d.ips||[]).find(a=>!a.includes(':'))||d.ips?.[0]||'';
+    copy.append(name,element('span',[ip,osNames[d.os]||d.os,d.owner].filter(Boolean).join(' · ')));
+    if(d.routes?.length)copy.append(element('span','子网 '+d.routes.join('、')));
+    row.append(symbol,copy);
+    if(!self){
+      const meta=element('div',undefined,'device-meta');
+      if(d.online){const [label,tone]=devicePath(d.path),pill=element('span',undefined,'status-pill');setTone(pill,label,tone);meta.append(pill);if(d.rx||d.tx)meta.append(element('span','↓ '+formatBytes(d.rx)+'  ↑ '+formatBytes(d.tx),'row-meta'));}
+      else meta.append(element('span',lastSeen(d.last_seen),'row-meta'));
+      row.append(meta);
+    }
+    return row;
+  }));
 }
 setInterval(()=>{
   if(currentPage!=='tailscale'||!$('#settings-dialog').open||document.hidden||busy)return;
@@ -654,7 +694,21 @@ const frameApps={
   panel:{title:'Clash 面板',icon:appImage('panel'),url:'/ui/#/proxies',page:'/ui/#/proxies',width:1180},
   adguard:{title:'AdGuard Home',icon:appImage('adguard'),url:'/adguard/',page:'/adguard/',width:1180},
   workstation:{title:'工作站',icon:appImage('workstation'),url:()=>desktopPrefs.workstation_url,width:1280,height:860,external:true},
+  terminal:{title:'终端',icon:appImage('terminal'),url:'/terminal/',width:920,height:580},
 };
+// The terminal is a root shell on the gateway, served by ttyd in the gateway image.
+const terminalNotes={
+  login:['终端需要密码登录','终端可以直接以 root 身份操作网关，只在开启“登录需要密码”后提供。','前往账户设置'],
+  image:['终端暂不可用','当前网关镜像还没有终端组件。网关 Web 可以在线更新，终端需要更新网关镜像后才能使用。','知道了'],
+  native:['终端暂不可用','原生安装的网关不内置终端，请使用这台主机自身的 SSH 或终端。','知道了'],
+};
+async function openTerminal(){
+  if(frameWindows.has('terminal')){focusGatewayWindow(frameWindows.get('terminal'));return;}
+  const state=await api('/terminal');
+  if(state.available){openFrameApp('terminal');return;}
+  const [title,copy,accept]=terminalNotes[state.reason]||terminalNotes.image;
+  if(await askConfirm(copy,title,{accept})&&state.reason==='login')openSettings('account');
+}
 const frameWindows=new Map();
 function openLinkWindow(card,iconSource=''){
   openFrameApp('link:'+card.id,{title:card.name,icon:iconSource||'/icons/link.svg',url:card.url,width:1180,external:true});

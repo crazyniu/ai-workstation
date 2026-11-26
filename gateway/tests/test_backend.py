@@ -353,7 +353,7 @@ class AuthTests(DataTest):
             with self.request('/api/cards', {'name': name, 'url': 'http://192.0.2.249/', 'icon': 'server'}, cookie=cookie) as response:
                 self.assertEqual(response.status, 201)
         cards = legacy.read_cards()
-        ids = [cards[1]['id'], 'builtin:workstation', cards[0]['id'], 'builtin:settings', 'builtin:clash', 'builtin:adguard', 'builtin:files', 'builtin:tailscale', 'builtin:proxy']
+        ids = [cards[1]['id'], 'builtin:workstation', cards[0]['id'], 'builtin:settings', 'builtin:clash', 'builtin:adguard', 'builtin:files', 'builtin:tailscale', 'builtin:proxy', 'builtin:terminal']
         with self.request('/api/cards/order', {'ids': ids}, cookie=cookie) as response:
             self.assertEqual(response.status, 200)
         with self.request('/api/cards', cookie=cookie) as response:
@@ -512,6 +512,99 @@ class AuthTests(DataTest):
         self.assertEqual(self.config.read_bytes(), self.original_config)
         self.assertEqual(state.settings()['subscription']['url'], '')
         self.assertFalse((self.dash / 'proxy-state.json').exists())
+
+
+class GatewayToolTests(DataTest):
+    """The Tailscale device list and the terminal's access rules."""
+    def setUp(self):
+        super().setUp()
+        server.FAILURES.clear()
+        self.http = server.ThreadingHTTPServer(('127.0.0.1', 0), server.Handler)
+        self.worker = threading.Thread(target=self.http.serve_forever, daemon=True)
+        self.worker.start()
+        self.host = '127.0.0.1:' + str(self.http.server_port)
+        self.addCleanup(self.close)
+        state.save(self.dash / 'admin.json', {'password': state.password_hash('strong-password-123')})
+        state.atomic(self.dash / 'session-key', 'b' * 64)
+        expires = str(int(time.time() + 600))
+        self.cookie = 'gateway_session=' + expires + '.' + hmac.new(b'b' * 64, expires.encode(), hashlib.sha256).hexdigest()
+
+    def close(self):
+        self.http.shutdown()
+        self.http.server_close()
+        self.worker.join()
+
+    def request(self, path, data=None, cookie=None, origin=None):
+        headers = {'Content-Type': 'application/json'}
+        if cookie:
+            headers['Cookie'] = cookie
+        if origin:
+            headers['Origin'] = origin
+        req = urllib.request.Request('http://' + self.host + path, data=None if data is None else json.dumps(data).encode(), headers=headers)
+        try:
+            return urllib.request.urlopen(req)
+        except urllib.error.HTTPError as response:
+            return response
+
+    def test_device_list_reports_each_connection_path(self):
+        status = {'User': {'7': {'LoginName': 'owner@example.com'}},
+                  'Self': {'ID': 'self', 'HostName': 'gateway', 'OS': 'linux', 'UserID': 7, 'Online': True, 'TailscaleIPs': ['100.64.0.1'],
+                           'PrimaryRoutes': ['192.0.2.0/24', '0.0.0.0/0'], 'LastSeen': '0001-01-01T00:00:00Z'},
+                  'Peer': {
+                      'a': {'HostName': 'phone', 'OS': 'iOS', 'UserID': 7, 'Online': True, 'Active': True, 'Relay': 'tok', 'CurAddr': ''},
+                      'b': {'HostName': 'laptop', 'OS': 'macOS', 'Online': True, 'Active': True, 'Relay': 'tok', 'CurAddr': '198.51.100.2:41641'},
+                      'c': {'HostName': 'tablet', 'OS': 'android', 'Online': True, 'Active': True, 'Relay': 'hkg', 'PeerRelay': '198.51.100.9:40000:vni:3'},
+                      'd': {'HostName': 'server', 'OS': 'linux', 'Tags': ['tag:server'], 'Online': True, 'Active': False, 'Relay': 'sin'},
+                      'e': {'HostName': 'old', 'OS': 'windows', 'Online': False, 'LastSeen': '2026-01-02T03:04:05Z'},
+                      'f': {'HostName': 'se-got-wg-001.mullvad.ts.net', 'Online': True, 'Location': {'Country': 'Sweden'}}}}
+        # A tailnet's own DERP server appears under its configured region name.
+        derp = json.dumps({'Regions': {'901': {'RegionID': 901, 'RegionCode': 'tok', 'RegionName': 'My DERP'}}}).encode()
+        with patch.object(server, 'tailscale_local_api', return_value=derp) as local:
+            devices = server.tailscale_devices(status)
+        local.assert_called_once_with('derpmap', method='GET')
+        self.assertEqual([d['name'] for d in devices], ['gateway', 'laptop', 'phone', 'server', 'tablet', 'old'])
+        paths = {d['name']: d['path'] for d in devices}
+        self.assertEqual(paths['gateway'], {'kind': 'self'})
+        self.assertEqual(paths['laptop'], {'kind': 'direct', 'address': '198.51.100.2:41641'})
+        self.assertEqual(paths['phone'], {'kind': 'derp', 'region': 'tok', 'name': 'My DERP'})
+        with patch.object(server, 'tailscale_local_api', side_effect=OSError):
+            self.assertEqual(server.tailscale_devices(status)[2]['path'], {'kind': 'derp', 'region': 'tok', 'name': ''})
+        self.assertEqual(paths['tablet'], {'kind': 'peer-relay', 'address': '198.51.100.9:40000'})
+        self.assertEqual(paths['server'], {'kind': 'idle'})
+        self.assertEqual(devices[0]['routes'], ['192.0.2.0/24'])
+        self.assertEqual(devices[0]['last_seen'], '')
+        self.assertEqual(devices[0]['owner'], 'owner@example.com')
+        self.assertEqual(devices[3]['owner'], 'tag:server')
+        self.assertEqual(devices[-1]['last_seen'], '2026-01-02T03:04:05Z')
+
+    def test_terminal_needs_a_password_session_and_same_origin(self):
+        ttyd = self.root / 'ttyd'
+        ttyd.write_text('#!/bin/sh\n')
+        ttyd.chmod(0o755)
+        with patch.object(server, 'TTYD', ttyd):
+            with self.request('/api/auth/terminal') as response:
+                self.assertEqual(response.status, 401)
+            with self.request('/api/auth/terminal', cookie=self.cookie) as response:
+                self.assertEqual(response.status, 204)
+            with self.request('/api/auth/terminal', cookie=self.cookie, origin='http://' + self.host) as response:
+                self.assertEqual(response.status, 204)
+            with self.request('/api/auth/terminal', cookie=self.cookie, origin='https://elsewhere.invalid') as response:
+                self.assertEqual(response.status, 403)
+            with self.request('/api/terminal', cookie=self.cookie) as response:
+                self.assertEqual(json.load(response), {'available': True, 'reason': ''})
+            # With password login off the desktop opens freely, but a root shell does not.
+            admin = state.read(self.dash / 'admin.json')
+            state.save(self.dash / 'admin.json', {**admin, 'login_required': False})
+            with self.request('/api/auth/terminal', cookie=self.cookie) as response:
+                self.assertEqual(response.status, 401)
+            with self.request('/api/auth/check') as response:
+                self.assertEqual(response.status, 204)
+            with self.request('/api/terminal') as response:
+                self.assertEqual(json.load(response), {'available': False, 'reason': 'login'})
+            with patch.dict(os.environ, {'GATEWAY_INSTALL_MODE': 'native'}), self.request('/api/terminal') as response:
+                self.assertEqual(json.load(response)['reason'], 'native')
+        with patch.object(server, 'TTYD', self.root / 'missing'), self.request('/api/terminal', cookie=self.cookie) as response:
+            self.assertEqual(json.load(response), {'available': False, 'reason': 'image'})
 
 
 class AppearanceTests(DataTest):

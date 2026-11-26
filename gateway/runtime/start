@@ -85,4 +85,13 @@ if lan_address and str(workstation) in os.environ.get('GATEWAY_ISOLATED_CLIENTS'
                     'ip', 'saddr', str(workstation), 'ip', 'daddr', str(gateway),
                     'tcp', 'dport', str(port), 'accept'], check=True)
 PY
+# The terminal is part of the container image; native installs keep using the host's own shell.
+mkdir -p /run/gateway/supervisor.d
+rm -f /run/gateway/supervisor.d/terminal.conf
+if [[ ${GATEWAY_INSTALL_MODE:-container} != native && -x /usr/local/bin/ttyd ]]; then
+  printf '%s\n' '[program:terminal]' 'command=/opt/gateway/runtime/service terminal' 'priority=45' \
+    'autostart=true' 'autorestart=true' 'stopasgroup=true' 'killasgroup=true' \
+    'stdout_logfile=/dev/fd/1' 'stdout_logfile_maxbytes=0' 'stderr_logfile=/dev/fd/2' 'stderr_logfile_maxbytes=0' \
+    > /run/gateway/supervisor.d/terminal.conf
+fi
 exec supervisord -n -c /opt/gateway/runtime/supervisord.conf
