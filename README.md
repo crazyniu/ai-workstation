@@ -1,4 +1,4 @@
-# AI Workstation & Gateway
+# Niu Gateway & AI Workstation
 
 简体中文 | [English](README.en.md)
 
@@ -7,26 +7,26 @@
 
 在家庭或办公室局域网里部署两个容器：
 
-- **网关**：Mihomo（Clash）透明代理、AdGuard Home DNS、Tailscale 子网路由，以及一个桌面式 Web 后台。订阅、出口、设备出口和按域名分组都可以在网页里配置。
+- **网关 Niu Gateway**：Mihomo（Clash）透明代理、AdGuard Home DNS、Tailscale 子网路由，以及一个 macOS 风格的桌面式 Web 后台，带网页终端。订阅地址、中转出口、设备出口和分组规则都可以在网页里配置。
 - **工作站**：Debian + XFCE 的 Linux 开发桌面，预装 Chrome、VS Code、Codex、Claude Code 和常用 MCP，通过浏览器（noVNC）、VNC 或 SSH 使用。
 
 两个角色可以同机运行，也可以分别部署在两台宿主机上；支持 Linux、Windows、macOS 上的 Docker，以及 Linux 原生安装。局域网部署的默认地址是网关 `192.168.1.250`、工作站 `192.168.1.251`，可以换成你局域网里的其他空闲地址。文档中的“250”“251”分别指网关和工作站。
 
-![AI Workstation 与网关桌面展示](docs/images/gateway-home.png)
+![Niu Gateway 与 AI Workstation 展示](docs/images/gateway-home.png)
 
 *项目展示图；实际界面以运行版本为准。[图片说明](docs/images/README.md)*
 
-实际界面截图：[网关桌面](docs/images/gateway-control-panel.jpg)、[Clash 代理配置](docs/images/gateway-clash-editor.jpg)、[手机主屏](docs/images/gateway-home-mobile.jpg)、[操作提示](docs/images/gateway-global-toast-desktop.jpg)。
+实际界面截图：[Niu Gateway 桌面](docs/images/gateway-control-panel.jpg)、[Clash 代理配置](docs/images/gateway-clash-editor.jpg)、[手机主屏](docs/images/gateway-home-mobile.jpg)、[操作提示](docs/images/gateway-global-toast-desktop.jpg)。
 
 ## 功能
 
 | 角色 | 默认地址（可自定义） | 能力 | 公开镜像 |
 | --- | --- | --- | --- |
-| Gateway | `192.168.1.250` | Mihomo / Clash、AdGuard Home、Tailscale、Web 控制面板 | `ghcr.io/crazyniu/ai-workstation-gateway` |
+| Niu Gateway | `192.168.1.250` | Mihomo / Clash、AdGuard Home、Tailscale、桌面式 Web 后台、网页终端 | `ghcr.io/crazyniu/ai-workstation-gateway` |
 | Workstation | `192.168.1.251` | XFCE、Chrome、VS Code、Codex、Claude Code、Claude Desktop、GitHub CLI、MCP 工具 | `ghcr.io/crazyniu/ai-workstation` |
 
-- 桌面图标可以拖到任意位置，也可以拖进或拖出 Dock；网关应用和自定义链接都一样。链接默认在桌面的窗口中打开，可改为新标签页。
-- 桌面链接支持自动获取站点 favicon，也可手动选图标；图标采用 macOS 27 风格。提供壁纸、主题与账户设置，菜单栏的“关于这台网关”显示版本和 GitHub 开源地址。
+- 桌面图标可以拖到任意位置，也可以拖进或拖出 Dock；网关应用和自定义链接都一样。链接默认在桌面的窗口中打开，可改为新标签页；网站不允许被嵌入显示时，窗口会说明原因并提供新标签页打开。
+- 桌面链接支持自动获取站点 favicon，也可手动选图标；应用和设置图标采用 macOS 风格。提供壁纸、主题与账户设置，菜单栏的“关于 Niu Gateway”显示版本和 GitHub 开源地址；有新版本时，更新窗口按 Markdown 显示发布说明。
 - 网关内置工作站入口，在窗口中打开工作站桌面，可修改地址；保存、导入和表单校验通过全局提示反馈。
 - 网关自带“终端”（开源的 [ttyd](https://github.com/tsl0922/ttyd)），在桌面窗口中打开网关的 root shell。它只在开启“登录需要密码”时可用，随网关镜像提供。
 - Tailscale 页面列出所有设备的在线状态、地址、流量和连接方式（直连、DERP 中继及中继名称），并提供 Tailscale 访问控制的入口，用于配置自建 DERP 中继服务器。
@@ -166,7 +166,7 @@ Linux 局域网部署中，250 和 251 可以运行在同一台或不同的 Dock
 | 代理与面板 | Mihomo `1.19.33`、MetaCubeXD `1.273.1` |
 | DNS 与过滤 | AdGuard Home `0.107.79`、内置 AdGuard DNS filter 规则快照 |
 | 远程网络 | Tailscale `1.104.2` |
-| Web 后台 | 项目网关桌面、WinBox `0.2.82`、CodeMirror YAML 编辑器 |
+| Web 后台 | Niu Gateway（本项目）、WinBox `0.2.82`、CodeMirror YAML 编辑器 |
 | 系统与运行时 | Debian `13`、发行版系统 Python 3 / PyYAML、Nginx、Supervisor、Tini |
 | 管理工具 | OpenSSH Server、Git、GitHub CLI、curl、DNS 查询及路由/防火墙工具 |
 | 网页终端 | ttyd `1.7.7`（构建镜像时从固定版本的上游源码编译） |
@@ -269,16 +269,16 @@ WORKSTATION_TIMEZONE=Asia/Singapore
 
 ### LAN 访问入口
 
-网关桌面内置“工作站”图标，默认在窗口中打开 `https://工作站地址:6080/`（按 `WORKSTATION_ADDRESS` 生成，例如 `https://192.168.1.251:6080/`），与工作站镜像默认协议一致。在“设置 → 桌面管理”或右键图标的“设置入口地址”中修改实际 IP、域名、协议和端口；可信内网 HTTP 服务填写对应的 `http://` 地址。工作站使用自签名证书时，浏览器需要先在新标签页中打开并选择继续访问一次，之后窗口才能显示；窗口会提示这一步。全部图标都可以拖到桌面任意位置或拖进 Dock，选中图标后也可用 `Alt + 方向键` 移动。地址和布局保存在网关内，刷新、重启及换浏览器后沿用，并包含在配置备份中。
+Niu Gateway 桌面内置“工作站”图标，默认在窗口中打开 `https://工作站地址:6080/`（按 `WORKSTATION_ADDRESS` 生成，例如 `https://192.168.1.251:6080/`），与工作站镜像默认协议一致。在“设置 → 桌面管理”或右键图标的“设置入口地址”中修改实际 IP、域名、协议和端口；可信内网 HTTP 服务填写对应的 `http://` 地址。工作站使用自签名证书时，浏览器需要先在新标签页中打开并选择继续访问一次，之后窗口才能显示；窗口会提示这一步。全部图标都可以拖到桌面任意位置或拖进 Dock，选中图标后也可用 `Alt + 方向键` 移动。地址和布局保存在网关内，刷新、重启及换浏览器后沿用，并包含在配置备份中。
 
 | 入口 | 初始账号 / 密码 |
 | --- | --- |
-| 网关 Web：`http://网关地址/` | 密码来自 `WEB_PASSWORD`，示例值为 `root` |
+| Niu Gateway：`http://网关地址/` | 密码来自 `WEB_PASSWORD`，示例值为 `root` |
 | 网关 SSH：`网关地址:22` | `GATEWAY_USER` / `GATEWAY_PASSWORD`，示例均为 `root` |
 | 工作站 SSH：`工作站地址:22` | 管理员 `root / root`；应用用户 `dev / dev` |
 | 工作站 VNC：`工作站地址:5901` | `VNC_PASSWORD`，示例值为 `root` |
 
-部署前设置自己的密码。VNC 密码接受 1–8 个 ASCII 字符；Compose 默认启用工作站 root / root 管理登录，桌面应用仍由 dev 运行。网关 Web 密码首次初始化后由“设置 → 账户”管理。后续环境变量变更与数据处理见各服务文档。
+部署前设置自己的密码。VNC 密码接受 1–8 个 ASCII 字符；Compose 默认启用工作站 root / root 管理登录，桌面应用仍由 dev 运行。Niu Gateway 密码首次初始化后由“设置 → 账户”管理。后续环境变量变更与数据处理见各服务文档。
 
 可信私网可在“设置 → 账户 → 密码登录”关闭“进入网关时需要密码”，输入当前密码后保存。关闭后，能访问网页的设备可直接管理网关、Clash 和 AdGuard Home；SSH 认证独立保留。重新开启仍需当前密码。登录开关和原密码保存在网关内部，重启沿用，均不随网页配置备份导出或恢复。全新容器默认开启密码登录，详见[网关账户说明](gateway/README.md#首次设置与日常使用)。
 
@@ -305,7 +305,7 @@ Docker 部署的两个服务不声明业务 bind mount、命名卷或匿名卷�
 
 **重启保留数据；删除或重新创建容器会丢失内部数据。** 替换镜像前，先停止业务、导出需要保留的私有状态，并验证恢复流程。完整私有镜像用于原环境恢复；升级到新镜像需要选择性迁移配置和用户数据。操作步骤见 [网关数据处理](gateway/README.md) 和 [工作站备份与恢复](workstation/README.md)。个人状态、恢复镜像和凭据应留在私有存储中。
 
-网关 Web 内的组件升级会保留 `/data` 中的配置，失败时回退组件。后台代码、Nginx、Python 与基础系统通过替换镜像更新。
+Niu Gateway 内的组件升级会保留 `/data` 中的配置，失败时回退组件。Niu Gateway 的管理页面和 API 可以在“服务升级”中在线更新；Nginx、Python、ttyd 与基础系统通过替换镜像更新。
 
 ## 开发与验证
 

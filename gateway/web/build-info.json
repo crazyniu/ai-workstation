@@ -1,7 +1,7 @@
 {
-  "name": "Gateway",
-  "version": "dev.a54ed8b5bf22",
+  "name": "Niu Gateway",
+  "version": "dev.001ffaae7a13",
   "source": "https://github.com/crazyniu/ai-workstation",
-  "source_sha256": "a54ed8b5bf22d3c82ab123acb30eeb8fdaf6140d7cb0024a0eed2db0d43ec4e7",
+  "source_sha256": "001ffaae7a13f53ab806f00a9b783e4bd9e40d7b0a05109d5a664dd9e69794b0",
   "source_files": 137
 }

@@ -1,4 +1,4 @@
-# AI Workstation & Gateway
+# Niu Gateway & AI Workstation
 
 [简体中文](README.md) | English
 
@@ -7,32 +7,32 @@
 
 Two containers for a home or office LAN:
 
-- **Gateway**: a Mihomo (Clash) transparent proxy, AdGuard Home DNS, Tailscale subnet routing, and a desktop-style web console. Subscriptions, exits, per-device exits and domain groups are all configured in the browser.
+- **Niu Gateway**: a Mihomo (Clash) transparent proxy, AdGuard Home DNS, Tailscale subnet routing, and a macOS-style desktop web console with a web terminal. Subscriptions, relay exits, per-device exits and domain groups are all configured in the browser.
 - **Workstation**: a Debian + XFCE Linux development desktop with Chrome, VS Code, Codex, Claude Code and common MCP servers, used through the browser (noVNC), VNC or SSH.
 
 Run both roles on one host or on two separate hosts. Docker works on Linux, Windows and macOS, and Linux also supports a native install. A LAN deployment defaults to `192.168.1.250` for the gateway and `192.168.1.251` for the workstation; any free addresses on your LAN work. The docs call the roles "250" and "251".
 
 The web console and most of the documentation are in Simplified Chinese. This page covers what you need to install and run the project.
 
-![AI Workstation and gateway desktop](docs/images/gateway-home.png)
+![Niu Gateway and AI Workstation](docs/images/gateway-home.png)
 
 *Promotional image; the running version is authoritative. [About the images](docs/images/README.md)*
 
-Screenshots of the actual UI: [gateway desktop](docs/images/gateway-control-panel.jpg), [Clash proxy editor](docs/images/gateway-clash-editor.jpg), [phone home screen](docs/images/gateway-home-mobile.jpg), [notifications](docs/images/gateway-global-toast-desktop.jpg).
+Screenshots of the actual UI: [Niu Gateway desktop](docs/images/gateway-control-panel.jpg), [Clash proxy editor](docs/images/gateway-clash-editor.jpg), [phone home screen](docs/images/gateway-home-mobile.jpg), [notifications](docs/images/gateway-global-toast-desktop.jpg).
 
 ## Features
 
 | Role | Default address (configurable) | Provides | Public image |
 | --- | --- | --- | --- |
-| Gateway | `192.168.1.250` | Mihomo / Clash, AdGuard Home, Tailscale, web console | `ghcr.io/crazyniu/ai-workstation-gateway` |
+| Niu Gateway | `192.168.1.250` | Mihomo / Clash, AdGuard Home, Tailscale, desktop web console, web terminal | `ghcr.io/crazyniu/ai-workstation-gateway` |
 | Workstation | `192.168.1.251` | XFCE, Chrome, VS Code, Codex, Claude Code, Claude Desktop, GitHub CLI, MCP tools | `ghcr.io/crazyniu/ai-workstation` |
 
-- The gateway's port-80 page is a desktop with a menu bar and Dock, with icons in the macOS 27 style. The control panel, proxy editor, LAN file transfer, the workstation desktop, the Clash dashboard (MetaCubeXD), AdGuard Home and your own links open in windows on the same page. On a phone it becomes a home screen.
-- Drag any icon to any place on the desktop, or into and out of the Dock. "About This Gateway" in the menu bar shows the version and the GitHub repository.
+- Niu Gateway, the gateway's port-80 page, is a desktop with a menu bar and Dock, with app and settings icons in the macOS style. The control panel, proxy editor, LAN file transfer, the workstation desktop, the Clash dashboard (MetaCubeXD), AdGuard Home and your own links open in windows on the same page. On a phone it becomes a home screen.
+- Drag any icon to any place on the desktop, or into and out of the Dock. "About Niu Gateway" in the menu bar shows the version and the GitHub repository. When a new version is out, the update window shows its release notes rendered from Markdown.
 - The gateway has a Terminal app ([ttyd](https://github.com/tsl0922/ttyd), open source) that opens a root shell on the gateway in a desktop window. It ships with the gateway image and is available only while password login is on.
 - The Tailscale page lists every device with its online state, addresses, traffic and connection path (direct, or DERP relay with the relay's name), and links to Tailscale's access controls, where you configure your own DERP relay servers.
 - The proxy editor assigns an HTTP, HTTPS or SOCKS5 exit to a single IP, an IP range or a subnet, chained through a relay node from your subscription. HTTP and HTTPS exits always go through the relay; for SOCKS5 it is the default. You can also create groups (for example Google or YouTube) and route their domains to a chosen exit. Every change goes into a draft that you apply or discard.
-- Desktop links can fetch site favicons or use custom icons, and can open in a new tab instead of a window. Wallpaper, theme, layout and account settings are stored on the gateway.
+- Desktop links can fetch site favicons or use custom icons, and can open in a new tab instead of a window. If a site does not allow being shown inside another page, its window says so and offers a new tab. Wallpaper, theme, layout and account settings are stored on the gateway.
 - The gateway asks for a password by default; on a trusted private network you can turn that off in the account settings. The workstation serves an HTTPS noVNC desktop with two-way text clipboard.
 - The gateway manages proxy configuration, DNS, subnet access, component upgrades, and backup and restore.
 - The workstation joins the LAN directly and can open connections to a paired Mac running Orca. To restrict which LAN devices it can reach, keep the Orca port (or other device ports) with **niu.sh → 7** and then enable the optional [LAN isolation](docs/workstation-egress.md#显式启用隔离).
@@ -55,7 +55,7 @@ Screenshots of the actual UI: [gateway desktop](docs/images/gateway-control-pane
    - **Let an AI install it**: copy one of the [prompts below](#let-an-ai-install-or-upgrade-a-container).
 3. Open the gateway, import your own Clash / Mihomo configuration or subscription in the proxy editor and apply it. See [Getting started](#getting-started).
 
-The default container administrator is **`root / root`**, the workstation desktop user is `dev / dev`, and the VNC and gateway web password is `root`. Change them before exposing the containers on your LAN.
+The default container administrator is **`root / root`**, the workstation desktop user is `dev / dev`, and the VNC and Niu Gateway password is `root`. Change them before exposing the containers on your LAN.
 
 ## Let an AI install or upgrade a container
 
@@ -66,7 +66,7 @@ Give one of these prompts to an AI agent that can operate the target Docker host
 ```text
 Follow AI-INSTALL.md in https://github.com/crazyniu/ai-workstation and install only the gateway.
 First ask me for the installation country and for the gateway and workstation LAN addresses (defaults 192.168.1.250 and 192.168.1.251). After I confirm, pass them in AI_INSTALL_COUNTRY, AI_INSTALL_GATEWAY_ADDRESS and AI_INSTALL_WORKSTATION_ADDRESS, then run ./deploy.sh ai gateway from the repository root. Use only ghcr.io/crazyniu/ai-workstation-gateway:latest and install nothing else.
-Container SSH uses root/root and the gateway web password is root. Stop if the address is taken or a gateway already exists.
+Container SSH uses root/root and the Niu Gateway password is root. Stop if the address is taken or a gateway already exists.
 ```
 
 ### Install the workstation
@@ -120,11 +120,11 @@ When the roles run on separate hosts, set up and check the gateway first. Each h
 1. Open the gateway at `http://<gateway address>/`. In the proxy editor, import your own Clash / Mihomo YAML or add a subscription, then apply. Pick nodes in the Clash dashboard.
 2. Point clients at the gateway for DNS, then reach the console at `http://home.arpa`. To proxy a whole device, also set its default gateway to the gateway address.
 3. Sign in to your own Tailscale account in the Tailscale settings and approve the subnet route as prompted.
-4. Open the workstation from the gateway desktop or over VNC (`<workstation address>:5901`), or SSH in as `dev`. Sign in to Codex, Claude, GitHub and other accounts inside the apps.
+4. Open the workstation from the Niu Gateway desktop or over VNC (`<workstation address>:5901`), or SSH in as `dev`. Sign in to Codex, Claude, GitHub and other accounts inside the apps.
 
 | Entry point | Initial credentials |
 | --- | --- |
-| Gateway web: `http://<gateway address>/` | `WEB_PASSWORD`, example `root` |
+| Niu Gateway: `http://<gateway address>/` | `WEB_PASSWORD`, example `root` |
 | Gateway SSH: `<gateway address>:22` | `GATEWAY_USER` / `GATEWAY_PASSWORD`, example `root` / `root` |
 | Workstation SSH: `<workstation address>:22` | administrator `root / root`; user `dev / dev` |
 | Workstation VNC: `<workstation address>:5901` | `VNC_PASSWORD`, example `root` (1–8 ASCII characters) |
@@ -140,7 +140,7 @@ The Docker deployments declare no bind mounts, named volumes or anonymous volume
 
 **Restarting a container keeps its data; deleting or recreating it loses that data.** Before replacing an image, export the private state you need and verify the restore procedure: see [gateway data handling](gateway/README.md) and [workstation backup and restore](workstation/README.md). Keep personal state, recovery images and credentials in private storage.
 
-Component upgrades inside the gateway web console keep the configuration in `/data` and roll back on failure. The web backend, nginx, Python and the base system are updated by replacing the image.
+Component upgrades inside Niu Gateway keep the configuration in `/data` and roll back on failure. Niu Gateway's own pages and API update online under 服务升级 (Updates); nginx, Python, ttyd and the base system are updated by replacing the image.
 
 ## Development
 
@@ -157,7 +157,7 @@ Container builds and smoke tests need Linux Docker; the full command list is in 
 
 | Path | Contents |
 | --- | --- |
-| [`gateway/`](gateway/) | Web console, gateway runtime, component lock file and tests |
+| [`gateway/`](gateway/) | Niu Gateway web console, gateway runtime, component lock file and tests |
 | [`workstation/`](workstation/) | Desktop environment, tool installation, startup configuration and tests |
 | [`compose.portable.yaml`](compose.portable.yaml) | Portable Docker deployment for Linux, Windows and macOS |
 | [`compose.yaml`](compose.yaml) | Both roles on one Linux LAN host |

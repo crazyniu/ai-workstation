@@ -4,13 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>Gateway · 网关桌面</title>
+  <title>Niu Gateway</title>
+  <meta name="application-name" content="Niu Gateway">
+  <meta name="apple-mobile-web-app-title" content="Niu Gateway">
   <link rel="icon" href="/favicon.ico?v=2" sizes="16x16 32x32 48x48">
   <link rel="icon" href="/favicon-32.png?v=2" type="image/png" sizes="32x32">
   <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180">
   <link rel="stylesheet" href="/vendor/winbox/winbox.min.css?v=9d6b72dc5f03">
-  <link rel="stylesheet" href="/style.css?v=aa50150a8b68">
+  <link rel="stylesheet" href="/style.css?v=761039cde2cd">
   <link rel="stylesheet" href="/loading.css?v=e549cd70c0dd">
   <link rel="stylesheet" href="/favicon.css?v=941afb91f398">
 </head>
@@ -59,7 +61,7 @@
   <header class="menubar">
     <div class="menubar-start">
       <button id="system-menu-button" class="menubar-item menubar-logo" aria-haspopup="menu" aria-expanded="false" aria-controls="system-menu" aria-label="网关菜单"><svg class="glyph menubar-glyph" aria-hidden="true"><use href="#i-gateway"/></svg></button>
-      <strong id="menubar-app" class="menubar-app">Gateway</strong>
+      <strong id="menubar-app" class="menubar-app">Niu Gateway</strong>
     </div>
     <div class="menubar-end">
       <button id="menubar-updates" class="menubar-item" data-page="updates" hidden><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span id="menubar-updates-count"></span></button>
@@ -77,7 +79,7 @@
     <form id="auth-form" class="auth">
       <input class="visually-hidden" type="text" name="username" autocomplete="username" value="admin" tabindex="-1" aria-hidden="true" readonly>
       <img class="auth-icon" src="/icons/apps/gateway.webp" alt="" width="96" height="96">
-      <p class="auth-eyebrow">Gateway</p>
+      <p class="auth-eyebrow">Niu Gateway</p>
       <h1 id="auth-title">登录网关</h1>
       <p id="auth-copy"></p>
       <label class="field"><span>管理员密码</span><input type="password" id="password" autocomplete="current-password" required maxlength="256" placeholder="输入管理员密码"></label>
@@ -96,7 +98,7 @@
         <label class="nav-search"><svg class="glyph" aria-hidden="true"><use href="#i-search"/></svg><span class="visually-hidden">搜索设置</span><input id="settings-search" type="search" placeholder="搜索设置" autocomplete="off" spellcheck="false"></label>
         <button data-page="overview" data-keywords="概览 首页 状态 overview"><img src="/icons/settings/general.svg" alt=""><span>概览</span></button>
         <p class="nav-group">网络</p>
-        <button data-page="proxy" data-keywords="clash mihomo 代理 节点 订阅 中转 规则 分组 出口 yaml"><img src="/icons/settings/proxy.svg" alt=""><span>代理配置</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
+        <button data-page="proxy" data-keywords="clash mihomo 代理 节点 订阅 订阅地址 中转 中转出口 规则 分组 分组规则 出口 yaml"><img src="/icons/settings/proxy.svg" alt=""><span>代理配置</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
         <button data-page="ranges" data-keywords="设备出口 固定出口 网段 绑定 出口 ip"><img src="/icons/settings/routes.svg" alt=""><span>设备出口</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
         <button data-page="dns" data-keywords="dns 域名 主页 home.arpa 地址"><img src="/icons/settings/dns.svg" alt=""><span>DNS 与域名</span></button>
         <button data-page="tailscale" data-keywords="tailscale 远程 vpn 子网 路由"><img src="/icons/settings/tailscale.svg" alt=""><span>Tailscale</span><span class="nav-dot" id="nav-tailscale-dot" hidden></span></button>
@@ -134,7 +136,7 @@
 
           <h3 class="section-title">网络</h3>
           <div class="settings-tiles">
-            <button type="button" class="tile" data-page="proxy"><img src="/icons/settings/proxy.svg" alt=""><span class="tile-copy"><strong>代理配置</strong><span>分组、出口、中转订阅与分流规则</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-page="proxy"><img src="/icons/settings/proxy.svg" alt=""><span class="tile-copy"><strong>代理配置</strong><span>分组规则、中转出口、订阅地址与全部规则</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
             <button type="button" class="tile" data-page="ranges"><img src="/icons/settings/routes.svg" alt=""><span class="tile-copy"><strong>设备出口</strong><span>为单个 IP 或 IP 段指定出口</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
             <button type="button" class="tile" data-page="dns"><img src="/icons/settings/dns.svg" alt=""><span class="tile-copy"><strong>DNS 与域名</strong><span>主页域名与 DNS 查询入口</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
             <button type="button" class="tile" data-page="tailscale"><img src="/icons/settings/tailscale.svg" alt=""><span class="tile-copy"><strong>Tailscale</strong><span>远程访问与内网子网路由</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
@@ -148,15 +150,15 @@
           </div>
           <h3 class="section-title">系统</h3>
           <div class="settings-tiles">
-            <button type="button" class="tile" data-page="updates"><img src="/icons/settings/updates.svg" alt=""><span class="tile-copy"><strong>服务升级</strong><span>网关 Web 与核心组件版本</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-page="updates"><img src="/icons/settings/updates.svg" alt=""><span class="tile-copy"><strong>服务升级</strong><span>Niu Gateway 与核心组件版本</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
             <button type="button" class="tile" data-page="backup"><img src="/icons/settings/backup.svg" alt=""><span class="tile-copy"><strong>备份与恢复</strong><span>下载配置备份或从备份恢复</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
             <a class="tile" id="source-link" href="https://github.com/crazyniu/ai-workstation" target="_blank" rel="noopener noreferrer"><img src="/icons/settings/source.svg" alt=""><span class="tile-copy"><strong>源码</strong><span>项目主页、发布说明与问题反馈</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-external"/></svg></a>
           </div>
-          <footer class="overview-footer"><button type="button" class="text-button" id="gateway-version" data-page="updates">网关 Web 版本</button></footer>
+          <footer class="overview-footer"><button type="button" class="text-button" id="gateway-version" data-page="updates">Niu Gateway 版本</button></footer>
         </section>
 
         <section data-section="dns" hidden>
-          <header class="page-header"><div><h2>DNS 与域名</h2><p>局域网设备把网关设为 DNS 后，可以通过主页域名打开网关桌面。</p></div></header>
+          <header class="page-header"><div><h2>DNS 与域名</h2><p>局域网设备把网关设为 DNS 后，可以通过主页域名打开 Niu Gateway。</p></div></header>
           <form id="domain-form" class="card">
             <div class="card-head"><h3>主页域名</h3><p>建议使用 home.arpa 这类仅在局域网内使用的域名。</p></div>
             <div class="card-body">
@@ -223,7 +225,7 @@
           <div class="card">
             <div class="setting-row web-release-row">
               <img class="row-icon" src="/icons/settings/gateway.svg" alt="">
-              <div class="setting-copy"><strong>网关 Web</strong><span id="web-release-detail" role="status">正在读取版本…</span></div>
+              <div class="setting-copy"><strong>Niu Gateway</strong><span id="web-release-detail" role="status">正在读取版本…</span></div>
               <button id="web-release-install" class="primary" hidden>更新</button>
             </div>
           </div>
@@ -265,7 +267,7 @@
           <form id="login-settings-form" class="card">
             <input class="visually-hidden" type="text" name="username" autocomplete="username" value="admin" tabindex="-1" aria-hidden="true" readonly>
             <div class="setting-row">
-              <div class="setting-copy"><strong id="login-required-label">登录需要密码</strong><span>开启后，打开网关桌面前必须输入管理员密码。</span></div>
+              <div class="setting-copy"><strong id="login-required-label">登录需要密码</strong><span>开启后，打开 Niu Gateway 前必须输入管理员密码。</span></div>
               <label class="switch"><input type="checkbox" id="login-required" role="switch" checked aria-labelledby="login-required-label" aria-describedby="login-settings-status"><span class="switch-track" aria-hidden="true"></span><span class="visually-hidden">登录网关需要密码</span></label>
             </div>
             <div id="login-confirm" class="card-body confirm-strip" hidden>
@@ -278,7 +280,7 @@
           </form>
           <form id="password-form" class="card">
             <input class="visually-hidden" type="text" name="username" autocomplete="username" value="admin" tabindex="-1" aria-hidden="true" readonly>
-            <div class="card-head"><h3>管理员密码</h3><p>用于登录网关桌面；修改后其他已登录的浏览器需要重新登录。</p></div>
+            <div class="card-head"><h3>管理员密码</h3><p>用于登录 Niu Gateway；修改后其他已登录的浏览器需要重新登录。</p></div>
             <div class="card-body form-stack">
               <label class="field"><span>当前密码</span><input type="password" id="current-password" autocomplete="current-password" required maxlength="256"></label>
               <label class="field"><span>新密码</span><input type="password" id="new-password" autocomplete="new-password" required maxlength="256"></label>
@@ -391,10 +393,10 @@
         <nav class="proxy-nav" aria-label="代理配置">
           <p class="nav-group">分流</p>
           <button type="button" data-proxy-tab="bindings"><span class="nav-symbol" data-tint="blue"><svg class="glyph" aria-hidden="true"><use href="#i-devices"/></svg></span><span>设备出口</span></button>
-          <button type="button" data-proxy-tab="groups"><span class="nav-symbol" data-tint="purple"><svg class="glyph" aria-hidden="true"><use href="#i-layers"/></svg></span><span>分组</span></button>
+          <button type="button" data-proxy-tab="groups"><span class="nav-symbol" data-tint="purple"><svg class="glyph" aria-hidden="true"><use href="#i-layers"/></svg></span><span>分组规则</span></button>
           <p class="nav-group">线路</p>
-          <button type="button" data-proxy-tab="exits"><span class="nav-symbol" data-tint="green"><svg class="glyph" aria-hidden="true"><use href="#i-server"/></svg></span><span>出口</span></button>
-          <button type="button" data-proxy-tab="providers"><span class="nav-symbol" data-tint="orange"><svg class="glyph" aria-hidden="true"><use href="#i-relay"/></svg></span><span>中转订阅</span></button>
+          <button type="button" data-proxy-tab="exits"><span class="nav-symbol" data-tint="green"><svg class="glyph" aria-hidden="true"><use href="#i-server"/></svg></span><span>中转出口</span></button>
+          <button type="button" data-proxy-tab="providers"><span class="nav-symbol" data-tint="orange"><svg class="glyph" aria-hidden="true"><use href="#i-relay"/></svg></span><span>订阅地址</span></button>
           <p class="nav-group">高级</p>
           <button type="button" data-proxy-tab="rules"><span class="nav-symbol" data-tint="gray"><svg class="glyph" aria-hidden="true"><use href="#i-list"/></svg></span><span>全部规则</span></button>
           <button type="button" data-proxy-tab="yaml" id="config-code"><span class="nav-symbol" data-tint="gray"><svg class="glyph" aria-hidden="true"><use href="#i-code"/></svg></span><span id="config-code-label">YAML 配置</span></button>
@@ -416,10 +418,10 @@
   <dialog id="about-dialog" class="about-window" aria-labelledby="about-title">
     <div class="about-content">
       <img class="about-icon" src="/icons/apps/gateway.webp" alt="" width="128" height="128">
-      <h2 id="about-title">Gateway</h2>
-      <p class="about-subtitle">AI 工作站网关</p>
+      <h2 id="about-title">Niu Gateway</h2>
+      <p class="about-subtitle">局域网网关：代理、DNS 与远程访问</p>
       <dl class="about-facts">
-        <div><dt>网关 Web</dt><dd id="about-version">读取中…</dd></div>
+        <div><dt>版本</dt><dd id="about-version">读取中…</dd></div>
         <div><dt>访问地址</dt><dd id="about-address"></dd></div>
         <div><dt>许可证</dt><dd>MIT</dd></div>
       </dl>
@@ -427,14 +429,23 @@
     </div>
     <div class="window-actions"><button type="button" id="about-updates">检查更新…</button><button type="button" class="primary" id="about-close">好</button></div>
   </dialog>
+  <dialog id="release-dialog" class="release-window" aria-labelledby="release-title" aria-describedby="release-notes">
+    <header class="release-head">
+      <img src="/icons/apps/gateway.webp" alt="" width="64" height="64">
+      <div><p class="release-eyebrow">有新版本可用</p><h2 id="release-title">Niu Gateway</h2><p id="release-version"></p></div>
+    </header>
+    <div id="release-notes" class="release-notes markdown" tabindex="0"></div>
+    <p class="release-foot">升级只替换管理页面，代理、DNS 和设置都保持不变，页面会短暂重连。<a id="release-link" href="https://github.com/crazyniu/ai-workstation/releases" target="_blank" rel="noopener noreferrer">在 GitHub 查看</a></p>
+    <div class="window-actions"><button type="button" id="release-later">稍后</button><button type="button" class="primary" id="release-install">立即升级</button></div>
+  </dialog>
 
   <dialog id="confirm-dialog" class="confirm-window" aria-labelledby="confirm-title"><div class="confirm-content"><span class="confirm-icon" aria-hidden="true"><svg class="glyph"><use href="#i-alert"/></svg></span><div><h2 id="confirm-title">确认操作</h2><p id="confirm-copy"></p></div></div><div class="window-actions"><button id="confirm-cancel">取消</button><button class="primary" id="confirm-accept">确定</button></div></dialog>
   <div id="desktop-context-menu" class="context-menu" role="menu" aria-label="桌面菜单" hidden></div>
   <script src="/toast.js?v=213fd4fb47a6"></script>
   <script src="/assets/config-editor.bundle.js?v=e91ff9456f76"></script>
   <script src="/vendor/winbox/winbox.min.js?v=cd0b4efd9450"></script>
-  <script src="/proxy-editor.js?v=e615b659ebe0"></script>
-  <script src="/build-info.js?v=98bb99b2069d"></script>
-  <script src="/app.js?v=2a2fbfd1be54"></script>
+  <script src="/proxy-editor.js?v=5e068a45ef9a"></script>
+  <script src="/build-info.js?v=42e43273fa60"></script>
+  <script src="/app.js?v=ceb15400f3bd"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-name: Gateway Web release
+name: Niu Gateway release
 on:
   push:
     tags: ['gateway-web-v*']
@@ -36,7 +36,7 @@ jobs:
           if gh release view "$TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/release-state"; then
             if grep -qx false "$RUNNER_TEMP/release-state"; then exit 0; fi
           else
-            gh release create "$TAG" --verify-tag --draft --title "网关 Web ${TAG#gateway-web-}" --generate-notes
+            gh release create "$TAG" --verify-tag --draft --title "Niu Gateway ${TAG#gateway-web-}" --generate-notes
           fi
           gh release upload "$TAG" "$RUNNER_TEMP/gateway-web.tar.gz" --clobber
           gh release edit "$TAG" --draft=false --latest

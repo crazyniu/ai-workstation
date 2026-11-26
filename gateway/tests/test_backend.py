@@ -180,6 +180,19 @@ class AuthTests(DataTest):
         with patch.object(server.favicon,'get_icon',return_value=None):
             with self.request(url,cookie=cookie) as response:self.assertEqual(response.status,404)
 
+    def test_frame_check_requires_login_and_reports_the_blocking_header(self):
+        url='/api/frame-check?url=http%3A%2F%2F192.168.1.239%3A9999%2F&origin=http%3A%2F%2F192.168.1.250'
+        with patch.object(server.favicon,'frame_check',return_value=(False,'x-frame-options')) as check:
+            with self.request(url) as response:self.assertEqual(response.status,401)
+            check.assert_not_called()
+            with self.request('/api/auth/setup',{'password':'a'}) as response:
+                cookie=response.headers['Set-Cookie'].split(';')[0]
+            with self.request(url,cookie=cookie) as response:
+                self.assertEqual(json.load(response),{'framable':False,'reason':'x-frame-options'})
+            check.assert_called_once_with('http://192.168.1.239:9999/','http://192.168.1.250')
+        with self.request('/api/frame-check?url=ftp%3A%2F%2Fx&origin=http%3A%2F%2F192.168.1.250',cookie=cookie) as response:
+            self.assertEqual(response.status,400)
+
     def test_auto_icon_saves_without_fetching_and_preserves_existing_manual_card(self):
         with self.request('/api/auth/setup',{'password':'a'}) as response:
             cookie=response.headers['Set-Cookie'].split(';')[0]

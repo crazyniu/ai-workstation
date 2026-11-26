@@ -386,7 +386,7 @@ function updateLoginHint(){
   const required=$('#login-required').checked,changed=required!==loginRequiredSaved,hint=$('#login-settings-status');
   $('#login-confirm').hidden=!changed;if(!changed)$('#login-settings-password').value='';
   hint.className='callout '+(required?'':'warn');
-  hint.textContent=required?'开启后，打开网关桌面需要输入管理员密码。':'关闭后，能访问网关网页的设备都可以直接管理网关。';
+  hint.textContent=required?'开启后，打开 Niu Gateway 需要输入管理员密码。':'关闭后，能访问网关网页的设备都可以直接管理网关。';
 }
 $('#login-required').addEventListener('change',updateLoginHint);
 async function readAccess() {
@@ -485,7 +485,7 @@ async function loadOverview(request){
   const detail=$('#overview-update-detail'),state=$('#overview-update-state');
   if(!u&&!info){setTone(state,'读取失败','error');detail.textContent=(updateState.reason||release.reason).message;}
   else if(count){setTone(state,count+' 项更新','busy');detail.textContent='前往服务升级查看并安装';}
-  else if(info?.latest||Object.keys(u?.checked||{}).length){setTone(state,'已是最新','ok');detail.textContent='网关 Web 与核心组件均为最新版本';}
+  else if(info?.latest||Object.keys(u?.checked||{}).length){setTone(state,'已是最新','ok');detail.textContent='Niu Gateway 与核心组件均为最新版本';}
   else{setTone(state,'未检查','idle');detail.textContent='尚未检查更新';}
 }
 async function renderTailscale(){
@@ -643,8 +643,8 @@ function createGatewayWindow(shell, title, iconPath, close, {toolbar=null, app='
     header:52, max:mobile,
     onclose(force) { if (force) return false; close(); return true; },
     onfocus(){ lastGatewayWindow=this; $('#menubar-app').textContent=title; },
-    onblur(){ if(!document.querySelector('.winbox.focus'))$('#menubar-app').textContent='Gateway'; },
-    onminimize(){ $('#menubar-app').textContent='Gateway'; }});
+    onblur(){ if(!document.querySelector('.winbox.focus'))$('#menubar-app').textContent='Niu Gateway'; },
+    onminimize(){ $('#menubar-app').textContent='Niu Gateway'; }});
   win.app=app;
   for (const [cls, action] of [['wb-close','关闭'],['wb-min','最小化'],['wb-max','缩放']]) {
     const control = win.window.querySelector('.'+cls);
@@ -671,7 +671,7 @@ function releaseGatewayWindow(win){
   win.resizeObserver?.disconnect();
   if(win.toolbar)win.toolbar.home.prepend(win.toolbar.element);
   win.close(true);
-  if(!document.querySelector('.winbox.focus'))$('#menubar-app').textContent='Gateway';
+  if(!document.querySelector('.winbox.focus'))$('#menubar-app').textContent='Niu Gateway';
   markRunningApps();
 }
 function focusGatewayWindow(win) {
@@ -699,7 +699,7 @@ const frameApps={
 // The terminal is a root shell on the gateway, served by ttyd in the gateway image.
 const terminalNotes={
   login:['终端需要密码登录','终端可以直接以 root 身份操作网关，只在开启“登录需要密码”后提供。','前往账户设置'],
-  image:['终端暂不可用','当前网关镜像还没有终端组件。网关 Web 可以在线更新，终端需要更新网关镜像后才能使用。','知道了'],
+  image:['终端暂不可用','当前网关镜像还没有终端组件。Niu Gateway 可以在线更新，终端需要更新网关镜像后才能使用。','知道了'],
   native:['终端暂不可用','原生安装的网关不内置终端，请使用这台主机自身的 SSH 或终端。','知道了'],
 };
 async function openTerminal(){
@@ -725,27 +725,47 @@ function openFrameApp(key,app=frameApps[key]){
   const reload=iconButton('refresh','重新载入',()=>{if(app.external){load();return;}try{frame.contentWindow.location.reload();}catch{frame.src=url;}},'toolbar-button');
   const tab=element('a',undefined,'button-link toolbar-button icon-button');tab.href=page;tab.target='_blank';tab.rel=app.external?'noopener noreferrer':'noopener';tab.title='在新标签页中打开';tab.setAttribute('aria-label','在新标签页中打开 '+app.title);tab.append(glyph('external'));
   bar.append(element('span',undefined,'toolbar-spacer'),reload,tab);shell.append(frame,bar);
-  if(app.external)shell.append(frameNotice(app,page,load));
+  if(app.external)shell.append(frameNotice(key,app,page,load));
   document.body.append(shell);load();
   const win=createGatewayWindow(shell,app.title,app.icon,()=>closeFrameApp(key),{toolbar:bar,app:key,width:app.width,height:app.height});
   frameWindows.set(key,win);markRunningApps();
 }
-// Another host may be offline, or use a certificate this browser has not trusted
-// yet. A page cannot read a cross-origin frame, so ask the host directly.
-function frameNotice(app,page,retry){
+// Another host may be offline, use a certificate this browser has not trusted yet, or
+// forbid other pages from showing it. A page cannot read a cross-origin frame, so ask the
+// host directly, and let the gateway read the headers that decide whether it may be framed.
+const frameProblems={
+  unreachable:'地址暂时无法访问，或这个网站使用了浏览器尚未信任的证书。请先在新标签页中打开它（自签名证书需要先选择继续访问），再回到这里重试。',
+  refused:'这个网站不允许其他页面把它显示在窗口里（网站的 X-Frame-Options 或 CSP 设置），窗口中只会是空白。请在新标签页中打开它。',
+  mixed:'当前网关页面通过 HTTPS 打开，浏览器不允许在其中显示 HTTP 网站。请在新标签页中打开它。',
+};
+function frameNotice(key,app,page,retry){
   const notice=element('div',undefined,'frame-notice'),box=element('div',undefined,'frame-notice-box'),actions=element('div',undefined,'window-actions');
   const image=element('img');image.src=app.icon;image.alt='';image.width=64;image.height=64;
   const tab=element('a','在新标签页中打开','button-link');tab.href=page;tab.target='_blank';tab.rel='noopener noreferrer';
-  actions.append(tab,button('重试',retry,'primary'));
-  box.append(image,element('strong','无法在窗口中打开“'+app.title+'”'),
-    element('p','地址暂时无法访问，或这个网站使用了浏览器尚未信任的证书。请先在新标签页中打开它（自签名证书需要先选择继续访问），再回到这里重试。'),actions);
+  const copy=element('p'),again=button('重试',retry,'primary');actions.append(tab,again);
+  // A link that can never show in a window can switch to a new tab for good.
+  const card=key.startsWith('link:')?cards.find(c=>'link:'+c.id===key):null;
+  const always=card&&button('以后都在新标签页打开',()=>{
+    window.open(page,'_blank','noopener,noreferrer');closeFrameApp(key);
+    guard(async()=>{await api('/cards/'+card.id,{method:'PATCH',body:JSON.stringify({name:card.name,url:card.url,icon:card.icon,tag:card.tag||'链接',open_in_new_tab:true})});await loadCards();toast('“'+card.name+'”以后会在新标签页中打开。');});
+  });
+  if(always)actions.prepend(always);
+  notice.show=kind=>{
+    copy.textContent=frameProblems[kind];const final=kind!=='unreachable';
+    again.hidden=final;tab.classList.toggle('primary',final);if(always)always.hidden=!final;notice.hidden=false;
+  };
+  box.append(image,element('strong','无法在窗口中打开“'+app.title+'”'),copy,actions);
   notice.append(box);notice.hidden=true;return notice;
 }
 async function checkFrame(url,shell){
   const notice=shell.querySelector('.frame-notice'),request=(shell.frameCheck||0)+1;shell.frameCheck=request;notice.hidden=true;
-  let reachable=true;
-  try{await fetch(url,{mode:'no-cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout?.(10000)});}catch{reachable=false;}
-  if(shell.frameCheck===request&&shell.isConnected)notice.hidden=reachable;
+  const show=kind=>{if(shell.frameCheck===request&&shell.isConnected)notice.show(kind);};
+  let target;try{target=new URL(url,location.href);}catch{show('unreachable');return;}
+  if(location.protocol==='https:'&&target.protocol==='http:'){show('mixed');return;}
+  const framing=api('/frame-check?url='+encodeURIComponent(target.href)+'&origin='+encodeURIComponent(location.origin)).catch(()=>null);
+  try{await fetch(target.href,{mode:'no-cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout?.(10000)});}
+  catch{show('unreachable');return;}
+  if((await framing)?.framable===false)show('refused');
 }
 function closeFrameApp(key){
   const win=frameWindows.get(key);if(!win)return;
@@ -757,7 +777,7 @@ function closeAllWindows(){for(const key of [...frameWindows.keys()])closeFrameA
 // Menu bar: the system menu, the focused app, status items and the clock.
 function systemMenuItems(){
   return [
-    ['关于这台网关','info',()=>openAbout()],null,
+    ['关于 Niu Gateway','info',()=>openAbout()],null,
     ['控制面板…','gear',()=>openSettings()],
     ['代理配置…','relay',()=>openProxyWindow()],
     ['局域网互传','window',()=>openFrameApp('transfer')],
@@ -783,7 +803,7 @@ $('#desktop-reset').onclick=()=>guard(async()=>{
 function hideSystemMenu(){const menu=$('#system-menu');if(!menu||menu.hidden)return;menu.hidden=true;$('#system-menu-button').setAttribute('aria-expanded','false');}
 function showSystemMenu(){
   const menu=$('#system-menu'),anchor=$('#system-menu-button');menu.replaceChildren();
-  const head=element('div',undefined,'menu-heading');head.append(element('strong','Gateway'),element('span',status.domain?'http://'+status.domain:''));menu.append(head);
+  const head=element('div',undefined,'menu-heading');head.append(element('strong','Niu Gateway'),element('span',status.domain?'http://'+status.domain:''));menu.append(head);
   for(const item of systemMenuItems()){
     if(!item){const line=element('div',undefined,'context-divider');line.setAttribute('role','separator');menu.append(line);continue;}
     const [label,symbol,action]=item,entry=button('',()=>{hideSystemMenu();Promise.resolve(action()).catch(e=>toast(e.message,true));});

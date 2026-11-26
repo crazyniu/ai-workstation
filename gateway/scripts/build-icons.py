@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Build the gateway's app icons, favicons and settings icons.
 
-Sources are the square artworks in gateway/art/icons. Each one is masked to the
-macOS continuous-corner squircle, given a glass rim and a shadow, and written to
+Sources are the square artworks in gateway/art/icons: each app is drawn as a
+full-bleed 1024 px SVG there, and its .webp beside it is that SVG rendered at
+1024 px (any SVG renderer, for example a browser). Each artwork is masked to the
+macOS continuous-corner squircle, given a light rim and a shadow, and written to
 web/icons/apps. The gateway artwork also becomes the favicon set and the Apple
-touch icon. The settings icons are a colored squircle with a white glyph from the
-SF Symbols-style glyph drawn in this script.
+touch icon. The settings icons are a colored squircle with a white SF
+Symbols-style glyph drawn in this script.
 
 Needs Pillow:  python3 -m pip install Pillow
 Then:          python3 gateway/scripts/build-icons.py && python3 gateway/runtime/build-info.py

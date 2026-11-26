@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from html.parser import HTMLParser
 import http.client
 import ipaddress
+import re
 import socket
 import threading
 import time
@@ -88,8 +89,11 @@ def close_socket(sock):
         pass
 
 
-def fetch(url, limit, deadline):
-    """Pin each connection to a checked DNS result, including every redirect."""
+ICON_ACCEPT = 'text/html,image/png,image/x-icon,image/jpeg,image/webp,image/gif;q=0.9,*/*;q=0.1'
+
+
+def follow(url, deadline, accept, use):
+    """Pin each connection to a checked DNS result, including every redirect, and pass the final response to use()."""
     for hop in range(MAX_REDIRECTS + 1):
         url = normalize_url(url)
         parsed = urlsplit(url)
@@ -108,8 +112,7 @@ def fetch(url, limit, deadline):
             timer.daemon = True
             timer.start()
             path = urlunsplit(('', '', parsed.path or '/', parsed.query, ''))
-            connection.request('GET', path, headers={'User-Agent': 'Gateway-Icon/1.0',
-                               'Accept': 'text/html,image/png,image/x-icon,image/jpeg,image/webp,image/gif;q=0.9,*/*;q=0.1',
+            connection.request('GET', path, headers={'User-Agent': 'Gateway-Icon/1.0', 'Accept': accept,
                                'Accept-Encoding': 'identity', 'Connection': 'close'})
             response = connection.getresponse()
             if response.status in (301, 302, 303, 307, 308):
@@ -118,30 +121,118 @@ def fetch(url, limit, deadline):
                     raise ValueError('Too many icon redirects')
                 url = urljoin(url, location)
                 continue
-            if response.status != 200 or response.getheader('Content-Encoding', 'identity').lower() != 'identity':
-                raise ValueError('Icon unavailable')
-            length = response.getheader('Content-Length')
-            if length is not None and int(length) > limit:
-                raise ValueError('Icon response too large')
-            chunks, size = [], 0
-            while True:
-                # read1 avoids waiting for an entire chunk when a peer trickles data.
-                timeout = remaining(deadline)
-                if sock.fileno() >= 0:
-                    sock.settimeout(timeout)
-                chunk = response.read1(min(65536, limit + 1 - size))
-                if not chunk:
-                    break
-                chunks.append(chunk)
-                size += len(chunk)
-                if size > limit:
-                    raise ValueError('Icon response too large')
-            return b''.join(chunks), response.getheader('Content-Type', ''), url
+            return use(response, sock, url)
         finally:
             if timer:
                 timer.cancel()
             connection.close()
     raise ValueError('Icon unavailable')
+
+
+def fetch(url, limit, deadline):
+    def read(response, sock, url):
+        if response.status != 200 or response.getheader('Content-Encoding', 'identity').lower() != 'identity':
+            raise ValueError('Icon unavailable')
+        length = response.getheader('Content-Length')
+        if length is not None and int(length) > limit:
+            raise ValueError('Icon response too large')
+        chunks, size = [], 0
+        while True:
+            # read1 avoids waiting for an entire chunk when a peer trickles data.
+            timeout = remaining(deadline)
+            if sock.fileno() >= 0:
+                sock.settimeout(timeout)
+            chunk = response.read1(min(65536, limit + 1 - size))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            size += len(chunk)
+            if size > limit:
+                raise ValueError('Icon response too large')
+        return b''.join(chunks), response.getheader('Content-Type', ''), url
+    return follow(url, deadline, ICON_ACCEPT, read)
+
+
+# A site may forbid other pages from showing it in a frame. The browser then shows an
+# empty window, and the page cannot read why, so the gateway reads the headers itself.
+DEFAULT_PORTS = {'http': 80, 'https': 443}
+
+
+def parse_origin(value):
+    parsed = urlsplit(value if isinstance(value, str) else '')
+    if parsed.scheme not in DEFAULT_PORTS or not parsed.hostname or parsed.path not in ('', '/') or parsed.query:
+        raise ValueError('Invalid page origin')
+    return parsed.scheme, parsed.hostname.lower(), parsed.port or DEFAULT_PORTS[parsed.scheme]
+
+
+def source_allows(source, page, resource):
+    """Match one frame-ancestors source expression (CSP Level 3) against the page's origin."""
+    scheme, host, port = page
+    source = source.lower()
+    if source == "'self'":
+        return page == resource
+    if source == '*':
+        return True
+    if source.endswith(':') and '/' not in source:
+        return source[:-1] == scheme or (source == 'http:' and scheme == 'https')
+    match = re.fullmatch(r'(?:([a-z][a-z0-9+.-]*)://)?(\*|(?:\*\.)?[a-z0-9.-]+|\[[0-9a-f:.]+\])(?::(\*|\d+))?(?:/.*)?', source)
+    if not match:
+        return False
+    want_scheme, want_host, want_port = match.groups()
+    want_scheme = want_scheme or resource[0]
+    if not (scheme == want_scheme or (want_scheme == 'http' and scheme == 'https')):
+        return False
+    if want_host == '*':
+        pass
+    elif want_host.startswith('*.'):
+        if not host.endswith(want_host[1:]):
+            return False
+    elif host != want_host.strip('[]'):
+        return False
+    if want_port == '*':
+        return True
+    expected = int(want_port) if want_port else DEFAULT_PORTS.get(want_scheme)
+    return port == expected or (not want_port and want_scheme == 'http' and port == 443)
+
+
+def frame_verdict(headers, page, resource):
+    """Return the header that stops a page at origin `page` from framing `resource`, or ''."""
+    policies = [policy for value in headers.get_all('Content-Security-Policy') or [] for policy in value.split(',')]
+    ancestors = []
+    for policy in policies:
+        for directive in policy.split(';'):
+            name, _, value = directive.strip().partition(' ')
+            if name.lower() == 'frame-ancestors':
+                ancestors.append(value.split())
+                break
+    if ancestors:
+        # Browsers ignore X-Frame-Options once frame-ancestors is present; every policy must allow the page.
+        allowed = all(sources and "'none'" not in [s.lower() for s in sources] and any(source_allows(s, page, resource) for s in sources)
+                      for sources in ancestors)
+        return '' if allowed else 'frame-ancestors'
+    options = {item.strip().lower() for value in headers.get_all('X-Frame-Options') or [] for item in value.split(',') if item.strip()}
+    if 'deny' in options or ('sameorigin' in options and page != resource):
+        return 'x-frame-options'
+    return ''
+
+
+def frame_check(value, origin):
+    """Whether a page at `origin` can show `value` in a frame: True, False, or None when the site cannot be read."""
+    page = parse_origin(origin)
+    url = normalize_url(value)
+    if not _requests.acquire(blocking=False):
+        return None, ''
+    try:
+        def verdict(response, sock, final):
+            parsed = urlsplit(final)
+            resource = parsed.scheme, parsed.hostname.lower(), parsed.port or DEFAULT_PORTS[parsed.scheme]
+            return frame_verdict(response.headers, page, resource)
+        reason = follow(url, time.monotonic() + TIME_BUDGET, 'text/html,*/*;q=0.8', verdict)
+    except (ValueError, OSError, http.client.HTTPException):
+        return None, ''
+    finally:
+        _requests.release()
+    return not reason, reason
 
 
 def image_type(data):

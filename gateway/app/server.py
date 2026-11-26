@@ -346,6 +346,11 @@ class Handler(legacy.Handler):
             with LOCK:allowed=self.login_required() and self.session()
             self.send_response(401 if not allowed else 204 if self.same_origin() else 403);self.end_headers();return
         if not self.authorized():return
+        if path=='/api/frame-check':
+            query=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            try:framable,reason=favicon.frame_check(query.get('url',[''])[0],query.get('origin',[''])[0])
+            except ValueError:self.reply(400,{'error':'链接地址无效'});return
+            self.reply(200,{'framable':framable,'reason':reason});return
         if path=='/api/favicon':
             query=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
             try:result=favicon.get_icon(query.get('url',[''])[0])
