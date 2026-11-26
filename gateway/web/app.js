@@ -1,7 +1,8 @@
 'use strict';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 let initialized=false,cards=[],revision=null,editing=null,busy=false,status={};
-let desktopPrefs={workstation_url:'https://192.168.1.251:6080/',order:[]},draggingIcon=null;
+const DEFAULT_DOCK=['builtin:settings','builtin:proxy','builtin:files','builtin:workstation','builtin:clash','builtin:adguard'];
+let desktopPrefs={workstation_url:'https://192.168.1.251:6080/',order:[],dock:[...DEFAULT_DOCK],positions:{}};
 let currentPage=null,navigation=0,savedConfig=null,settingsWindow=null;
 let tailscaleRequest=null,tailscaleNavigation=0,settingsLoadingDone=null,wallpaperRead=0,wallpaperLoadingDone=null;
 let faviconPreviewRequest=0,faviconPreviewTimer=null,faviconActive=0;
@@ -150,64 +151,205 @@ async function guard(work,target=null){
     // Controls that track their own state may have changed it during the work.
     new Set([...controls.filter(el=>el.isConnected),...$$('[data-state-disabled]')]).forEach(el=>el.disabled=el.dataset.stateDisabled==='true');editor.setDisabled(false);done();}
 }
-function openLinkEditor(card=null){cancelFaviconPreview();editing=card?.id||null;$('#link-title').textContent=card?'编辑链接':'添加链接';$('#link-name').value=card?.name||'';$('#link-url').value=card?.url||'';$('#link-icon').value=card?(card.icon||'link'):'auto';$('#icon-search').value='';drawIconChoices();$('#link-newtab').checked=card?.open_in_new_tab??true;$('#link-dialog').showModal();previewFavicon(0);}
-// System apps live in the Dock; the desktop holds the administrator's own links.
-// On a phone the home screen also lists the apps that do not fit in the Dock.
+function openLinkEditor(card=null){cancelFaviconPreview();editing=card?.id||null;$('#link-title').textContent=card?'编辑链接':'添加链接';$('#link-name').value=card?.name||'';$('#link-url').value=card?.url||'';$('#link-icon').value=card?(card.icon||'link'):'auto';$('#icon-search').value='';drawIconChoices();$('#link-newtab').checked=card?.open_in_new_tab??false;$('#link-dialog').showModal();previewFavicon(0);}
+// Gateway apps and the administrator's links share one layout: each sits in the
+// Dock or at a cell of the desktop grid. A cell is [column from the right edge, row].
 const systemApps=[
-  {id:'settings',name:'控制面板',icon:'settings',open:()=>openSettings()},
-  {id:'proxy',name:'代理配置',icon:'clash',open:()=>openProxyWindow()},
-  {id:'transfer',name:'局域网互传',icon:'files',open:()=>openFrameApp('transfer')},
-  {id:'workstation',name:'工作站',icon:'workstation',url:()=>desktopPrefs.workstation_url},
-  {id:'panel',name:'Clash 面板',icon:'speedtest',open:()=>openFrameApp('panel')},
-  {id:'adguard',name:'AdGuard Home',icon:'adguard',open:()=>openFrameApp('adguard')},
-];
-const phoneDock=['settings','proxy','transfer','workstation'];
+  {id:'builtin:settings',key:'settings',name:'控制面板',image:'settings',open:()=>openSettings()},
+  {id:'builtin:proxy',key:'proxy',name:'代理配置',image:'proxy',open:()=>openProxyWindow()},
+  {id:'builtin:files',key:'transfer',name:'局域网互传',image:'transfer',open:()=>openFrameApp('transfer')},
+  {id:'builtin:workstation',key:'workstation',name:'工作站',image:'workstation',open:()=>openFrameApp('workstation')},
+  {id:'builtin:clash',key:'panel',name:'Clash 面板',image:'panel',open:()=>openFrameApp('panel')},
+  {id:'builtin:adguard',key:'adguard',name:'AdGuard Home',image:'adguard',open:()=>openFrameApp('adguard')},
+].map(app=>({...app,system:true}));
+const appImage=name=>'/icons/apps/'+name+'.webp';
+const CELL={width:104,height:112},GRID_LIMIT=100,PHONE_DOCK=4;
 const phone=window.matchMedia('(max-width:700px)');
+let layout={cells:new Map(),columns:1,rows:1},iconDrag=null,suppressClick=false,layoutSaving=Promise.resolve();
+const cellKey=cell=>cell[0]+','+cell[1];
+function itemById(id){return systemApps.find(app=>app.id===id)||cards.find(card=>card.id===id);}
+function dockItems(){return desktopPrefs.dock.map(itemById).filter(Boolean);}
+// Everything outside the Dock, in the administrator's list order.
 function desktopItems(){
-  const lookup=new Map(cards.map(card=>[card.id,card]));
-  return [...new Set([...desktopPrefs.order.filter(id=>lookup.has(id)),...lookup.keys()])].map(id=>lookup.get(id));
+  const docked=new Set(desktopPrefs.dock),rank=new Map(desktopPrefs.order.map((id,i)=>[id,i]));
+  return [...systemApps,...cards].filter(item=>!docked.has(item.id)).sort((a,b)=>(rank.get(a.id)??1e9)-(rank.get(b.id)??1e9));
 }
-function appLauncher(app,className){
-  const el=app.url?element('a'):element('button');el.className=className;el.dataset.app=app.id;el.append(icon(app.icon),element('span',app.name));
-  if(app.url){el.href=app.url();el.target='_blank';el.rel='noopener noreferrer';}else{el.type='button';el.onclick=app.open;}
-  el.setAttribute('aria-label',app.name);
-  el.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();showContext(e.clientX,e.clientY,{...app,system:true},el);});
+function itemIcon(item){
+  let image;
+  if(item.system){image=document.createElement('img');image.alt='';image.width=96;image.height=96;image.src=appImage(item.image);}
+  else image=icon(item.icon||'link',item.url);
+  image.draggable=false;return image;
+}
+function launcher(item,className){
+  const el=element(item.system?'button':'a');el.className=className;el.dataset.id=item.id;el.dataset.app=item.system?item.key:'link:'+item.id;el._desktopItem=item;
+  el.append(itemIcon(item),element('span',item.name));el.setAttribute('aria-label',item.name);
+  if(item.system){el.type='button';el.onclick=()=>item.open();}
+  else{
+    el.href=item.url;el.draggable=false;
+    if(item.open_in_new_tab){el.target='_blank';el.rel='noopener noreferrer';}
+    // Links open in a window like the gateway's own apps; modified clicks keep the browser's behavior.
+    else el.onclick=e=>{if(e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;e.preventDefault();openLinkWindow(item,el.querySelector('img')?.src);};
+  }
+  el.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();showContext(e.clientX,e.clientY,item,el);});
+  el.addEventListener('keydown',e=>{
+    if(e.key==='ContextMenu'||(e.shiftKey&&e.key==='F10')){e.preventDefault();const r=el.getBoundingClientRect();showContext(r.right,r.top,item,el);}
+    else if(e.altKey&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();nudgeIcon(item,e.key);}
+  });
+  el.addEventListener('pointerdown',e=>armIconDrag(e,item,el));
   return el;
 }
 function drawDock(){
   const dock=$('#dock');dock.replaceChildren();
-  for(const app of systemApps){const item=appLauncher(app,'dock-item');item.dataset.label=app.name;if(!phoneDock.includes(app.id))item.classList.add('desktop-only');dock.append(item);}
+  dockItems().forEach((item,index)=>{const el=launcher(item,'dock-item');if(index>=PHONE_DOCK)el.classList.add('desktop-only');dock.append(el);});
+  dock.classList.toggle('empty',!dock.children.length);
   markRunningApps();
 }
 function markRunningApps(){
   const running=new Set([settingsWindow&&'settings',proxyWindow&&'proxy',...frameWindows.keys()].filter(Boolean));
   for(const item of $$('.dock-item'))item.classList.toggle('running',running.has(item.dataset.app));
 }
-function clearIconDrag(){draggingIcon=null;$$('.desktop-item').forEach(el=>el.classList.remove('dragging','drop-before','drop-after'));}
-async function saveDesktopOrder(ids){await post('/cards/order',{ids});await loadCards();toast('桌面顺序已保存');}
 function drawDesktop(){
   const desktop=$('#desktop');desktop.replaceChildren();
-  // Phones show every app on the home screen; desktops keep system apps in the Dock.
-  for(const app of systemApps.filter(app=>!phoneDock.includes(app.id))){const el=appLauncher(app,'desktop-item phone-only');desktop.append(el);}
-  for(const item of desktopItems()){
-    const el=element('a');el.className='desktop-item';el.title=item.name;el.dataset.id=item.id;el._desktopItem=item;el.append(icon(item.icon||'link',item.url),element('span',item.name));
-    el.href=item.url;if(item.open_in_new_tab){el.target='_blank';el.rel='noopener noreferrer';}
-    el.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();showContext(e.clientX,e.clientY,item,el);});
-    el.addEventListener('keydown',e=>{if(e.key==='ContextMenu'||(e.shiftKey&&e.key==='F10')){e.preventDefault();const r=el.getBoundingClientRect();showContext(r.right,r.top,item,el);}});
-    el.draggable=true;
-    el.addEventListener('dragstart',e=>{if(busy){e.preventDefault();return;}draggingIcon=item.id;e.dataTransfer.setData('application/x-gateway-desktop',item.id);e.dataTransfer.effectAllowed='move';el.classList.add('dragging');});
-    el.addEventListener('dragend',clearIconDrag);
-    el.addEventListener('dragover',e=>{if(!draggingIcon||draggingIcon===item.id)return;e.preventDefault();e.dataTransfer.dropEffect='move';const after=e.clientY>el.getBoundingClientRect().top+el.offsetHeight/2;el.classList.toggle('drop-before',!after);el.classList.toggle('drop-after',after);});
-    el.addEventListener('dragleave',()=>el.classList.remove('drop-before','drop-after'));
-    el.addEventListener('drop',e=>{e.preventDefault();const from=draggingIcon,after=e.clientY>el.getBoundingClientRect().top+el.offsetHeight/2;clearIconDrag();if(!from||from===item.id)return;const ids=desktopItems().map(c=>c.id).filter(id=>id!==from);ids.splice(ids.indexOf(item.id)+(after?1:0),0,from);guard(()=>saveDesktopOrder(ids));});
-    el.addEventListener('keydown',e=>{if(!e.altKey||!['ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const ids=desktopItems().map(c=>c.id),i=ids.indexOf(item.id),next=i+(e.key==='ArrowUp'?-1:1);if(next<0||next>=ids.length)return;[ids[i],ids[next]]=[ids[next],ids[i]];guard(async()=>{await saveDesktopOrder(ids);[...desktop.children].find(child=>child.dataset.id===item.id)?.focus();});});
-    desktop.append(el);
-  }
+  // A phone's Dock holds four apps; the home screen lists the rest first.
+  for(const item of dockItems().slice(PHONE_DOCK))desktop.append(launcher(item,'desktop-item phone-only'));
+  for(const item of desktopItems())desktop.append(launcher(item,'desktop-item placed'));
   if(!cards.length&&initialized&&$('#auth-dialog').open===false){
-    const hint=button('',()=>openLinkEditor(),'desktop-item desktop-add');hint.append(element('span','+','desktop-add-mark'),element('span','添加链接'));desktop.append(hint);
+    const hint=button('',()=>openLinkEditor(),'desktop-item desktop-add placed');hint.append(element('span','+','desktop-add-mark'),element('span','添加链接'));desktop.append(hint);
   }
-  drawDock();drawLinks();
+  placeIcons();drawDock();drawLinks();
 }
+// Saved cells that fit the screen keep their place. Other icons take the free cell
+// nearest their saved one, or the next one down the columns from the right, like macOS.
+function placeIcons(){
+  const desktop=$('#desktop'),placed=[...desktop.querySelectorAll('.desktop-item.placed')];
+  if(phone.matches){placed.forEach(el=>el.style.left=el.style.top='');layout={cells:new Map(),columns:1,rows:1};return;}
+  const columns=Math.max(1,Math.floor(desktop.clientWidth/CELL.width)),rows=Math.max(1,Math.floor(desktop.clientHeight/CELL.height));
+  const taken=new Set(),cells=new Map(),fits=cell=>cell&&cell[0]<columns&&cell[1]<rows;
+  for(const el of placed){const cell=desktopPrefs.positions[el.dataset.id];if(fits(cell)&&!taken.has(cellKey(cell))){cells.set(el,cell);taken.add(cellKey(cell));}}
+  for(const el of placed){
+    if(cells.has(el))continue;const saved=desktopPrefs.positions[el.dataset.id];
+    const cell=freeCell(taken,columns,rows,saved&&[Math.min(saved[0],columns-1),Math.min(saved[1],rows-1)]);cells.set(el,cell);taken.add(cellKey(cell));
+  }
+  layout={cells:new Map([...cells].filter(([el])=>el.dataset.id).map(([el,cell])=>[el.dataset.id,cell])),columns,rows};
+  for(const [el,cell] of cells){const [x,y]=cellOrigin(cell);el.style.left=x+'px';el.style.top=y+'px';}
+}
+function cellOrigin([column,row]){return [$('#desktop').clientWidth-(column+1)*CELL.width+(CELL.width-96)/2,row*CELL.height];}
+function freeCell(taken,columns,rows,near=null){
+  if(near){
+    let best=null,distance=Infinity;
+    for(let c=0;c<columns;c++)for(let r=0;r<rows;r++){const d=(c-near[0])**2+(r-near[1])**2;if(d<distance&&!taken.has(cellKey([c,r]))){distance=d;best=[c,r];}}
+    if(best)return best;
+  }
+  // A full screen continues below it; the desktop scrolls.
+  for(let page=0;;page+=rows)for(let c=0;c<columns;c++)for(let r=page;r<page+rows;r++)if(!taken.has(cellKey([c,r])))return [c,r];
+}
+// Where every desktop icon is now; saving these keeps the others still when one moves.
+function currentPositions(except=null){
+  return Object.fromEntries([...layout.cells].filter(([id,cell])=>id!==except&&cell[0]<GRID_LIMIT&&cell[1]<GRID_LIMIT));
+}
+function saveLayout(dock,positions,message=''){
+  desktopPrefs={...desktopPrefs,dock,positions};drawDesktop();
+  layoutSaving=layoutSaving.then(async()=>{
+    try{const saved=await post('/desktop/layout',{dock,positions});desktopPrefs={...desktopPrefs,dock:saved.dock,positions:saved.positions};if(message)toast(message);}
+    catch(e){toast(e.message,true);await loadCards().catch(()=>{});}
+  });
+  return layoutSaving;
+}
+function focusLauncher(id,dock=false){requestAnimationFrame(()=>$$(dock?'.dock-item':'.desktop-item.placed').find(el=>el.dataset.id===id)?.focus());}
+function moveToDock(item,index=null){
+  const dock=desktopPrefs.dock.filter(id=>id!==item.id);
+  // A phone shows only the first four Dock items, so a new one joins those.
+  dock.splice(index??(phone.matches?Math.min(dock.length,PHONE_DOCK-1):dock.length),0,item.id);
+  return saveLayout(dock,currentPositions(item.id),'已放入程序坞');
+}
+function moveToDesktop(item,cell=null){
+  const positions=currentPositions(item.id);
+  positions[item.id]=cell||freeCell(new Set(Object.values(positions).map(cellKey)),layout.columns,layout.rows);
+  return saveLayout(desktopPrefs.dock.filter(id=>id!==item.id),positions,cell?'':'已移到桌面');
+}
+function arrangeIcons(items){
+  const positions={},rows=layout.rows;
+  items.forEach((item,i)=>{const cell=[Math.floor(i/rows),i%rows];if(cell[0]<GRID_LIMIT)positions[item.id]=cell;});
+  return saveLayout(desktopPrefs.dock,positions);
+}
+function nudgeIcon(item,key){
+  if(desktopPrefs.dock.includes(item.id)){
+    const dock=desktopPrefs.dock.filter(id=>id!==item.id),from=desktopPrefs.dock.indexOf(item.id),to=from+(key==='ArrowLeft'||key==='ArrowUp'?-1:1);
+    if(to<0||to>dock.length)return;dock.splice(to,0,item.id);saveLayout(dock,currentPositions()).then(()=>focusLauncher(item.id,true));return;
+  }
+  const cell=layout.cells.get(item.id);if(!cell||phone.matches)return;
+  const [dc,dr]={ArrowLeft:[1,0],ArrowRight:[-1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[key],positions=currentPositions(item.id),taken=new Set(Object.values(positions).map(cellKey));
+  let [c,r]=cell;do{c+=dc;r+=dr;}while(c>=0&&r>=0&&c<layout.columns&&r<layout.rows&&taken.has(cellKey([c,r])));
+  if(c<0||r<0||c>=layout.columns||r>=layout.rows)return;
+  positions[item.id]=[c,r];saveLayout(desktopPrefs.dock,positions).then(()=>focusLauncher(item.id));
+}
+
+// Dragging: icons move freely between desktop cells, into the Dock and out of it.
+function armIconDrag(e,item,el){
+  if(e.button!==0||e.pointerType==='touch'||phone.matches||busy||iconDrag)return;
+  iconDrag={item,el,fromDock:el.classList.contains('dock-item'),x:e.clientX,y:e.clientY,pointer:e.pointerId,active:false,target:null};
+}
+function startIconDrag(e){
+  const drag=iconDrag,image=drag.el.querySelector('img'),rect=image.getBoundingClientRect();
+  drag.active=true;drag.offset=[e.clientX-rect.left,e.clientY-rect.top];drag.size=[rect.width,rect.height];hideContext();
+  drag.ghost=image.cloneNode();drag.ghost.className='icon-ghost';drag.ghost.style.width=rect.width+'px';drag.ghost.style.height=rect.height+'px';document.body.append(drag.ghost);
+  drag.el.classList.add('drag-source');document.body.classList.add('icon-dragging');
+  try{drag.el.setPointerCapture(drag.pointer);}catch{}
+}
+function dragOverDock(x,y){
+  const dock=$('#dock').getBoundingClientRect(),margin=28;
+  return y>=dock.top-margin&&x>=dock.left-margin&&x<=dock.right+margin;
+}
+function moveIconDrag(e){
+  const drag=iconDrag,[ox,oy]=drag.offset,[w,h]=drag.size;
+  drag.ghost.style.transform='translate('+(e.clientX-ox)+'px,'+(e.clientY-oy)+'px)';
+  if(dragOverDock(e.clientX,e.clientY)){
+    const items=[...$('#dock').children].filter(el=>el.classList.contains('dock-item')&&el!==drag.el);
+    const index=items.filter(el=>{const r=el.getBoundingClientRect();return r.left+r.width/2<e.clientX;}).length;
+    drag.target={dock:index};showDockGap(items[index]||null);hideDropCell();return;
+  }
+  hideDockGap();
+  const desktop=$('#desktop'),box=desktop.getBoundingClientRect(),left=box.left+desktop.clientLeft,top=box.top+desktop.clientTop;
+  const cx=e.clientX-ox+w/2,cy=e.clientY-oy+h/2;
+  const column=Math.min(layout.columns-1,Math.max(0,Math.floor((left+desktop.clientWidth-cx)/CELL.width)));
+  const row=Math.max(0,Math.min(layout.rows-1,Math.floor((cy-top+desktop.scrollTop)/CELL.height)));
+  const taken=new Set(Object.values(currentPositions(drag.item.id)).map(cellKey));
+  const cell=freeCell(taken,layout.columns,layout.rows,[column,row]);
+  drag.target={cell};showDropCell(cell);
+}
+function showDockGap(before){
+  let gap=$('#dock .dock-gap');if(!gap){gap=element('span',undefined,'dock-gap');gap.setAttribute('aria-hidden','true');}
+  if(gap.nextSibling!==before||!gap.isConnected)$('#dock').insertBefore(gap,before);
+  $('#dock').classList.add('drop-target');
+}
+function hideDockGap(){$('#dock .dock-gap')?.remove();$('#dock').classList.remove('drop-target');}
+function showDropCell(cell){
+  let mark=$('#desktop .drop-cell');if(!mark){mark=element('span',undefined,'drop-cell');mark.setAttribute('aria-hidden','true');$('#desktop').append(mark);}
+  const [x,y]=cellOrigin(cell);mark.style.left=x+'px';mark.style.top=y+'px';
+}
+function hideDropCell(){$('#desktop .drop-cell')?.remove();}
+function endIconDrag(commit){
+  const drag=iconDrag;iconDrag=null;if(!drag?.active)return;
+  drag.ghost.remove();drag.el.classList.remove('drag-source');document.body.classList.remove('icon-dragging');hideDockGap();hideDropCell();
+  // The release also clicks the icon; that click must not open it.
+  suppressClick=true;setTimeout(()=>suppressClick=false,0);
+  if(!commit||!drag.target)return;
+  if('dock' in drag.target)moveToDock(drag.item,drag.target.dock);
+  else moveToDesktop(drag.item,drag.target.cell);
+}
+document.addEventListener('pointermove',e=>{
+  if(!iconDrag||e.pointerId!==iconDrag.pointer)return;
+  if(!iconDrag.active){if(Math.hypot(e.clientX-iconDrag.x,e.clientY-iconDrag.y)<6)return;startIconDrag(e);}
+  moveIconDrag(e);
+});
+document.addEventListener('pointerup',e=>{if(iconDrag&&e.pointerId===iconDrag.pointer)endIconDrag(true);});
+document.addEventListener('pointercancel',e=>{if(iconDrag&&e.pointerId===iconDrag.pointer)endIconDrag(false);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&iconDrag?.active){e.preventDefault();e.stopImmediatePropagation();endIconDrag(false);}},true);
+document.addEventListener('click',e=>{if(suppressClick){e.preventDefault();e.stopImmediatePropagation();suppressClick=false;}},true);
+document.addEventListener('dragstart',e=>{if(e.target.closest?.('.desktop-item,.dock-item'))e.preventDefault();});
+// The desktop's size follows the window, the phone layout and the menu bar.
+let placing=0;new ResizeObserver(()=>{cancelAnimationFrame(placing);placing=requestAnimationFrame(placeIcons);}).observe($('#desktop'));
+async function saveDesktopOrder(ids){await post('/cards/order',{ids});await loadCards();toast('桌面顺序已保存');}
 function moveLink(index,delta){
   return guard(async()=>{
     const ids=cards.map(c=>c.id),next=index+delta;if(next<0||next>=ids.length)return;
@@ -259,7 +401,7 @@ async function readAccess() {
   $('#confirm-field').hidden = initialized;
   $('#password').autocomplete = initialized ? 'current-password' : 'new-password';
   cards = [];
-  desktopPrefs = {workstation_url:'https://192.168.1.251:6080/', order:[]};
+  desktopPrefs = {workstation_url:'https://192.168.1.251:6080/', order:[], dock:[...DEFAULT_DOCK], positions:{}};
   drawDesktop();
   destroyProxyWindow();
   destroySettings();
@@ -499,30 +641,57 @@ function focusGatewayWindow(win) {
 }
 function showSettingsWindow() {
   if (settingsWindow) focusGatewayWindow(settingsWindow);
-  else settingsWindow = createGatewayWindow($('#settings-dialog'),'控制面板','/icons/settings.svg',closeSettings,
+  else settingsWindow = createGatewayWindow($('#settings-dialog'),'控制面板',appImage('settings'),closeSettings,
     {toolbar:$('#settings-toolbar'),app:'settings',width:1080,onCompact:syncSettingsBack});
   syncSettingsBack();
 }
 function syncSettingsBack(){$('#settings-back').hidden=!(settingsWindow?.window.classList.contains('is-compact')&&currentPage&&currentPage!=='overview');}
 
-// Pages served by this gateway open in a window instead of a new browser tab.
+// Gateway pages, the workstation and the administrator's links open in a window
+// instead of a new browser tab. Each window can still move to a tab.
 const frameApps={
-  transfer:{title:'局域网互传',icon:'/icons/files.svg',url:'/transfer/?embed=1',page:'/transfer/',width:980},
-  panel:{title:'Clash 面板',icon:'/icons/speedtest.svg',url:'/ui/#/proxies',page:'/ui/#/proxies',width:1180},
-  adguard:{title:'AdGuard Home',icon:'/icons/adguard.svg',url:'/adguard/',page:'/adguard/',width:1180},
+  transfer:{title:'局域网互传',icon:appImage('transfer'),url:'/transfer/?embed=1',page:'/transfer/',width:980},
+  panel:{title:'Clash 面板',icon:appImage('panel'),url:'/ui/#/proxies',page:'/ui/#/proxies',width:1180},
+  adguard:{title:'AdGuard Home',icon:appImage('adguard'),url:'/adguard/',page:'/adguard/',width:1180},
+  workstation:{title:'工作站',icon:appImage('workstation'),url:()=>desktopPrefs.workstation_url,width:1280,height:860,external:true},
 };
 const frameWindows=new Map();
-function openFrameApp(key){
-  const app=frameApps[key];if(!app)return;
+function openLinkWindow(card,iconSource=''){
+  openFrameApp('link:'+card.id,{title:card.name,icon:iconSource||'/icons/link.svg',url:card.url,width:1180,external:true});
+}
+function openFrameApp(key,app=frameApps[key]){
+  if(!app)return;
   const open=frameWindows.get(key);
   if(open){focusGatewayWindow(open);return;}
+  const url=typeof app.url==='function'?app.url():app.url,page=app.page||url;
   const shell=element('div',undefined,'frame-shell'),frame=element('iframe'),bar=element('div',undefined,'window-toolbar');
-  frame.src=app.url;frame.title=app.title;frame.setAttribute('allow','clipboard-read; clipboard-write');
-  const reload=iconButton('refresh','重新载入',()=>{try{frame.contentWindow.location.reload();}catch{frame.src=app.url;}},'toolbar-button');
-  const tab=element('a',undefined,'button-link toolbar-button icon-button');tab.href=app.page;tab.target='_blank';tab.rel='noopener';tab.title='在新标签页中打开';tab.setAttribute('aria-label','在新标签页中打开 '+app.title);tab.append(glyph('external'));
-  bar.append(element('span',undefined,'toolbar-spacer'),reload,tab);shell.append(frame,bar);document.body.append(shell);
-  const win=createGatewayWindow(shell,app.title,app.icon,()=>closeFrameApp(key),{toolbar:bar,app:key,width:app.width});
+  frame.title=app.title;frame.setAttribute('allow','clipboard-read; clipboard-write; fullscreen');
+  if(app.external)frame.referrerPolicy='no-referrer';
+  const load=()=>{frame.src=url;if(app.external)checkFrame(url,shell);};
+  const reload=iconButton('refresh','重新载入',()=>{if(app.external){load();return;}try{frame.contentWindow.location.reload();}catch{frame.src=url;}},'toolbar-button');
+  const tab=element('a',undefined,'button-link toolbar-button icon-button');tab.href=page;tab.target='_blank';tab.rel=app.external?'noopener noreferrer':'noopener';tab.title='在新标签页中打开';tab.setAttribute('aria-label','在新标签页中打开 '+app.title);tab.append(glyph('external'));
+  bar.append(element('span',undefined,'toolbar-spacer'),reload,tab);shell.append(frame,bar);
+  if(app.external)shell.append(frameNotice(app,page,load));
+  document.body.append(shell);load();
+  const win=createGatewayWindow(shell,app.title,app.icon,()=>closeFrameApp(key),{toolbar:bar,app:key,width:app.width,height:app.height});
   frameWindows.set(key,win);markRunningApps();
+}
+// Another host may be offline, or use a certificate this browser has not trusted
+// yet. A page cannot read a cross-origin frame, so ask the host directly.
+function frameNotice(app,page,retry){
+  const notice=element('div',undefined,'frame-notice'),box=element('div',undefined,'frame-notice-box'),actions=element('div',undefined,'window-actions');
+  const image=element('img');image.src=app.icon;image.alt='';image.width=64;image.height=64;
+  const tab=element('a','在新标签页中打开','button-link');tab.href=page;tab.target='_blank';tab.rel='noopener noreferrer';
+  actions.append(tab,button('重试',retry,'primary'));
+  box.append(image,element('strong','无法在窗口中打开“'+app.title+'”'),
+    element('p','地址暂时无法访问，或这个网站使用了浏览器尚未信任的证书。请先在新标签页中打开它（自签名证书需要先选择继续访问），再回到这里重试。'),actions);
+  notice.append(box);notice.hidden=true;return notice;
+}
+async function checkFrame(url,shell){
+  const notice=shell.querySelector('.frame-notice'),request=(shell.frameCheck||0)+1;shell.frameCheck=request;notice.hidden=true;
+  let reachable=true;
+  try{await fetch(url,{mode:'no-cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout?.(10000)});}catch{reachable=false;}
+  if(shell.frameCheck===request&&shell.isConnected)notice.hidden=reachable;
 }
 function closeFrameApp(key){
   const win=frameWindows.get(key);if(!win)return;
@@ -531,11 +700,10 @@ function closeFrameApp(key){
   releaseGatewayWindow(win);shell?.remove();
 }
 function closeAllWindows(){for(const key of [...frameWindows.keys()])closeFrameApp(key);}
-
 // Menu bar: the system menu, the focused app, status items and the clock.
 function systemMenuItems(){
   return [
-    ['关于这台网关','info',()=>openSettings('overview')],null,
+    ['关于这台网关','info',()=>openAbout()],null,
     ['控制面板…','gear',()=>openSettings()],
     ['代理配置…','relay',()=>openProxyWindow()],
     ['局域网互传','window',()=>openFrameApp('transfer')],
@@ -544,6 +712,20 @@ function systemMenuItems(){
     ['退出登录','logout',()=>$('#logout').click()],
   ];
 }
+// About this gateway: version, address and the project's source.
+async function openAbout(){
+  const dialog=$('#about-dialog');if(dialog.open)return;
+  $('#about-address').textContent=[status.domain&&'http://'+status.domain,status.address].filter(Boolean).join(' · ')||location.host;
+  $('#about-version').textContent='读取中…';dialog.showModal();$('#about-close').focus();
+  try{const info=await api('/web-release');$('#about-version').textContent=releaseLabel(info.current)+(info.available?'，可更新到 '+releaseLabel(info.latest):'');}
+  catch{$('#about-version').textContent=releaseLabel(latestWebRelease?.current||'');}
+}
+$('#about-close').onclick=()=>$('#about-dialog').close();
+$('#about-updates').onclick=()=>{$('#about-dialog').close();openSettings('updates');};
+$('#desktop-reset').onclick=()=>guard(async()=>{
+  if(!await askConfirm('网关应用回到程序坞，桌面上的链接重新排列。链接本身不会改变。','恢复默认布局',{accept:'恢复'}))return;
+  await saveLayout([...DEFAULT_DOCK],{},'已恢复默认布局');
+});
 function hideSystemMenu(){const menu=$('#system-menu');if(!menu||menu.hidden)return;menu.hidden=true;$('#system-menu-button').setAttribute('aria-expanded','false');}
 function showSystemMenu(){
   const menu=$('#system-menu'),anchor=$('#system-menu-button');menu.replaceChildren();
@@ -581,16 +763,32 @@ function askConfirm(copy,title='确认操作',{accept='确定',danger=false}={})
     dialog.showModal();$('#confirm-cancel').focus();
   });
 }
-async function deleteCard(card){if(!await askConfirm('删除链接“'+card.name+'”？此操作仅移除桌面入口。','删除桌面链接',{accept:'删除',danger:true}))return;await api('/cards/'+card.id,{method:'DELETE'});await loadCards();toast('链接已删除');}
+async function deleteCard(card){if(!await askConfirm('删除链接“'+card.name+'”？此操作仅移除桌面入口。','删除桌面链接',{accept:'删除',danger:true}))return;await api('/cards/'+card.id,{method:'DELETE'});closeFrameApp('link:'+card.id);await loadCards();toast('链接已删除');}
 function hideContext(){const menu=$('#desktop-context-menu');if(menu)menu.hidden=true;}
 function showContext(x,y,item=null,origin=null){
   if($('#auth-dialog').open)return;
   const menu=$('#desktop-context-menu');menu.replaceChildren();
   const add=(label,symbol,action,danger=false,image=null)=>{const b=button('',()=>{hideContext();Promise.resolve(action()).catch(e=>toast(e.message,true));},danger?'danger':'');b.setAttribute('role','menuitem');b.append(image||glyph(symbol),element('span',label));menu.append(b);};
   const line=()=>{const hr=element('div',undefined,'context-divider');hr.setAttribute('role','separator');menu.append(hr);};
-  if(item?.system){add('打开','',()=>origin.click(),false,icon(item.icon));if(item.id==='workstation'){line();add('设置入口地址…','gear',async()=>{await openSettings('desktop');$('#workstation-url').focus();});}}
-  else if(item){add('打开','',()=>origin.click(),false,icon(item.icon||'link',item.url));line();add('编辑链接…','edit',()=>openLinkEditor(item));add('删除链接','trash',()=>guard(()=>deleteCard(item)),true);}
-  else{add('添加链接…','plus',()=>openLinkEditor());add('刷新桌面','refresh',()=>withLoading($('.desktop-workspace'),async()=>{await Promise.all([loadCards(),loadStatus()]);toast('桌面已刷新');}));add('按名称排列','list',()=>guard(()=>saveDesktopOrder(desktopItems().sort((a,b)=>a.name.localeCompare(b.name,'zh-CN')).map(c=>c.id))));line();add('个性化…','image',()=>openPersonalization());add('控制面板…','gear',()=>openSettings());}
+  if(item){
+    const docked=desktopPrefs.dock.includes(item.id),image=origin?.querySelector('img')?.src;
+    add('打开','',()=>origin.click(),false,itemIcon(item));
+    if(item.key==='workstation')add('在新标签页中打开','external',()=>window.open(desktopPrefs.workstation_url,'_blank','noopener'));
+    else if(!item.system)add(item.open_in_new_tab?'在窗口中打开':'在新标签页中打开',item.open_in_new_tab?'window':'external',()=>item.open_in_new_tab?openLinkWindow(item,image):window.open(item.url,'_blank','noopener,noreferrer'));
+    line();add(docked?'移到桌面':'放入程序坞',docked?'desktop':'dock',()=>docked?moveToDesktop(item):moveToDock(item));
+    if(item.key==='workstation')add('设置入口地址…','gear',async()=>{await openSettings('desktop');$('#workstation-url').focus();});
+    if(!item.system){add('编辑链接…','edit',()=>openLinkEditor(item));add('删除链接','trash',()=>guard(()=>deleteCard(item)),true);}
+  }
+  else{
+    add('添加链接…','plus',()=>openLinkEditor());add('刷新桌面','refresh',()=>withLoading($('.desktop-workspace'),async()=>{await Promise.all([loadCards(),loadStatus()]);toast('桌面已刷新');}));
+    const byName=(a,b)=>a.name.localeCompare(b.name,'zh-CN');
+    if(phone.matches)add('按名称排列','list',()=>guard(()=>saveDesktopOrder([...cards].sort(byName).map(c=>c.id))));
+    else{
+      add('整理图标','grid',()=>arrangeIcons([...layout.cells].sort((a,b)=>a[1][0]-b[1][0]||a[1][1]-b[1][1]).map(([id])=>itemById(id)).filter(Boolean)));
+      add('按名称排列','list',()=>arrangeIcons(desktopItems().sort(byName)));
+    }
+    line();add('个性化…','image',()=>openPersonalization());add('控制面板…','gear',()=>openSettings());
+  }
   menu.hidden=false;menu.style.left=Math.max(8,Math.min(x,innerWidth-menu.offsetWidth-8))+'px';menu.style.top=Math.max(8,Math.min(y,innerHeight-menu.offsetHeight-8))+'px';menu.querySelector('button')?.focus();
   menu.onkeydown=e=>{const items=[...menu.querySelectorAll('button')],i=items.indexOf(document.activeElement);if(e.key==='Escape'){e.stopPropagation();hideContext();origin?.focus();}else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?items.length-1:(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;items[next].focus();}};
 }
@@ -616,10 +814,12 @@ function setupDesktop(){
   document.addEventListener('pointerdown',e=>{if(!e.target.closest('#desktop-context-menu'))hideContext();});
   document.addEventListener('contextmenu',e=>{if(e.target.closest('dialog,.winbox,.menubar,.dock,.frame-shell,#desktop-context-menu,#system-menu'))return;e.preventDefault();showContext(e.clientX,e.clientY);});
   let hold=null,point=null;
-  $('#desktop').addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')return;point=[e.clientX,e.clientY];const target=e.target.closest('.desktop-item');hold=setTimeout(()=>{const item=target?._desktopItem;showContext(e.clientX,e.clientY,item,target);hold=null;},600);});
-  $('#desktop').addEventListener('pointermove',e=>{if(point&&Math.hypot(e.clientX-point[0],e.clientY-point[1])>10){clearTimeout(hold);hold=null;}});
-  for(const type of ['pointerup','pointercancel'])$('#desktop').addEventListener(type,()=>{clearTimeout(hold);hold=null;point=null;});
-  $('#desktop').addEventListener('click',e=>{if(!$('#desktop-context-menu').hidden){e.preventDefault();e.stopImmediatePropagation();}},true);
+  for(const area of [$('#desktop'),$('#dock')]){
+    area.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')return;point=[e.clientX,e.clientY];const target=e.target.closest('.desktop-item,.dock-item');if(area.id==='dock'&&!target)return;hold=setTimeout(()=>{showContext(e.clientX,e.clientY,target?._desktopItem,target);hold=null;},600);});
+    area.addEventListener('pointermove',e=>{if(point&&Math.hypot(e.clientX-point[0],e.clientY-point[1])>10){clearTimeout(hold);hold=null;}});
+    for(const type of ['pointerup','pointercancel'])area.addEventListener(type,()=>{clearTimeout(hold);hold=null;point=null;});
+    area.addEventListener('click',e=>{if(!$('#desktop-context-menu').hidden){e.preventDefault();e.stopImmediatePropagation();}},true);
+  }
   $$('[data-personalization]').forEach(el=>el.onclick=openPersonalization);
   setupMenubar();
   for(const id of ['close-personalization','wallpaper-cancel'])$('#'+id).onclick=()=>$('#personalization-dialog').close();

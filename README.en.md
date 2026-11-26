@@ -27,9 +27,10 @@ Screenshots of the actual UI: [gateway desktop](docs/images/gateway-control-pane
 | Gateway | `192.168.1.250` | Mihomo / Clash, AdGuard Home, Tailscale, web console | `ghcr.io/crazyniu/ai-workstation-gateway` |
 | Workstation | `192.168.1.251` | XFCE, Chrome, VS Code, Codex, Claude Code, Claude Desktop, GitHub CLI, MCP tools | `ghcr.io/crazyniu/ai-workstation` |
 
-- The gateway's port-80 page is a desktop with a menu bar and Dock. The control panel, proxy editor, LAN file transfer, the Clash dashboard (MetaCubeXD) and AdGuard Home open in windows on the same page. On a phone it becomes a home screen.
+- The gateway's port-80 page is a desktop with a menu bar and Dock, with icons in the macOS 27 style. The control panel, proxy editor, LAN file transfer, the workstation desktop, the Clash dashboard (MetaCubeXD), AdGuard Home and your own links open in windows on the same page. On a phone it becomes a home screen.
+- Drag any icon to any place on the desktop, or into and out of the Dock. "About This Gateway" in the menu bar shows the version and the GitHub repository.
 - The proxy editor assigns an HTTP, HTTPS or SOCKS5 exit to a single IP, an IP range or a subnet, chained through a relay node from your subscription. HTTP and HTTPS exits always go through the relay; for SOCKS5 it is the default. You can also create groups (for example Google or YouTube) and route their domains to a chosen exit. Every change goes into a draft that you apply or discard.
-- Desktop links can fetch site favicons or use custom icons. Wallpaper, theme, ordering and account settings are stored on the gateway.
+- Desktop links can fetch site favicons or use custom icons, and can open in a new tab instead of a window. Wallpaper, theme, layout and account settings are stored on the gateway.
 - The gateway asks for a password by default; on a trusted private network you can turn that off in the account settings. The workstation serves an HTTPS noVNC desktop with two-way text clipboard.
 - The gateway manages proxy configuration, DNS, subnet access, component upgrades, and backup and restore.
 - The workstation joins the LAN directly and can open connections to a paired Mac running Orca. To restrict which LAN devices it can reach, keep the Orca port (or other device ports) with **niu.sh → 7** and then enable the optional [LAN isolation](docs/workstation-egress.md#显式启用隔离).

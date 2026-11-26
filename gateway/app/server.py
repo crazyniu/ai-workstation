@@ -14,7 +14,11 @@ MAX_BODY=36*1024*1024
 JOBS={}
 FAILURES={}
 JOB_LOCK=threading.Lock()
-DESKTOP_BUILTINS=('builtin:clash','builtin:adguard','builtin:tailscale','builtin:workstation','builtin:files','builtin:settings')
+DESKTOP_BUILTINS=('builtin:clash','builtin:adguard','builtin:tailscale','builtin:workstation','builtin:files','builtin:settings','builtin:proxy')
+# Gateway apps, in their default Dock order. Each one and every link sits either
+# in the Dock or at a cell of the desktop grid.
+SYSTEM_APPS=('builtin:settings','builtin:proxy','builtin:files','builtin:workstation','builtin:clash','builtin:adguard')
+GRID_LIMIT=100
 
 def default_workstation_url():
     configured=os.environ.get('GATEWAY_WORKSTATION_URL')
@@ -39,7 +43,23 @@ def validate_desktop(value):
     order=value.get('order',[])
     if not isinstance(order,list) or len(order)>1000+len(DESKTOP_BUILTINS) or any(not isinstance(i,str) or not i or len(i)>100 for i in order) or len(set(order))!=len(order):
         raise ValueError('桌面排序无效')
-    return {'workstation_url':url,'order':order}
+    result={'workstation_url':url,'order':order}
+    limit=1000+len(DESKTOP_BUILTINS)
+    if 'dock' in value:
+        dock=value['dock']
+        if not isinstance(dock,list) or len(dock)>limit or any(not isinstance(i,str) or not i or len(i)>100 for i in dock) or len(set(dock))!=len(dock):
+            raise ValueError('程序坞设置无效')
+        result['dock']=dock
+    if 'positions' not in value:return result
+    positions=value['positions']
+    # A desktop cell is [column from the right edge, row from the top].
+    cell=lambda p:isinstance(p,list) and len(p)==2 and all(type(n) is int and 0<=n<GRID_LIMIT for n in p)
+    if not isinstance(positions,dict) or len(positions)>limit or any(not isinstance(k,str) or not k or len(k)>100 or not cell(p) for k,p in positions.items()):
+        raise ValueError('桌面图标位置无效')
+    if len({tuple(p) for p in positions.values()})!=len(positions) or set(positions)&set(result.get('dock',[])):
+        raise ValueError('桌面图标位置重复')
+    result['positions']=positions
+    return result
 
 def desktop_settings(cards):
     value=validate_desktop(read(DASH/'desktop.json',{}))
@@ -48,7 +68,19 @@ def desktop_settings(cards):
     if 'builtin:workstation' in value['order'] and 'builtin:files' not in value['order']:
         value['order'].insert(value['order'].index('builtin:workstation')+1, 'builtin:files')
     value['order'] += [i for i in ids if i not in value['order']]
+    known={*SYSTEM_APPS,*(c['id'] for c in cards)}
+    value['dock']=[i for i in value.get('dock',SYSTEM_APPS) if i in known]
+    value['positions']={i:p for i,p in value.get('positions',{}).items() if i in known and i not in value['dock']}
     return value
+
+def save_desktop(value,keep_url=False):
+    # Saving a layout keeps an unsaved workstation link derived from the deployment.
+    value=dict(value)
+    if not keep_url and 'workstation_url' not in read(DASH/'desktop.json',{}):del value['workstation_url']
+    # The default Dock is not stored, so apps added in later versions still join it.
+    if value.get('dock')==list(SYSTEM_APPS):del value['dock']
+    if not value.get('positions',True):del value['positions']
+    save(DASH/'desktop.json',value)
 
 def ts(args,timeout=15):
     return command([str(ROOT/'components/current/tailscale/tailscale'),'--socket=/run/tailscale/tailscaled.sock']+args,timeout=timeout,check=False)
@@ -378,15 +410,21 @@ class Handler(legacy.Handler):
                     # Older clients and the custom-link controls keep builtins in place.
                     ordered=iter(ids);desktop['order']=[next(ordered) if i in custom else i for i in desktop['order']]
                 else:raise ValueError('排序列表已变化，请刷新')
-                # Reordering keeps an unsaved workstation link derived from the deployment.
-                if 'workstation_url' not in read(DASH/'desktop.json',{}):del desktop['workstation_url']
-                save(DASH/'desktop.json',desktop)
+                save_desktop(desktop)
                 lookup={c['id']:c for c in cards};legacy.write_cards([lookup[i] for i in desktop['order'] if i in lookup])
             self.reply(200,{'ok':True});return
+        if path=='/api/desktop/layout':
+            layout=validate_desktop({'dock':data.get('dock'),'positions':data.get('positions',{})})
+            with LOCK:
+                cards=legacy.read_cards();desktop=desktop_settings(cards)
+                if not {*layout['dock'],*layout['positions']}<={*SYSTEM_APPS,*(c['id'] for c in cards)}:raise ValueError('桌面已变化，请刷新')
+                desktop.update(dock=layout['dock'],positions=layout['positions']);save_desktop(desktop)
+                value=desktop_settings(cards)
+            self.reply(200,value);return
         if path=='/api/settings/workstation':
             url=validate_desktop({'workstation_url':data.get('url')})['workstation_url']
             with LOCK:
-                value=desktop_settings(legacy.read_cards());value['workstation_url']=url;save(DASH/'desktop.json',value)
+                value=desktop_settings(legacy.read_cards());value['workstation_url']=url;save_desktop(value,keep_url=True)
             self.reply(200,value);return
         if path=='/api/subscription':
             url=str(data.get('url','')).strip();hours=int(data.get('interval_hours',0))
