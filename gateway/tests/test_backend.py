@@ -897,15 +897,23 @@ class ProxyEditorEditTests(DataTest):
     def node(self, config, name):
         return next(n for n in config['proxies'] if n['name'] == name)
 
-    def test_exit_keeps_the_chosen_dialer(self):
+    def test_http_exits_always_dial_through_the_relay(self):
         config, model = self.edit(self.base(), kind='exit', name='SG', type='http', server='192.0.2.30', port='3128',
                                   deviceExit=True, **{'dialer-proxy': routing.RELAY})
         self.assertEqual(self.node(config, 'SG')['dialer-proxy'], routing.RELAY)
         self.assertIn('SG', model['deviceExits'])
         self.assertTrue(model['relayReady'])
+        # An empty choice from an older client still gets the relay, HTTPS included.
         config, _ = self.edit(config, kind='exit', original='US', name='US', type='http', server='192.0.2.10',
-                              port='8080', deviceExit=True, **{'dialer-proxy': ''})
-        self.assertNotIn('dialer-proxy', self.node(config, 'US'))
+                              port='8080', tls=True, deviceExit=True, **{'dialer-proxy': ''})
+        self.assertEqual(self.node(config, 'US')['dialer-proxy'], routing.RELAY)
+        with self.assertRaisesRegex(ValueError, 'HTTP 出口必须经过中转'):
+            self.edit(self.base(), kind='exit', original='US', name='US', type='http', server='192.0.2.10',
+                      port='8080', deviceExit=True, **{'dialer-proxy': 'JP'})
+        # SOCKS5 exits keep the optional choice.
+        config, _ = self.edit(self.base(), kind='exit', original='JP', name='JP', type='socks5', server='192.0.2.20',
+                              port='1080', deviceExit=True, **{'dialer-proxy': ''})
+        self.assertNotIn('dialer-proxy', self.node(config, 'JP'))
         with self.assertRaisesRegex(ValueError, '自身'):
             self.edit(self.base(), kind='exit', original='JP', name='JP', type='socks5', server='192.0.2.20',
                       port='1080', deviceExit=True, **{'dialer-proxy': 'JP'})

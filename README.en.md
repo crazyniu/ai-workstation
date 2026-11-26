@@ -28,7 +28,7 @@ Screenshots of the actual UI: [gateway desktop](docs/images/gateway-control-pane
 | Workstation | `192.168.1.251` | XFCE, Chrome, VS Code, Codex, Claude Code, Claude Desktop, GitHub CLI, MCP tools | `ghcr.io/crazyniu/ai-workstation` |
 
 - The gateway's port-80 page is a desktop with a menu bar and Dock. The control panel, proxy editor, LAN file transfer, the Clash dashboard (MetaCubeXD) and AdGuard Home open in windows on the same page. On a phone it becomes a home screen.
-- The proxy editor assigns an HTTP, HTTPS or SOCKS5 exit to a single IP, an IP range or a subnet, optionally chained through a relay node from your subscription. You can also create groups (for example Google or YouTube) and route their domains to a chosen exit. Every change goes into a draft that you apply or discard.
+- The proxy editor assigns an HTTP, HTTPS or SOCKS5 exit to a single IP, an IP range or a subnet, chained through a relay node from your subscription. HTTP and HTTPS exits always go through the relay; for SOCKS5 it is the default. You can also create groups (for example Google or YouTube) and route their domains to a chosen exit. Every change goes into a draft that you apply or discard.
 - Desktop links can fetch site favicons or use custom icons. Wallpaper, theme, ordering and account settings are stored on the gateway.
 - The gateway asks for a password by default; on a trusted private network you can turn that off in the account settings. The workstation serves an HTTPS noVNC desktop with two-way text clipboard.
 - The gateway manages proxy configuration, DNS, subnet access, component upgrades, and backup and restore.
