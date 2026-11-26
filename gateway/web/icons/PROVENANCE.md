@@ -7,3 +7,5 @@ The additional application artwork was drawn for this project on 2026-10-23 and 
 The compact `refresh.svg`, `trash.svg`, and `sort.svg` files are utility menu glyphs and are deliberately excluded from the application chooser. `add.svg` remains an existing tile-shaped action icon and is also excluded from the chooser.
 
 The local shortcuts `hermes` and `workbuddy` use original gateway-family glyphs (winged H and friendly overlapping chat bubbles), rather than claiming to reproduce an official brand asset. Additional frequently deployed local services include AList, File Browser, Proxmox and n8n.
+
+`account.svg` (person with a security shield) and `routes.svg` (fixed-exit map pin) are original control-panel glyphs drawn for the settings window in the same tile family. Like the utility glyphs, they are not listed in the application chooser.
