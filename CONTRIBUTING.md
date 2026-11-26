@@ -4,7 +4,7 @@
 
 Issue 和 PR 可以用中文或英文（English is welcome too）。参与即表示同意遵守[行为准则](CODE_OF_CONDUCT.md)；安全问题按 [SECURITY.md](SECURITY.md) 私密报告。
 
-网关 Web 界面使用简体中文。新增的界面文字保持简体中文；修改 README 的用户可见内容时，同步更新 [README.en.md](README.en.md) 的对应段落。
+Niu Gateway（网关 Web）界面使用简体中文。新增的界面文字保持简体中文；修改 README 的用户可见内容时，同步更新 [README.en.md](README.en.md) 的对应段落。
 
 ## 本地开发
 
@@ -13,7 +13,7 @@ Issue 和 PR 可以用中文或英文（English is welcome too）。参与即表
 3. 修改网关运行时或 Web 资源后运行 `python3 gateway/runtime/build-info.py`，提交生成的版本信息。
 4. 在 PR 中说明行为变化、验证结果和未覆盖的环境；UI 变更附截图。
 
-仓库不需要通用前端构建工具。网关 Web 使用原生 HTML、CSS 和 JavaScript；Python 后端测试使用 unittest。Linux 容器检查在 GitHub Actions 中执行。
+仓库不需要通用前端构建工具。Niu Gateway 使用原生 HTML、CSS 和 JavaScript；Python 后端测试使用 unittest。Linux 容器检查在 GitHub Actions 中执行。
 
 ## 图标资源
 

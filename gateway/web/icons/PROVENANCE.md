@@ -14,7 +14,7 @@ The local shortcuts `hermes` and `workbuddy` use original gateway-family glyphs 
 
 ## Gateway app icons
 
-The gateway's own apps (`apps/*.webp`) and its favicon, `favicon.ico`, `favicon-32.png`, `favicon.svg` and `apple-touch-icon.png` were made for this project on 2026-11-26. The artwork was generated with an image model from original text prompts; no logo, screenshot or third-party artwork was used as input. Each picture was then masked to the same squircle tile as the SVG family, given a glass rim and a shadow, and exported at 256 × 256. They are distributed under the repository's license.
+The gateway's own apps (`apps/*.webp`) and its favicon, `favicon.ico`, `favicon-32.png`, `favicon.svg` and `apple-touch-icon.png` were redrawn for this project on 2026-11-26 in the style of the macOS Dock: a clean light or system-coloured tile with a simple, solid symbol. Each one is an original full-bleed SVG in `gateway/art/icons/*.svg`, rendered to the 1024 × 1024 `*.webp` beside it, then masked to the same squircle tile as the SVG family, given a light rim and a shadow, and exported at 256 × 256 by `gateway/scripts/build-icons.py`. No Apple icon, logo, screenshot or third-party artwork was copied. They are distributed under the repository's license.
 
 ## Settings icons
 

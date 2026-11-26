@@ -39,7 +39,7 @@ def write_build_info(root):
         count += 1
     source_sha256 = digest.hexdigest()
     metadata = {
-        'name': 'Gateway',
+        'name': 'Niu Gateway',
         'version': 'dev.' + source_sha256[:12],
         'source': 'https://github.com/crazyniu/ai-workstation',
         'source_sha256': source_sha256,

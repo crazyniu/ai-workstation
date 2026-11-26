@@ -163,11 +163,10 @@ def tailscale_devices(s,regions=None):
 
 TTYD=Path('/usr/local/bin/ttyd')
 
-def terminal_state(login_required):
+def terminal_state():
     # The terminal ships with the gateway image: an online Web upgrade cannot add it.
     if os.environ.get('GATEWAY_INSTALL_MODE')=='native':return {'available':False,'reason':'native'}
     if not os.access(TTYD,os.X_OK):return {'available':False,'reason':'image'}
-    if not login_required:return {'available':False,'reason':'login'}
     return {'available':True,'reason':''}
 
 def configure_tailscale_routes():
@@ -342,10 +341,14 @@ class Handler(legacy.Handler):
         if path=='/api/auth/check':
             self.send_response(204 if self.access_allowed() else 401);self.end_headers();return
         if path=='/api/auth/terminal':
-            # A root shell always needs a password session, and its WebSocket must come from this page.
-            with LOCK:allowed=self.login_required() and self.session()
-            self.send_response(401 if not allowed else 204 if self.same_origin() else 403);self.end_headers();return
+            # The terminal follows the gateway's own login setting; its WebSocket must come from this page.
+            self.send_response(401 if not self.access_allowed() else 204 if self.same_origin() else 403);self.end_headers();return
         if not self.authorized():return
+        if path=='/api/frame-check':
+            query=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            try:framable,reason=favicon.frame_check(query.get('url',[''])[0],query.get('origin',[''])[0])
+            except ValueError:self.reply(400,{'error':'链接地址无效'});return
+            self.reply(200,{'framable':framable,'reason':reason});return
         if path=='/api/favicon':
             query=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
             try:result=favicon.get_icon(query.get('url',[''])[0])
@@ -370,7 +373,7 @@ class Handler(legacy.Handler):
             self.reply(200,{'services':r.stdout,'configured':read(DASH/'proxy-state.json',{}).get('configured',False),'domain':settings()['domain'],'address':lan_ip()});return
         if path=='/api/settings':self.reply(200,settings());return
         if path=='/api/tailscale':self.reply(200,tailscale_status());return
-        if path=='/api/terminal':self.reply(200,terminal_state(self.login_required()));return
+        if path=='/api/terminal':self.reply(200,terminal_state());return
         if path=='/api/web-release':self.reply(200,web_release.info());return
         if path=='/api/web-release/job':self.reply(200,web_release.progress());return
         if path=='/api/updates':

@@ -1,4 +1,4 @@
-# Gateway 网关桌面
+# Niu Gateway 网关桌面
 
 家庭网关的一体化容器后台，服务普通家庭网络使用者。首页用于快速打开 Clash、AdGuard Home、Tailscale 和自定义其他设备入口。设置在二级窗口完成代理订阅、DNS、本地域名、Tailscale 路由、服务升级及配置备份。
 

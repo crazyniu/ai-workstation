@@ -1,5 +1,7 @@
 """Hermetic icon HTTP discovery, request isolation, bounds, and address policy."""
 import base64
+import http.client
+import io
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import socket
@@ -43,6 +45,20 @@ class FixtureHandler(BaseHTTPRequestHandler):
         elif self.path == '/metadata':
             status, body = 302, b''
             headers['Location'] = 'http://169.254.169.254/latest/meta-data/'
+        elif self.path == '/xfo-deny':
+            body = b'<html></html>'
+            headers['X-Frame-Options'] = 'DENY'
+        elif self.path == '/login':
+            status, body = 302, b''
+            headers['Location'] = '/xfo-sameorigin'
+        elif self.path == '/xfo-sameorigin':
+            body = b'<html></html>'
+            headers['X-Frame-Options'] = 'SAMEORIGIN'
+        elif self.path == '/csp':
+            # frame-ancestors wins over X-Frame-Options.
+            body = b'<html></html>'
+            headers['X-Frame-Options'] = 'DENY'
+            headers['Content-Security-Policy'] = "default-src 'self'; frame-ancestors 'self' http://192.168.1.250"
         elif self.path in ('/assets/icon.png', '/favicon.ico'):
             body = PNG
             headers['Content-Type'] = 'image/png'
@@ -143,6 +159,47 @@ class FaviconTests(unittest.TestCase):
             self.assertIsNone(favicon.get_icon('https://missing.test/'))
             self.assertIsNone(favicon.get_icon('https://missing.test/'))
             self.assertEqual(discover.call_count, 1)
+
+    def test_frame_check_reads_the_final_response_headers(self):
+        gateway = 'http://192.168.1.250'
+        with self.fixture_access():
+            self.assertEqual(favicon.frame_check(self.base + '/nested/page', gateway), (True, ''))
+            self.assertEqual(favicon.frame_check(self.base + '/xfo-deny', gateway), (False, 'x-frame-options'))
+            self.assertEqual(favicon.frame_check(self.base + '/login', gateway), (False, 'x-frame-options'))
+            self.assertEqual(favicon.frame_check(self.base + '/csp', gateway), (True, ''))
+            self.assertEqual(favicon.frame_check(self.base + '/csp', 'http://192.168.1.99'), (False, 'frame-ancestors'))
+        self.assertIn('/xfo-sameorigin', [path for path, _ in FixtureHandler.requests])
+        for _, headers in FixtureHandler.requests:
+            self.assertNotIn('Cookie', headers)
+            self.assertNotIn('Referer', headers)
+        # A site the gateway cannot read is not reported as refusing.
+        self.assertEqual(favicon.frame_check(self.base + '/nested/page', gateway), (None, ''))
+        for origin in ('', 'javascript:alert(1)', 'http://192.168.1.250/page', 'ftp://192.168.1.250'):
+            with self.subTest(origin=origin), self.assertRaises(ValueError):
+                favicon.frame_check(self.base + '/nested/page', origin)
+
+    def test_frame_policies(self):
+        def verdict(page, resource='http://192.168.1.239:9999', **headers):
+            message = http.client.parse_headers(io.BytesIO(''.join(
+                f'{key.replace("_", "-")}: {value}\r\n' for key, values in headers.items()
+                for value in ([values] if isinstance(values, str) else values)).encode() + b'\r\n'))
+            return favicon.frame_verdict(message, favicon.parse_origin(page), favicon.parse_origin(resource))
+        gateway = 'http://192.168.1.250'
+        self.assertEqual(verdict(gateway), '')
+        self.assertEqual(verdict(gateway, X_Frame_Options='ALLOW-FROM http://192.168.1.250'), '')
+        self.assertEqual(verdict(gateway, X_Frame_Options='SAMEORIGIN'), 'x-frame-options')
+        self.assertEqual(verdict(gateway, gateway, X_Frame_Options='SAMEORIGIN'), '')
+        cases = [("frame-ancestors *", gateway, ''), ("frame-ancestors 'none'", gateway, 'frame-ancestors'),
+                 ("frame-ancestors 'self'", gateway, 'frame-ancestors'),
+                 ("frame-ancestors https:", gateway, 'frame-ancestors'), ("frame-ancestors https:", 'https://gw.home.arpa', ''),
+                 ("frame-ancestors *.home.arpa", 'http://gw.home.arpa', ''), ("frame-ancestors *.home.arpa", 'http://home.arpa', 'frame-ancestors'),
+                 ("frame-ancestors http://192.168.1.250:8080", gateway, 'frame-ancestors'),
+                 ("frame-ancestors 192.168.1.250", gateway, ''), ("frame-ancestors http://192.168.1.250/", gateway, ''),
+                 ("default-src 'self'", gateway, '')]
+        for policy, page, expected in cases:
+            with self.subTest(policy=policy, page=page):
+                self.assertEqual(verdict(page, Content_Security_Policy=policy), expected)
+        self.assertEqual(verdict(gateway, Content_Security_Policy=['frame-ancestors *', "frame-ancestors 'self'"]), 'frame-ancestors')
 
 
 if __name__ == '__main__':

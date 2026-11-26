@@ -180,6 +180,19 @@ class AuthTests(DataTest):
         with patch.object(server.favicon,'get_icon',return_value=None):
             with self.request(url,cookie=cookie) as response:self.assertEqual(response.status,404)
 
+    def test_frame_check_requires_login_and_reports_the_blocking_header(self):
+        url='/api/frame-check?url=http%3A%2F%2F192.168.1.239%3A9999%2F&origin=http%3A%2F%2F192.168.1.250'
+        with patch.object(server.favicon,'frame_check',return_value=(False,'x-frame-options')) as check:
+            with self.request(url) as response:self.assertEqual(response.status,401)
+            check.assert_not_called()
+            with self.request('/api/auth/setup',{'password':'a'}) as response:
+                cookie=response.headers['Set-Cookie'].split(';')[0]
+            with self.request(url,cookie=cookie) as response:
+                self.assertEqual(json.load(response),{'framable':False,'reason':'x-frame-options'})
+            check.assert_called_once_with('http://192.168.1.239:9999/','http://192.168.1.250')
+        with self.request('/api/frame-check?url=ftp%3A%2F%2Fx&origin=http%3A%2F%2F192.168.1.250',cookie=cookie) as response:
+            self.assertEqual(response.status,400)
+
     def test_auto_icon_saves_without_fetching_and_preserves_existing_manual_card(self):
         with self.request('/api/auth/setup',{'password':'a'}) as response:
             cookie=response.headers['Set-Cookie'].split(';')[0]
@@ -577,7 +590,7 @@ class GatewayToolTests(DataTest):
         self.assertEqual(devices[3]['owner'], 'tag:server')
         self.assertEqual(devices[-1]['last_seen'], '2026-01-02T03:04:05Z')
 
-    def test_terminal_needs_a_password_session_and_same_origin(self):
+    def test_terminal_follows_the_login_setting_and_needs_the_same_origin(self):
         ttyd = self.root / 'ttyd'
         ttyd.write_text('#!/bin/sh\n')
         ttyd.chmod(0o755)
@@ -592,15 +605,15 @@ class GatewayToolTests(DataTest):
                 self.assertEqual(response.status, 403)
             with self.request('/api/terminal', cookie=self.cookie) as response:
                 self.assertEqual(json.load(response), {'available': True, 'reason': ''})
-            # With password login off the desktop opens freely, but a root shell does not.
+            # With password login off, the terminal opens like the rest of the desktop, but still only from this page.
             admin = state.read(self.dash / 'admin.json')
             state.save(self.dash / 'admin.json', {**admin, 'login_required': False})
-            with self.request('/api/auth/terminal', cookie=self.cookie) as response:
-                self.assertEqual(response.status, 401)
-            with self.request('/api/auth/check') as response:
+            with self.request('/api/auth/terminal', origin='http://' + self.host) as response:
                 self.assertEqual(response.status, 204)
+            with self.request('/api/auth/terminal', origin='https://elsewhere.invalid') as response:
+                self.assertEqual(response.status, 403)
             with self.request('/api/terminal') as response:
-                self.assertEqual(json.load(response), {'available': False, 'reason': 'login'})
+                self.assertEqual(json.load(response), {'available': True, 'reason': ''})
             with patch.dict(os.environ, {'GATEWAY_INSTALL_MODE': 'native'}), self.request('/api/terminal') as response:
                 self.assertEqual(json.load(response)['reason'], 'native')
         with patch.object(server, 'TTYD', self.root / 'missing'), self.request('/api/terminal', cookie=self.cookie) as response:

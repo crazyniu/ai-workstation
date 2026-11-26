@@ -358,7 +358,7 @@ function routeOptions(self = '') {
   const has = name => proxyModel.targets.includes(name);
   return [
     {label:'常用', options:[['DIRECT', '直连'], ...(has(RELAY) ? [[RELAY, '中转节点']] : []), ...(has(AI_POOL) && self !== AI_POOL ? [[AI_POOL, 'AI 分组的出口']] : [])]},
-    {label:'出口', options:proxyModel.deviceExits.map(name => [name, name])},
+    {label:'中转出口', options:proxyModel.deviceExits.map(name => [name, name])},
     {label:'分组', options:proxyModel.groups.map(g => g.name).filter(name => ![self, AI_POOL, RELAY].includes(name)).map(name => [name, name])},
     {label:'其他', options:[['REJECT', '拦截']]},
   ].filter(group => group.options.length);
@@ -372,7 +372,7 @@ function groupRouteOptions(current = '') {
   const groups = proxyModel.groups.map(g => g.name), common = [...[AI_POOL, RELAY].filter(name => groups.includes(name)), 'DIRECT'];
   const label = name => name === AI_POOL ? 'AI 分组的出口' : policyLabel(name);
   const options = [{label:'常用', options:common.map(name => [name, label(name)])},
-    {label:'出口', options:proxyModel.deviceExits.map(name => [name, name])}];
+    {label:'中转出口', options:proxyModel.deviceExits.map(name => [name, name])}];
   if (current && !groupRoutes().includes(current)) options.push({label:'当前', options:[[current, label(current)]]});
   return options.filter(group => group.options.length);
 }
@@ -380,7 +380,7 @@ function groupRouteOptions(current = '') {
 function routeHint(name) {
   if (name === 'DIRECT') return '不经过代理，直接访问';
   if (name === 'REJECT') return '阻止访问';
-  if (name === RELAY) return '使用中转订阅里的节点';
+  if (name === RELAY) return '使用订阅地址中的中转节点';
   if (name === AI_POOL) return '跟随 AI 分组的出口';
   if (proxyModel.deviceExits.includes(name)) return '从该出口访问';
   return name ? '跟随分组「' + name + '」的出口' : '尚未设置';
@@ -406,8 +406,8 @@ function renderProxy() {
 }
 
 function setupNotice(page) {
-  if (!proxyModel.deviceExits.length) page.append(callout('还没有出口。先添加一个 HTTP 或 SOCKS5 出口，再为设备或分组选择它。', 'warn', ['添加出口', () => navigateProxy('exits')]));
-  else if (!proxyModel.relayReady) page.append(callout('还没有中转订阅，经中转的出口暂时无法连通。', 'warn', ['添加中转订阅', () => navigateProxy('providers')]));
+  if (!proxyModel.deviceExits.length) page.append(callout('还没有中转出口。先添加一个 HTTP 或 SOCKS5 出口，再为设备或分组选择它。', 'warn', ['添加中转出口', () => navigateProxy('exits')]));
+  else if (!proxyModel.relayReady) page.append(callout('还没有订阅地址，经中转的出口暂时无法连通。', 'warn', ['添加订阅地址', () => navigateProxy('providers')]));
 }
 
 function drawBindings() {
@@ -425,7 +425,7 @@ function drawBindings() {
 }
 
 function drawGroups() {
-  const page = pane('分组', '把网站按用途分组（例如 Google、YouTube），为每个分组选择出口。未在「设备出口」中列出的设备按分组访问网站。',
+  const page = pane('分组规则', '把网站按用途分组（例如 Google、YouTube），为每个分组选择出口。未在「设备出口」中列出的设备按分组访问网站。',
     [labeledButton('plus', '添加分组', () => editGroup(), 'primary')]);
   setupNotice(page);
   const rows = siteGroups().map(g => {
@@ -523,10 +523,10 @@ async function drawDomains() {
 }
 
 function drawExits() {
-  const page = pane('出口', '出口是固定 IP 的 HTTP 或 SOCKS5 代理（例如住宅 IP）。HTTP 出口必须经由中转节点连接，SOCKS5 出口默认也经由中转节点。',
-    [labeledButton('plus', '添加出口', () => editExit(), 'primary')]);
+  const page = pane('中转出口', '中转出口是固定 IP 的 HTTP 或 SOCKS5 代理（例如住宅 IP）。HTTP 出口必须经由中转节点连接，SOCKS5 出口默认也经由中转节点。',
+    [labeledButton('plus', '添加中转出口', () => editExit(), 'primary')]);
   page.append(routeDiagram());
-  if (!proxyModel.relayReady) page.append(callout('还没有中转订阅，HTTP 出口和其他经中转的出口暂时无法连通。', 'warn', ['添加中转订阅', () => navigateProxy('providers')]));
+  if (!proxyModel.relayReady) page.append(callout('还没有订阅地址，HTTP 出口和其他经中转的出口暂时无法连通。', 'warn', ['添加订阅地址', () => navigateProxy('providers')]));
   const nodes = new Map((proxyModel.options.proxies || []).map(node => [node.name, node]));
   const rows = proxyModel.deviceExits.map(name => nodes.get(name)).filter(Boolean).map(node => {
     const editable = ['http', 'socks5'].includes(node.type), dialer = node['dialer-proxy'] || '';
@@ -537,7 +537,7 @@ function drawExits() {
       actions:[iconButton('edit', '编辑 ' + node.name, () => editable ? editExit(node) : editExitNote(node)),
         editable ? iconButton('trash', '删除 ' + node.name, () => deleteExit(node), 'danger') : null].filter(Boolean)});
   });
-  page.append(listCard(rows, emptyState('还没有出口', '添加住宅 IP 等固定出口后，就可以把它指定给设备或分组。')));
+  page.append(listCard(rows, emptyState('还没有中转出口', '添加住宅 IP 等固定出口后，就可以把它指定给设备或分组。')));
   if (rows.some(row => row.querySelector('[data-tone=warn]'))) page.append(element('p', '「未经中转」的出口由网关直接连接。编辑并保存 HTTP 出口后会改为经过中转；SOCKS5 出口可在「前置代理」中选择中转节点。', 'pane-note'));
 }
 
@@ -556,19 +556,19 @@ function routeDiagram() {
 }
 
 function drawProviders() {
-  const page = pane('中转订阅', '中转节点来自机场订阅，设置了前置代理的出口经由这些节点连接。需要切换具体的中转节点时，在 Clash 面板中选择「🔗 PROXY-RELAY」。',
-    [labeledButton('window', 'Clash 面板', () => openFrameApp('panel')), labeledButton('plus', '添加订阅', () => editProvider(), 'primary')]);
+  const page = pane('订阅地址', '中转节点来自机场订阅，设置了前置代理的出口经由这些节点连接。需要切换具体的中转节点时，在 Clash 面板中选择「🔗 PROXY-RELAY」。',
+    [labeledButton('window', 'Clash 面板', () => openFrameApp('panel')), labeledButton('plus', '添加订阅地址', () => editProvider(), 'primary')]);
   const rows = Object.entries(proxyModel.options['proxy-providers'] || {}).map(([name, provider]) => {
     let source = provider.type;
     try { source = new URL(provider.url).host; } catch {}
     return listRow({symbol:'relay', tint:'orange', title:name, subtitle:source,
       actions:[provider.type === 'http' ? iconButton('edit', '编辑 ' + name, () => editProvider({...provider, name})) : null,
         iconButton('trash', '删除 ' + name, () => guard(async () => {
-          if (!await askConfirm('删除中转订阅「' + name + '」？出口将无法使用这个订阅里的节点。', '删除中转订阅', {accept:'删除', danger:true})) return;
+          if (!await askConfirm('删除订阅地址「' + name + '」？中转出口将无法使用这个订阅里的节点。', '删除订阅地址', {accept:'删除', danger:true})) return;
           await updateProxyDraft({kind:'provider', name, remove:true});
         }), 'danger')].filter(Boolean)});
   });
-  page.append(listCard(rows, emptyState('还没有中转订阅', '添加机场订阅地址后，出口就能经由订阅中的节点连接。')));
+  page.append(listCard(rows, emptyState('还没有订阅地址', '添加机场订阅地址后，中转出口就能经由订阅中的节点连接。')));
 }
 
 function readRule(text) {
@@ -664,7 +664,7 @@ function proxyDialog({title, intro = '', submit = '完成', build, done = null})
 }
 
 function editBinding(item = null) {
-  if (!proxyModel.deviceExits.length) { toast('请先在「出口」中添加出口。', true); return; }
+  if (!proxyModel.deviceExits.length) { toast('请先在「中转出口」中添加出口。', true); return; }
   proxyDialog({title:item ? '编辑设备出口' : '添加设备', submit:item ? '保存' : '添加',
     intro:'这些设备访问互联网的全部流量都从所选出口发出。',
     build:field => {
@@ -676,7 +676,7 @@ function editBinding(item = null) {
 }
 
 function editExit(item = null) {
-  proxyDialog({title:item ? '编辑出口' : '添加出口', submit:item ? '保存' : '添加',
+  proxyDialog({title:item ? '编辑中转出口' : '添加中转出口', submit:item ? '保存' : '添加',
     intro:'填写出口代理的连接信息。',
     build:field => {
       field('name', '名称', item?.name, {required:true, placeholder:'例如：美国住宅 01'});
@@ -720,13 +720,13 @@ function deleteExit(item) {
   return guard(async () => {
     const devices = proxyModel.bindings.filter(b => b.target === item.name).length;
     if (devices) { toast('「' + item.name + '」仍被 ' + devices + ' 台设备使用。请先在「设备出口」中为它们改用其他出口。', true); return; }
-    if (!await askConfirm('删除出口「' + item.name + '」？', '删除出口', {accept:'删除', danger:true})) return;
+    if (!await askConfirm('删除中转出口「' + item.name + '」？', '删除中转出口', {accept:'删除', danger:true})) return;
     await updateProxyDraft({kind:'exit', original:item.name, remove:true});
   });
 }
 
 function editProvider(item = null) {
-  proxyDialog({title:item ? '编辑中转订阅' : '添加中转订阅', submit:item ? '保存' : '添加',
+  proxyDialog({title:item ? '编辑订阅地址' : '添加订阅地址', submit:item ? '保存' : '添加',
     intro:'填写机场提供的 Clash / Mihomo 订阅地址。订阅中的节点会作为中转节点。',
     build:field => {
       const name = field('name', '名称', item?.name, {required:true, placeholder:'例如：机场 A'});

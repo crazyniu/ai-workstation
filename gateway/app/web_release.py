@@ -99,12 +99,12 @@ def running():
 
 def begin(tag):
     if not isinstance(tag, str) or not TAG.fullmatch(tag):
-        raise ValueError('请选择有效的网关 Web 版本')
+        raise ValueError('请选择有效的 Niu Gateway 版本')
     with locked() as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            raise ValueError('网关 Web 正在升级') from None
+            raise ValueError('Niu Gateway 正在升级') from None
         job = dict(id=uuid.uuid4().hex, tag=tag, status='running')
         save(JOB, job)
         try:
@@ -189,6 +189,6 @@ if __name__ == '__main__':
     try:
         install(target)
     except Exception as exc:
-        save(JOB, dict(id=ident, tag=target, status='error', error=str(exc) if isinstance(exc, ValueError) else '网关 Web 升级失败'))
+        save(JOB, dict(id=ident, tag=target, status='error', error=str(exc) if isinstance(exc, ValueError) else 'Niu Gateway 升级失败'))
         sys.exit(1)
     save(JOB, dict(id=ident, tag=target, status='success'))
