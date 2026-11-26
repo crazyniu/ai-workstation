@@ -10,7 +10,7 @@
   <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180">
   <link rel="stylesheet" href="/vendor/winbox/winbox.min.css?v=9d6b72dc5f03">
-  <link rel="stylesheet" href="/style.css?v=4d3d3dcc56e9">
+  <link rel="stylesheet" href="/style.css?v=e1cd7a4afba6">
   <link rel="stylesheet" href="/loading.css?v=e549cd70c0dd">
   <link rel="stylesheet" href="/favicon.css?v=941afb91f398">
 </head>
@@ -40,25 +40,34 @@
     <symbol id="i-feed" viewBox="0 0 24 24"><path d="M5 11a8 8 0 0 1 8 8M5 4.5A14.5 14.5 0 0 1 19.5 19"/><circle cx="6" cy="18" r="1.4"/></symbol>
     <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6.5" cy="5.5" r="2"/><circle cx="6.5" cy="18.5" r="2"/><circle cx="17.5" cy="8" r="2"/><path d="M6.5 7.5v9M17.5 10a6 6 0 0 1-6 6H8.4"/></symbol>
     <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.8 5l-3.6 14"/></symbol>
+    <symbol id="i-devices" viewBox="0 0 24 24"><rect x="2.5" y="5" width="13.5" height="9.5" rx="1.6"/><path d="M1.5 18h12"/><rect x="17" y="8.5" width="5" height="10.5" rx="1.3"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.3 2.6 3.4 5.4 3.4 8.5s-1.1 5.9-3.4 8.5c-2.3-2.6-3.4-5.4-3.4-8.5s1.1-5.9 3.4-8.5Z"/></symbol>
+    <symbol id="i-relay" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.2"/><circle cx="19" cy="12" r="2.2"/><path d="M7.2 12h9.6M13.5 8.6l3.3 3.4-3.3 3.4"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m11 3.5 1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9 1.9-5Z"/><path d="m18.5 15 .8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2Z"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6.5h11M9 12h11M9 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+    <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.6-2-3.4-2.4 1a7.5 7.5 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5A7.5 7.5 0 0 0 7 6.5l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 3l-2 1.6 2 3.4 2.4-1a7.5 7.5 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.5 7.5 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.6Z"/></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="m4 16 4.5-4.5 4 4 2.5-2.5 5 5"/><circle cx="15.5" cy="9" r="1.5"/></symbol>
   </svg>
 
-  <header class="topbar">
-    <div class="desktop-toolbar" aria-label="桌面工具">
-      <button id="show-desktop" title="显示桌面" aria-label="显示桌面"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
-      <button id="open-settings" title="控制面板" aria-label="控制面板"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor" stroke="none"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></g></svg></button>
-      <span class="toolbar-divider"></span><a class="brand" href="/" aria-label="网关桌面">Gateway</a>
+  <header class="menubar">
+    <div class="menubar-start">
+      <button id="system-menu-button" class="menubar-item menubar-logo" aria-haspopup="menu" aria-expanded="false" aria-controls="system-menu" aria-label="网关菜单"><img src="/favicon.svg" alt="" width="16" height="16"></button>
+      <strong id="menubar-app" class="menubar-app">Gateway</strong>
     </div>
-    <div class="top-actions">
-      <button class="range-launch" data-page="ranges"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pin"/></svg><span>固定出口</span></button>
-      <button id="add" title="添加链接" aria-label="添加链接"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-      <button id="open-personalization" title="个性化" aria-label="个性化"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m4 16 5-5 4 4 3-3 5 5"/><circle cx="16.5" cy="8.5" r="1.5"/></svg></button>
+    <div class="menubar-end">
+      <button id="menubar-updates" class="menubar-item" data-page="updates" hidden><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg><span id="menubar-updates-count"></span></button>
+      <button id="menubar-tailscale" class="menubar-item" data-page="tailscale" hidden><img src="/icons/tailscale.svg" alt="" width="16" height="16"><span class="menubar-dot" aria-hidden="true"></span><span class="visually-hidden" id="menubar-tailscale-label">Tailscale</span></button>
+      <time id="menubar-clock" class="menubar-clock"></time>
     </div>
   </header>
+  <div id="system-menu" class="context-menu system-menu" role="menu" aria-label="网关菜单" hidden></div>
   <main class="desktop-workspace">
-    <section class="desktop" id="desktop" aria-label="桌面应用"></section>
-    <footer class="desktop-footer"><span id="home-domain"></span></footer>
+    <section class="desktop" id="desktop" aria-label="桌面链接"></section>
   </main>
+  <nav class="dock" id="dock" aria-label="程序坞"></nav>
 
   <dialog id="auth-dialog" class="auth-window" aria-labelledby="auth-title">
     <form id="auth-form" class="auth">
@@ -75,20 +84,19 @@
   </dialog>
 
   <dialog id="settings-dialog" class="settings-window is-overview" aria-labelledby="settings-title">
-    <header class="window-header">
-      <div class="window-controls"><button class="traffic-close" id="close-settings" aria-label="关闭设置"></button><button class="traffic-min" id="minimize-settings" aria-label="最小化设置"></button><button class="traffic-max" id="maximize-settings" aria-label="最大化设置"></button></div>
-      <h1 id="settings-title">控制面板</h1>
-    </header>
+    <div class="window-toolbar" id="settings-toolbar">
+      <button type="button" class="toolbar-button toolbar-back" id="settings-back" data-page="overview" aria-label="返回所有设置" title="所有设置"><svg class="glyph" aria-hidden="true"><use href="#i-chevron-left"/></svg></button>
+    </div>
     <div class="settings-body">
       <nav id="settings-nav" class="settings-nav" aria-label="设置分类">
         <label class="nav-search"><svg class="glyph" aria-hidden="true"><use href="#i-search"/></svg><span class="visually-hidden">搜索设置</span><input id="settings-search" type="search" placeholder="搜索设置" autocomplete="off" spellcheck="false"></label>
         <button data-page="overview" data-keywords="概览 首页 状态 overview"><img src="/icons/settings.svg" alt=""><span>概览</span></button>
         <p class="nav-group">网络</p>
-        <button data-page="proxy" data-keywords="clash mihomo 代理 节点 订阅 规则 策略 分组 yaml"><img src="/icons/clash.svg" alt=""><span>代理配置</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
-        <button data-page="ranges" data-keywords="固定出口 网段 绑定 出口 ip"><img src="/icons/routes.svg" alt=""><span>固定出口</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
+        <button data-page="proxy" data-keywords="clash mihomo 代理 节点 订阅 中转 规则 分组 出口 yaml"><img src="/icons/clash.svg" alt=""><span>代理配置</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
+        <button data-page="ranges" data-keywords="设备出口 固定出口 网段 绑定 出口 ip"><img src="/icons/routes.svg" alt=""><span>设备出口</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
         <button data-page="dns" data-keywords="dns 域名 主页 home.arpa 地址"><img src="/icons/dns.svg" alt=""><span>DNS 与域名</span></button>
         <button data-page="tailscale" data-keywords="tailscale 远程 vpn 子网 路由"><img src="/icons/tailscale.svg" alt=""><span>Tailscale</span><span class="nav-dot" id="nav-tailscale-dot" hidden></span></button>
-        <a href="/adguard/" target="_blank" rel="noopener" data-keywords="adguard 广告 过滤 dns 查询"><img src="/icons/adguard.svg" alt=""><span>广告过滤</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-external"/></svg></a>
+        <button data-app="adguard" data-keywords="adguard 广告 过滤 dns 查询"><img src="/icons/adguard.svg" alt=""><span>广告过滤</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
         <p class="nav-group">桌面与账户</p>
         <button data-page="desktop" data-keywords="桌面 链接 工作站 图标 入口"><img src="/icons/folder.svg" alt=""><span>桌面管理</span></button>
         <button data-personalization data-keywords="个性化 壁纸 主题 暗色 亮色 外观"><img src="/icons/appearance.svg" alt=""><span>个性化</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
@@ -99,7 +107,6 @@
         <p class="nav-empty" id="settings-search-empty" hidden>没有匹配的设置</p>
       </nav>
       <div class="content" id="settings-content">
-        <div class="content-bar"><button type="button" class="page-back" data-page="overview"><svg class="glyph" aria-hidden="true"><use href="#i-chevron-left"/></svg>所有设置</button></div>
 
         <section id="settings-overview" data-section="overview">
           <header class="page-header"><div><h2>概览</h2><p>网关运行状态与全部设置入口。</p></div></header>
@@ -123,11 +130,11 @@
 
           <h3 class="section-title">网络</h3>
           <div class="settings-tiles">
-            <button type="button" class="tile" data-page="proxy"><img src="/icons/clash.svg" alt=""><span class="tile-copy"><strong>代理配置</strong><span>策略分组、代理池、节点订阅与分流规则</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
-            <button type="button" class="tile" data-page="ranges"><img src="/icons/routes.svg" alt=""><span class="tile-copy"><strong>固定出口</strong><span>按局域网网段绑定指定的代理出口</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-page="proxy"><img src="/icons/clash.svg" alt=""><span class="tile-copy"><strong>代理配置</strong><span>分组、出口、中转订阅与分流规则</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-page="ranges"><img src="/icons/routes.svg" alt=""><span class="tile-copy"><strong>设备出口</strong><span>为单个 IP 或 IP 段指定出口</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
             <button type="button" class="tile" data-page="dns"><img src="/icons/dns.svg" alt=""><span class="tile-copy"><strong>DNS 与域名</strong><span>主页域名与 DNS 查询入口</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
             <button type="button" class="tile" data-page="tailscale"><img src="/icons/tailscale.svg" alt=""><span class="tile-copy"><strong>Tailscale</strong><span>远程访问与内网子网路由</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
-            <a class="tile" href="/adguard/" target="_blank" rel="noopener"><img src="/icons/adguard.svg" alt=""><span class="tile-copy"><strong>广告过滤</strong><span>在 AdGuard Home 中管理过滤规则与查询日志</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-external"/></svg></a>
+            <button type="button" class="tile" data-app="adguard"><img src="/icons/adguard.svg" alt=""><span class="tile-copy"><strong>广告过滤</strong><span>在 AdGuard Home 中管理过滤规则与查询日志</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
           </div>
           <h3 class="section-title">桌面与账户</h3>
           <div class="settings-tiles">
@@ -160,7 +167,7 @@
             <div class="setting-row">
               <img class="row-icon" src="/icons/adguard.svg" alt="">
               <div class="setting-copy"><strong>AdGuard Home</strong><span>广告过滤、DNS 查询日志与上游 DNS 在 AdGuard Home 中管理。</span></div>
-              <a href="/adguard/" target="_blank" rel="noopener" class="button-link">打开<svg class="glyph" aria-hidden="true"><use href="#i-external"/></svg></a>
+              <button type="button" data-app="adguard">打开</button>
             </div>
           </div>
         </section>
@@ -287,9 +294,10 @@
 
   <dialog id="proxy-entry" class="sheet small-window" aria-labelledby="proxy-entry-title">
     <form id="proxy-entry-form" method="dialog" aria-labelledby="proxy-entry-title">
-      <header class="sheet-header"><button type="button" id="back-proxy-entry" class="icon-button" aria-label="返回列表"><svg class="glyph" aria-hidden="true"><use href="#i-chevron-left"/></svg></button><h2 id="proxy-entry-title"></h2></header>
+      <header class="sheet-header"><h2 id="proxy-entry-title"></h2><button type="button" class="icon-button" id="back-proxy-entry" aria-label="关闭"><svg class="glyph" aria-hidden="true"><use href="#i-close"/></svg></button></header>
+      <p id="proxy-entry-intro" class="sheet-intro" hidden></p>
       <div id="proxy-entry-fields" class="form-content"></div>
-      <div class="window-actions"><button type="button" id="proxy-entry-cancel">取消</button><button class="primary" type="submit">写入配置草稿</button></div>
+      <div class="window-actions"><button type="button" id="proxy-entry-cancel">取消</button><button class="primary" type="submit" id="proxy-entry-submit">完成</button></div>
     </form>
   </dialog>
 
@@ -345,40 +353,39 @@
     <div class="window-actions"><button type="button" id="wallpaper-cancel">取消</button><button type="button" class="primary" id="wallpaper-apply">应用</button></div>
   </dialog>
 
-  <dialog id="proxy-window" aria-label="Clash 配置编辑器">
+  <dialog id="proxy-window" aria-label="代理配置">
+    <div class="window-toolbar" id="proxy-toolbar">
+      <button type="button" class="toolbar-button toolbar-back" id="proxy-back" aria-label="返回" title="返回" hidden><svg class="glyph" aria-hidden="true"><use href="#i-chevron-left"/></svg></button>
+      <span class="toolbar-spacer"></span>
+      <span id="proxy-change-state" class="toolbar-status" role="status"></span>
+      <button type="button" class="toolbar-button" id="discard-config" disabled>放弃更改</button>
+      <button type="button" class="toolbar-button primary" id="save-config" disabled>应用</button>
+    </div>
     <div id="proxy-workspace">
-      <div class="proxy-layout"><nav class="proxy-nav" aria-label="配置分类">
-        <button type="button" data-proxy-tab="bindings" aria-pressed="false"><svg class="glyph" aria-hidden="true"><use href="#i-pin"/></svg><span>固定出口</span></button>
-        <button type="button" data-proxy-tab="exits" aria-pressed="false"><svg class="glyph" aria-hidden="true"><use href="#i-server"/></svg><span>代理池</span></button>
-        <button type="button" data-proxy-tab="groups" aria-pressed="false"><svg class="glyph" aria-hidden="true"><use href="#i-layers"/></svg><span>策略分组</span></button>
-        <button type="button" data-proxy-tab="providers" aria-pressed="false"><svg class="glyph" aria-hidden="true"><use href="#i-feed"/></svg><span>节点订阅</span></button>
-        <button type="button" data-proxy-tab="rules" aria-pressed="false"><svg class="glyph" aria-hidden="true"><use href="#i-branch"/></svg><span>分流规则</span></button>
-        <button type="button" id="config-code" aria-pressed="false"><svg class="glyph" aria-hidden="true"><use href="#i-code"/></svg><span id="config-code-label">配置信息</span></button>
-      </nav><div class="proxy-canvas"><div id="proxy-fields">
-            <section id="proxy-browser">
-              <fieldset id="routing-defaults" class="routing-defaults">
-                <legend>AI 默认出口</legend>
-                <div id="ai-default-exit"></div>
-              </fieldset>
-              <button type="button" id="back-to-policy-groups" class="text-button" hidden><svg class="glyph" aria-hidden="true"><use href="#i-chevron-left"/></svg>返回策略分组</button>
-              <div class="proxy-browser-heading"><div><h3 id="proxy-browser-title" tabindex="-1"></h3><span id="proxy-count" class="count-badge" role="status"></span></div><button id="add-proxy-item" class="primary"></button></div>
-              <div class="proxy-filters" id="proxy-filters" hidden>
-                <label id="rule-policy-label" class="field" hidden><span>执行策略</span><select id="rule-policy-filter"></select></label>
-                <label id="proxy-search-label" class="field search-field" hidden><span>搜索</span><input id="proxy-search" type="search" placeholder="输入域名" autocomplete="off"></label>
-              </div>
-              <div id="proxy-results"></div>
-              <div id="proxy-pager"><label>每页<select id="proxy-page-size" aria-label="每页显示数量"><option>10</option><option selected>20</option><option>50</option><option>100</option></select>条</label><button id="proxy-prev" aria-label="上一页"><svg class="glyph" aria-hidden="true"><use href="#i-chevron-left"/></svg></button><span id="proxy-page"></span><button id="proxy-next" aria-label="下一页"><svg class="glyph" aria-hidden="true"><use href="#i-chevron-right"/></svg></button></div>
-            </section>
-          </div>
-          <section id="proxy-config-page" hidden>
-            <div class="proxy-toolbar">
-              <div><h3>配置信息</h3><strong id="config-filename" role="status">config.yaml</strong></div>
-              <div class="toolbar-actions"><button id="upload-config"><svg class="glyph" aria-hidden="true"><use href="#i-upload"/></svg>导入 YAML</button><button id="download-config"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg>导出 YAML</button><a class="button-link" href="/ui/" target="_blank" rel="noopener">节点面板<svg class="glyph" aria-hidden="true"><use href="#i-external"/></svg></a><button id="save-config" class="primary">保存并应用</button></div>
+      <div class="proxy-layout" data-view="page">
+        <nav class="proxy-nav" aria-label="代理配置">
+          <p class="nav-group">分流</p>
+          <button type="button" data-proxy-tab="bindings"><span class="nav-symbol" data-tint="blue"><svg class="glyph" aria-hidden="true"><use href="#i-devices"/></svg></span><span>设备出口</span></button>
+          <button type="button" data-proxy-tab="groups"><span class="nav-symbol" data-tint="purple"><svg class="glyph" aria-hidden="true"><use href="#i-layers"/></svg></span><span>分组</span></button>
+          <p class="nav-group">线路</p>
+          <button type="button" data-proxy-tab="exits"><span class="nav-symbol" data-tint="green"><svg class="glyph" aria-hidden="true"><use href="#i-server"/></svg></span><span>出口</span></button>
+          <button type="button" data-proxy-tab="providers"><span class="nav-symbol" data-tint="orange"><svg class="glyph" aria-hidden="true"><use href="#i-relay"/></svg></span><span>中转订阅</span></button>
+          <p class="nav-group">高级</p>
+          <button type="button" data-proxy-tab="rules"><span class="nav-symbol" data-tint="gray"><svg class="glyph" aria-hidden="true"><use href="#i-list"/></svg></span><span>全部规则</span></button>
+          <button type="button" data-proxy-tab="yaml" id="config-code"><span class="nav-symbol" data-tint="gray"><svg class="glyph" aria-hidden="true"><use href="#i-code"/></svg></span><span id="config-code-label">YAML 配置</span></button>
+        </nav>
+        <div class="proxy-canvas">
+          <section id="proxy-page" aria-labelledby="proxy-page-title"></section>
+          <section id="proxy-config-page" hidden aria-labelledby="config-title">
+            <header class="pane-header">
+              <div><h2 id="config-title" tabindex="-1">YAML 配置</h2><p id="config-filename" role="status">config.yaml</p></div>
+              <div class="pane-actions"><button type="button" id="upload-config"><svg class="glyph" aria-hidden="true"><use href="#i-upload"/></svg>导入</button><button type="button" id="download-config"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg>导出</button></div>
               <input id="config-file" type="file" accept=".yaml,.yml" hidden>
-            </div>
+            </header>
             <div id="config-editor" hidden><textarea id="config-content" aria-label="Clash YAML 配置" spellcheck="false"></textarea></div>
           </section>
-      </div></div>
+        </div>
+      </div>
     </div>
   </dialog>
   <dialog id="confirm-dialog" class="confirm-window" aria-labelledby="confirm-title"><div class="confirm-content"><span class="confirm-icon" aria-hidden="true"><svg class="glyph"><use href="#i-alert"/></svg></span><div><h2 id="confirm-title">确认操作</h2><p id="confirm-copy"></p></div></div><div class="window-actions"><button id="confirm-cancel">取消</button><button class="primary" id="confirm-accept">确定</button></div></dialog>
@@ -386,9 +393,8 @@
   <script src="/toast.js?v=213fd4fb47a6"></script>
   <script src="/assets/config-editor.bundle.js?v=e91ff9456f76"></script>
   <script src="/vendor/winbox/winbox.min.js?v=cd0b4efd9450"></script>
-  <script src="/proxy-rules.js?v=e02b570565b4"></script>
-  <script src="/proxy-editor.js?v=678cd147a754"></script>
+  <script src="/proxy-editor.js?v=c0759f9d5525"></script>
   <script src="/build-info.js?v=98bb99b2069d"></script>
-  <script src="/app.js?v=262af120eade"></script>
+  <script src="/app.js?v=45a32da55946"></script>
 </body>
 </html>

@@ -4,8 +4,24 @@ const base = '/api/transfer/';
 const chunkSize = 8 * 1024 * 1024;
 const join = (parent, name) => parent ? parent + '/' + name : name;
 const current = () => new URLSearchParams(location.search).get('path') || '';
-const pathQuery = path => '?' + new URLSearchParams({path});
-const endpoint = (kind, path) => base + kind + pathQuery(path);
+// Opened inside a gateway desktop window: keep links in that window.
+const embedded = new URLSearchParams(location.search).has('embed');
+const home = embedded ? './?embed=1' : './';
+const apiQuery = path => '?' + new URLSearchParams({path});
+const pathQuery = path => '?' + new URLSearchParams(embedded ? {path, embed: '1'} : {path});
+const endpoint = (kind, path) => base + kind + apiQuery(path);
+
+// Follow the appearance chosen on the gateway desktop (same origin).
+const systemDark = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme() {
+  let chosen = 'auto';
+  try { chosen = localStorage.getItem('gateway-theme') || 'auto'; } catch {}
+  document.documentElement.dataset.theme = chosen === 'dark' || (chosen === 'auto' && systemDark.matches) ? 'dark' : 'light';
+}
+applyTheme();
+systemDark.addEventListener('change', applyTheme);
+addEventListener('storage', event => { if (event.key === 'gateway-theme') applyTheme(); });
+if (embedded) document.documentElement.classList.add('embedded');
 
 function status(message) {
   $('status').textContent = message;
@@ -44,7 +60,7 @@ function readableSize(bytes) {
 
 function breadcrumbs(path) {
   const parts = path ? path.split('/') : [];
-  $('crumbs').replaceChildren(parts.length ? link('全部文件', './') : node('span', '全部文件'));
+  $('crumbs').replaceChildren(parts.length ? link('全部文件', home) : node('span', '全部文件'));
   parts.forEach((part, index) => {
     const target = parts.slice(0, index + 1).join('/');
     $('crumbs').append(node('span', '/'), index === parts.length - 1 ? node('span', part) : link(part, pathQuery(target)));
@@ -171,7 +187,7 @@ $('clear').onclick = () => {
   if (!confirm('清空整个共享区？所有文件和文件夹都将永久删除。')) return;
   run(async () => {
     await request(base + 'all', {method: 'DELETE'});
-    history.replaceState(null, '', './');
+    history.replaceState(null, '', home);
     toast('已清空全部文件和文件夹');
     await refresh();
   });

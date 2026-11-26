@@ -10,13 +10,14 @@ The image is a project showcase. The running release determines the current inte
 
 ## Gateway interface captures
 
-- [Desktop operation feedback](gateway-global-toast-desktop.jpg) shows the global toast above the gateway settings window.
-- [Mobile-size operation feedback](gateway-global-toast-mobile.jpg) shows the same interface in a 390px browser responsive viewport. This capture does not represent verification on a physical phone.
-
-- [Control panel overview](gateway-control-panel.jpg) shows the redesigned settings window at 1280 × 800: sidebar search, status cards for the gateway, Tailscale and versions, and grouped setting entries.
+- [Control panel overview](gateway-control-panel.jpg) shows the desktop at 1280 × 800: the menu bar, the Dock, and the control panel window with its unified toolbar, edge-to-edge sidebar, status cards and grouped setting entries.
 - [Control panel in dark mode](gateway-control-panel-dark.jpg) shows the Tailscale page with status pills and the subnet-route card.
+- [Clash editor](gateway-clash-editor.jpg) shows the proxy configuration window: site groups with their exits, on/off switches and the fallback for other sites.
+- [Desktop operation feedback](gateway-global-toast-desktop.jpg) shows the notification above the Dock, clear of window toolbars.
+- [Phone home screen](gateway-home-mobile.jpg) shows the 390px layout: status bar, four-column icon grid and the Dock.
 - [Control panel at phone size](gateway-control-panel-mobile.jpg) shows the full-screen overview in a 390px browser responsive viewport.
+- [Mobile-size operation feedback](gateway-global-toast-mobile.jpg) shows the notification in the top safe area at the same size.
 
-The control-panel captures come from a local preview that runs the gateway API with simulated Tailscale, release and supervisor data; addresses use documentation ranges. The toast captures accompany the global-toast implementation in [PR #18](https://github.com/crazyniu/ai-workstation/pull/18). They illustrate the interface at that revision; validation details are recorded in the pull request.
+All gateway captures come from a local preview that runs the gateway API with simulated Tailscale, release and supervisor data; exit addresses use documentation ranges. Phone-size captures come from a browser responsive viewport and do not represent verification on a physical phone.
 
 Project and third-party artwork retain the terms described in the [root NOTICE](../../NOTICE) and [gateway NOTICE](../../gateway/NOTICE). Product names and marks belong to their respective owners.
