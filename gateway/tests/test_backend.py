@@ -590,7 +590,7 @@ class GatewayToolTests(DataTest):
         self.assertEqual(devices[3]['owner'], 'tag:server')
         self.assertEqual(devices[-1]['last_seen'], '2026-01-02T03:04:05Z')
 
-    def test_terminal_needs_a_password_session_and_same_origin(self):
+    def test_terminal_follows_the_login_setting_and_needs_the_same_origin(self):
         ttyd = self.root / 'ttyd'
         ttyd.write_text('#!/bin/sh\n')
         ttyd.chmod(0o755)
@@ -605,15 +605,15 @@ class GatewayToolTests(DataTest):
                 self.assertEqual(response.status, 403)
             with self.request('/api/terminal', cookie=self.cookie) as response:
                 self.assertEqual(json.load(response), {'available': True, 'reason': ''})
-            # With password login off the desktop opens freely, but a root shell does not.
+            # With password login off, the terminal opens like the rest of the desktop, but still only from this page.
             admin = state.read(self.dash / 'admin.json')
             state.save(self.dash / 'admin.json', {**admin, 'login_required': False})
-            with self.request('/api/auth/terminal', cookie=self.cookie) as response:
-                self.assertEqual(response.status, 401)
-            with self.request('/api/auth/check') as response:
+            with self.request('/api/auth/terminal', origin='http://' + self.host) as response:
                 self.assertEqual(response.status, 204)
+            with self.request('/api/auth/terminal', origin='https://elsewhere.invalid') as response:
+                self.assertEqual(response.status, 403)
             with self.request('/api/terminal') as response:
-                self.assertEqual(json.load(response), {'available': False, 'reason': 'login'})
+                self.assertEqual(json.load(response), {'available': True, 'reason': ''})
             with patch.dict(os.environ, {'GATEWAY_INSTALL_MODE': 'native'}), self.request('/api/terminal') as response:
                 self.assertEqual(json.load(response)['reason'], 'native')
         with patch.object(server, 'TTYD', self.root / 'missing'), self.request('/api/terminal', cookie=self.cookie) as response:

@@ -386,7 +386,7 @@ function updateLoginHint(){
   const required=$('#login-required').checked,changed=required!==loginRequiredSaved,hint=$('#login-settings-status');
   $('#login-confirm').hidden=!changed;if(!changed)$('#login-settings-password').value='';
   hint.className='callout '+(required?'':'warn');
-  hint.textContent=required?'开启后，打开 Niu Gateway 需要输入管理员密码。':'关闭后，能访问网关网页的设备都可以直接管理网关。';
+  hint.textContent=required?'开启后，打开 Niu Gateway 需要输入管理员密码。':'关闭后，能访问网关网页的设备都可以直接管理网关，包括使用终端。';
 }
 $('#login-required').addEventListener('change',updateLoginHint);
 async function readAccess() {
@@ -698,7 +698,6 @@ const frameApps={
 };
 // The terminal is a root shell on the gateway, served by ttyd in the gateway image.
 const terminalNotes={
-  login:['终端需要密码登录','终端可以直接以 root 身份操作网关，只在开启“登录需要密码”后提供。','前往账户设置'],
   image:['终端暂不可用','当前网关镜像还没有终端组件。Niu Gateway 可以在线更新，终端需要更新网关镜像后才能使用。','知道了'],
   native:['终端暂不可用','原生安装的网关不内置终端，请使用这台主机自身的 SSH 或终端。','知道了'],
 };
@@ -707,7 +706,7 @@ async function openTerminal(){
   const state=await api('/terminal');
   if(state.available){openFrameApp('terminal');return;}
   const [title,copy,accept]=terminalNotes[state.reason]||terminalNotes.image;
-  if(await askConfirm(copy,title,{accept})&&state.reason==='login')openSettings('account');
+  await askConfirm(copy,title,{accept});
 }
 const frameWindows=new Map();
 function openLinkWindow(card,iconSource=''){
