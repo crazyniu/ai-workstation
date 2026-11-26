@@ -129,27 +129,37 @@ def follow(url, deadline, accept, use):
     raise ValueError('Icon unavailable')
 
 
+def read_upto(response, sock, size, deadline):
+    """Read at most `size` bytes of a response body."""
+    chunks, total = [], 0
+    while total < size:
+        # read1 avoids waiting for an entire chunk when a peer trickles data.
+        timeout = remaining(deadline)
+        if sock.fileno() >= 0:
+            sock.settimeout(timeout)
+        chunk = response.read1(min(65536, size - total))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        total += len(chunk)
+    return b''.join(chunks)
+
+
+def readable(response):
+    return response.status == 200 and response.getheader('Content-Encoding', 'identity').lower() == 'identity'
+
+
 def fetch(url, limit, deadline):
     def read(response, sock, url):
-        if response.status != 200 or response.getheader('Content-Encoding', 'identity').lower() != 'identity':
+        if not readable(response):
             raise ValueError('Icon unavailable')
         length = response.getheader('Content-Length')
         if length is not None and int(length) > limit:
             raise ValueError('Icon response too large')
-        chunks, size = [], 0
-        while True:
-            # read1 avoids waiting for an entire chunk when a peer trickles data.
-            timeout = remaining(deadline)
-            if sock.fileno() >= 0:
-                sock.settimeout(timeout)
-            chunk = response.read1(min(65536, limit + 1 - size))
-            if not chunk:
-                break
-            chunks.append(chunk)
-            size += len(chunk)
-            if size > limit:
-                raise ValueError('Icon response too large')
-        return b''.join(chunks), response.getheader('Content-Type', ''), url
+        body = read_upto(response, sock, limit + 1, deadline)
+        if len(body) > limit:
+            raise ValueError('Icon response too large')
+        return body, response.getheader('Content-Type', ''), url
     return follow(url, deadline, ICON_ACCEPT, read)
 
 
@@ -216,6 +226,30 @@ def frame_verdict(headers, page, resource):
     return ''
 
 
+# A page may also run only as the top window. A NAS desktop such as UGOS Pro reads its own
+# objects from the window above it; in a frame on another origin that read throws and the
+# page stays blank. Only these properties of another origin's window can be used.
+CROSS_ORIGIN_WINDOW = {'blur', 'close', 'closed', 'focus', 'frames', 'length', 'location', 'opener',
+                       'parent', 'postMessage', 'self', 'top', 'window'}
+SCRIPT = re.compile(r'<script\b([^>]*)>(.*?)</script\s*>', re.I | re.S)
+SCRIPT_TYPE = re.compile(r'\btype\s*=\s*["\']?([^"\'\s>]+)', re.I)
+PARENT_READ = re.compile(r'(?<![\w$.])(?:(?:window|self|globalThis)\s*\.\s*)?(?:parent|top)\s*'
+                         r'(?:\.\s*([A-Za-z_$][\w$]*)|\[\s*(["\'])([^"\'\\]+)\2\s*\])')
+
+
+def reads_parent_window(html):
+    """Whether an inline script of the page reads a property another origin's window does not expose."""
+    for attributes, code in SCRIPT.findall(html):
+        kind = SCRIPT_TYPE.search(attributes)
+        kind = kind.group(1).lower() if kind else ''
+        if re.search(r'\bsrc\s*=', attributes, re.I) or (kind and kind != 'module' and 'javascript' not in kind and 'ecmascript' not in kind):
+            continue
+        for match in PARENT_READ.finditer(code):
+            if (match.group(1) or match.group(3)) not in CROSS_ORIGIN_WINDOW:
+                return True
+    return False
+
+
 def frame_check(value, origin):
     """Whether a page at `origin` can show `value` in a frame: True, False, or None when the site cannot be read."""
     page = parse_origin(origin)
@@ -223,11 +257,20 @@ def frame_check(value, origin):
     if not _requests.acquire(blocking=False):
         return None, ''
     try:
+        deadline = time.monotonic() + TIME_BUDGET
+
         def verdict(response, sock, final):
             parsed = urlsplit(final)
             resource = parsed.scheme, parsed.hostname.lower(), parsed.port or DEFAULT_PORTS[parsed.scheme]
-            return frame_verdict(response.headers, page, resource)
-        reason = follow(url, time.monotonic() + TIME_BUDGET, 'text/html,*/*;q=0.8', verdict)
+            reason = frame_verdict(response.headers, page, resource)
+            if reason or resource == page or not readable(response) or 'html' not in response.getheader('Content-Type', '').lower():
+                return reason
+            try:
+                html = read_upto(response, sock, MAX_HTML, deadline)
+            except (OSError, http.client.HTTPException):
+                return ''
+            return 'parent-window' if reads_parent_window(html.decode('utf-8', errors='replace')) else ''
+        reason = follow(url, deadline, 'text/html,*/*;q=0.8', verdict)
     except (ValueError, OSError, http.client.HTTPException):
         return None, ''
     finally:

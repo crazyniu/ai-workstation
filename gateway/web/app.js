@@ -481,7 +481,7 @@ async function loadOverview(request){
   }else{setTone($('#overview-ts-state'),'读取失败','error');$('#overview-ts-ip').textContent='—';$('#overview-ts-detail').textContent=ts.reason.message;}
   const info=release.status==='fulfilled'?release.value:null,u=updateState.status==='fulfilled'?updateState.value:null,count=countUpdates(u,info);
   setUpdateBadge(count);
-  $('#overview-web-version').textContent=info?'Web '+releaseLabel(info.current):'—';
+  $('#overview-web-version').textContent=info?'Niu Gateway '+releaseLabel(info.current):'—';
   const detail=$('#overview-update-detail'),state=$('#overview-update-state');
   if(!u&&!info){setTone(state,'读取失败','error');detail.textContent=(updateState.reason||release.reason).message;}
   else if(count){setTone(state,count+' 项更新','busy');detail.textContent='前往服务升级查看并安装';}
@@ -638,14 +638,18 @@ function createGatewayWindow(shell, title, iconPath, close, {toolbar=null, app='
   const mobile=phone.matches,bounds=windowBounds();
   const w=Math.min(width,innerWidth-48),h=Math.min(height,innerHeight-bounds.top-bounds.bottom-24);
   const win = new WinBox({title, icon:iconPath, mount:shell, class:['gateway-window','no-full'],
-    width:w, height:h, minwidth:Math.min(420,innerWidth), minheight:Math.min(320,innerHeight), x:'center',
-    y:mobile ? 0 : Math.max(bounds.top+8,bounds.top+(innerHeight-bounds.top-bounds.bottom-h)/2), top:bounds.top, bottom:bounds.bottom,
+    // The browser window bounds a window's size, not the size it had when the window opened.
+    width:w, height:h, minwidth:Math.min(420,innerWidth), minheight:Math.min(320,innerHeight), maxwidth:Infinity, maxheight:Infinity, x:'center',
+    y:mobile ? 0 : Math.max(bounds.top+8,bounds.top+(innerHeight-bounds.top-bounds.bottom-h)/2), top:bounds.top, bottom:0,
     header:52, max:mobile,
     onclose(force) { if (force) return false; close(); return true; },
     onfocus(){ lastGatewayWindow=this; $('#menubar-app').textContent=title; },
     onblur(){ if(!document.querySelector('.winbox.focus'))$('#menubar-app').textContent='Niu Gateway'; },
     onminimize(){ $('#menubar-app').textContent='Niu Gateway'; }});
   win.app=app;
+  // As on macOS, a window can be stretched or moved down behind the Dock, while zoom stops above it.
+  const zoom=win.maximize;
+  win.maximize=function(state){this.bottom=windowBounds().bottom;try{return zoom.call(this,state);}finally{this.bottom=0;}};
   for (const [cls, action] of [['wb-close','关闭'],['wb-min','最小化'],['wb-max','缩放']]) {
     const control = win.window.querySelector('.'+cls);
     control.setAttribute('role','button');
@@ -729,19 +733,22 @@ function openFrameApp(key,app=frameApps[key]){
   const win=createGatewayWindow(shell,app.title,app.icon,()=>closeFrameApp(key),{toolbar:bar,app:key,width:app.width,height:app.height});
   frameWindows.set(key,win);markRunningApps();
 }
-// Another host may be offline, use a certificate this browser has not trusted yet, or
-// forbid other pages from showing it. A page cannot read a cross-origin frame, so ask the
-// host directly, and let the gateway read the headers that decide whether it may be framed.
+// Another host may be offline, use a certificate this browser has not trusted yet, forbid
+// other pages from showing it, or run only as the top window. A page cannot read a
+// cross-origin frame, so ask the host directly, and let the gateway read its headers and scripts.
 const frameProblems={
   unreachable:'地址暂时无法访问，或这个网站使用了浏览器尚未信任的证书。请先在新标签页中打开它（自签名证书需要先选择继续访问），再回到这里重试。',
   refused:'这个网站不允许其他页面把它显示在窗口里（网站的 X-Frame-Options 或 CSP 设置），窗口中只会是空白。请在新标签页中打开它。',
   mixed:'当前网关页面通过 HTTPS 打开，浏览器不允许在其中显示 HTTP 网站。请在新标签页中打开它。',
+  parent:'这个页面只能作为独立页面运行（例如 NAS 的网页桌面会读取上层窗口），放在窗口里通常只会显示空白。请在新标签页中打开它。',
 };
 function frameNotice(key,app,page,retry){
   const notice=element('div',undefined,'frame-notice'),box=element('div',undefined,'frame-notice-box'),actions=element('div',undefined,'window-actions');
   const image=element('img');image.src=app.icon;image.alt='';image.width=64;image.height=64;
   const tab=element('a','在新标签页中打开','button-link');tab.href=page;tab.target='_blank';tab.rel='noopener noreferrer';
   const copy=element('p'),again=button('重试',retry,'primary');actions.append(tab,again);
+  // The page-script check is a judgement, not a header: let a page that works stay in the window.
+  const stay=button('继续在窗口中显示',()=>{notice.hidden=true;});actions.prepend(stay);
   // A link that can never show in a window can switch to a new tab for good.
   const card=key.startsWith('link:')?cards.find(c=>'link:'+c.id===key):null;
   const always=card&&button('以后都在新标签页打开',()=>{
@@ -751,7 +758,7 @@ function frameNotice(key,app,page,retry){
   if(always)actions.prepend(always);
   notice.show=kind=>{
     copy.textContent=frameProblems[kind];const final=kind!=='unreachable';
-    again.hidden=final;tab.classList.toggle('primary',final);if(always)always.hidden=!final;notice.hidden=false;
+    again.hidden=final;stay.hidden=kind!=='parent';tab.classList.toggle('primary',final);if(always)always.hidden=!final;notice.hidden=false;
   };
   box.append(image,element('strong','无法在窗口中打开“'+app.title+'”'),copy,actions);
   notice.append(box);notice.hidden=true;return notice;
@@ -764,7 +771,8 @@ async function checkFrame(url,shell){
   const framing=api('/frame-check?url='+encodeURIComponent(target.href)+'&origin='+encodeURIComponent(location.origin)).catch(()=>null);
   try{await fetch(target.href,{mode:'no-cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout?.(10000)});}
   catch{show('unreachable');return;}
-  if((await framing)?.framable===false)show('refused');
+  const verdict=await framing;
+  if(verdict?.framable===false)show(verdict.reason==='parent-window'?'parent':'refused');
 }
 function closeFrameApp(key){
   const win=frameWindows.get(key);if(!win)return;
