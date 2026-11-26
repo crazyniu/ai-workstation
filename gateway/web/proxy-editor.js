@@ -38,7 +38,7 @@ async function openProxyWindow(force = false, ranges = false) {
     proxyGroup = '';
     resultPage = 0;
     $('.proxy-layout').dataset.view = 'page';
-    proxyWindow = createGatewayWindow(dialog, '代理配置', '/icons/clash.svg', closeProxyWindow,
+    proxyWindow = createGatewayWindow(dialog, '代理配置', '/icons/apps/proxy.webp', closeProxyWindow,
       {toolbar:$('#proxy-toolbar'), app:'proxy', onCompact:syncProxyBack});
   }
   const request = ++proxyGeneration;

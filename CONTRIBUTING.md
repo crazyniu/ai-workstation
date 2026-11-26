@@ -15,17 +15,17 @@ Issue 和 PR 可以用中文或英文（English is welcome too）。参与即表
 
 仓库不需要通用前端构建工具。网关 Web 使用原生 HTML、CSS 和 JavaScript；Python 后端测试使用 unittest。Linux 容器检查在 GitHub Actions 中执行。
 
-## Favicon 资源
+## 图标资源
 
-`gateway/web/favicon.svg` 是源文件。位图与多尺寸 ICO 已提交，常规镜像构建无需额外工具。调整图案后可在临时目录安装固定版本的 SVG 渲染器并重新生成：
+网关应用图标、favicon、Apple touch icon 和设置侧栏图标由 `gateway/scripts/build-icons.py` 生成。应用图标的原画在 `gateway/art/icons/`（1024 × 1024 方形，不进入镜像）；脚本把它们裁成 macOS 连续圆角方形，加上玻璃边和阴影，输出到 `gateway/web/icons/apps/`。设置图标使用 `web/index.html` 里的符号。修改原画或配色后运行：
 
 ```sh
-npm install --prefix /tmp/gateway-icon-tools @resvg/resvg-js@2.6.2
-NODE_PATH=/tmp/gateway-icon-tools/node_modules node gateway/scripts/build-favicon.cjs
+python3 -m pip install Pillow
+python3 gateway/scripts/build-icons.py
 python3 gateway/runtime/build-info.py
 ```
 
-检查 16、32、48 像素下的清晰度，以及 SVG、PNG、ICO 与 Apple touch icon 的实际加载。站点 favicon 与用户添加链接的自动图标是两个独立功能。
+检查 16、32、48 像素下的清晰度，以及 PNG、ICO、SVG 与 Apple touch icon 的实际加载。链接图标（`gateway/web/icons/*.svg`）是手写 SVG，来源见 `gateway/web/icons/PROVENANCE.md`。站点 favicon 与用户添加链接的自动图标是两个独立功能。
 
 ## 容器与数据
 

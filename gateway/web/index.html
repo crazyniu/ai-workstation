@@ -10,7 +10,7 @@
   <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180">
   <link rel="stylesheet" href="/vendor/winbox/winbox.min.css?v=9d6b72dc5f03">
-  <link rel="stylesheet" href="/style.css?v=e1cd7a4afba6">
+  <link rel="stylesheet" href="/style.css?v=bb1ef4d1eee8">
   <link rel="stylesheet" href="/loading.css?v=e549cd70c0dd">
   <link rel="stylesheet" href="/favicon.css?v=941afb91f398">
 </head>
@@ -49,12 +49,16 @@
     <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
     <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></symbol>
     <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.6-2-3.4-2.4 1a7.5 7.5 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5A7.5 7.5 0 0 0 7 6.5l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 3l-2 1.6 2 3.4 2.4-1a7.5 7.5 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.5 7.5 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.6Z"/></symbol>
+    <symbol id="i-gateway" viewBox="0 0 24 24"><path d="M5 20.5V11a7 7 0 0 1 14 0v9.5"/><path d="M12 8.5v5M8.5 20.5c0-3.8 3.5-3.4 3.5-7 0 3.6 3.5 3.2 3.5 7"/></symbol>
+    <symbol id="i-dock" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7 15.5h2.5m1.25 0h2.5m1.25 0H17"/></symbol>
+    <symbol id="i-desktop" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="11.5" rx="2"/><path d="M9 20h6m-3-4v4"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="6" height="6" rx="1.5"/><rect x="13.5" y="4.5" width="6" height="6" rx="1.5"/><rect x="4.5" y="13.5" width="6" height="6" rx="1.5"/><rect x="13.5" y="13.5" width="6" height="6" rx="1.5"/></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="m4 16 4.5-4.5 4 4 2.5-2.5 5 5"/><circle cx="15.5" cy="9" r="1.5"/></symbol>
   </svg>
 
   <header class="menubar">
     <div class="menubar-start">
-      <button id="system-menu-button" class="menubar-item menubar-logo" aria-haspopup="menu" aria-expanded="false" aria-controls="system-menu" aria-label="网关菜单"><img src="/favicon.svg" alt="" width="16" height="16"></button>
+      <button id="system-menu-button" class="menubar-item menubar-logo" aria-haspopup="menu" aria-expanded="false" aria-controls="system-menu" aria-label="网关菜单"><svg class="glyph menubar-glyph" aria-hidden="true"><use href="#i-gateway"/></svg></button>
       <strong id="menubar-app" class="menubar-app">Gateway</strong>
     </div>
     <div class="menubar-end">
@@ -72,7 +76,7 @@
   <dialog id="auth-dialog" class="auth-window" aria-labelledby="auth-title">
     <form id="auth-form" class="auth">
       <input class="visually-hidden" type="text" name="username" autocomplete="username" value="admin" tabindex="-1" aria-hidden="true" readonly>
-      <img class="auth-icon" src="/icons/server.svg" alt="" width="72" height="72">
+      <img class="auth-icon" src="/icons/apps/gateway.webp" alt="" width="96" height="96">
       <p class="auth-eyebrow">Gateway</p>
       <h1 id="auth-title">登录网关</h1>
       <p id="auth-copy"></p>
@@ -90,20 +94,20 @@
     <div class="settings-body">
       <nav id="settings-nav" class="settings-nav" aria-label="设置分类">
         <label class="nav-search"><svg class="glyph" aria-hidden="true"><use href="#i-search"/></svg><span class="visually-hidden">搜索设置</span><input id="settings-search" type="search" placeholder="搜索设置" autocomplete="off" spellcheck="false"></label>
-        <button data-page="overview" data-keywords="概览 首页 状态 overview"><img src="/icons/settings.svg" alt=""><span>概览</span></button>
+        <button data-page="overview" data-keywords="概览 首页 状态 overview"><img src="/icons/settings/general.svg" alt=""><span>概览</span></button>
         <p class="nav-group">网络</p>
-        <button data-page="proxy" data-keywords="clash mihomo 代理 节点 订阅 中转 规则 分组 出口 yaml"><img src="/icons/clash.svg" alt=""><span>代理配置</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
-        <button data-page="ranges" data-keywords="设备出口 固定出口 网段 绑定 出口 ip"><img src="/icons/routes.svg" alt=""><span>设备出口</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
-        <button data-page="dns" data-keywords="dns 域名 主页 home.arpa 地址"><img src="/icons/dns.svg" alt=""><span>DNS 与域名</span></button>
-        <button data-page="tailscale" data-keywords="tailscale 远程 vpn 子网 路由"><img src="/icons/tailscale.svg" alt=""><span>Tailscale</span><span class="nav-dot" id="nav-tailscale-dot" hidden></span></button>
-        <button data-app="adguard" data-keywords="adguard 广告 过滤 dns 查询"><img src="/icons/adguard.svg" alt=""><span>广告过滤</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
+        <button data-page="proxy" data-keywords="clash mihomo 代理 节点 订阅 中转 规则 分组 出口 yaml"><img src="/icons/settings/proxy.svg" alt=""><span>代理配置</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
+        <button data-page="ranges" data-keywords="设备出口 固定出口 网段 绑定 出口 ip"><img src="/icons/settings/routes.svg" alt=""><span>设备出口</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
+        <button data-page="dns" data-keywords="dns 域名 主页 home.arpa 地址"><img src="/icons/settings/dns.svg" alt=""><span>DNS 与域名</span></button>
+        <button data-page="tailscale" data-keywords="tailscale 远程 vpn 子网 路由"><img src="/icons/settings/tailscale.svg" alt=""><span>Tailscale</span><span class="nav-dot" id="nav-tailscale-dot" hidden></span></button>
+        <button data-app="adguard" data-keywords="adguard 广告 过滤 dns 查询"><img src="/icons/settings/adguard.svg" alt=""><span>广告过滤</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
         <p class="nav-group">桌面与账户</p>
-        <button data-page="desktop" data-keywords="桌面 链接 工作站 图标 入口"><img src="/icons/folder.svg" alt=""><span>桌面管理</span></button>
-        <button data-personalization data-keywords="个性化 壁纸 主题 暗色 亮色 外观"><img src="/icons/appearance.svg" alt=""><span>个性化</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
-        <button data-page="account" data-keywords="账户 密码 登录 退出 安全 会话"><img src="/icons/account.svg" alt=""><span>账户与安全</span></button>
+        <button data-page="desktop" data-keywords="桌面 链接 工作站 图标 入口"><img src="/icons/settings/desktop.svg" alt=""><span>桌面管理</span></button>
+        <button data-personalization data-keywords="个性化 壁纸 主题 暗色 亮色 外观"><img src="/icons/settings/appearance.svg" alt=""><span>个性化</span><svg class="glyph nav-trail" aria-hidden="true"><use href="#i-window"/></svg></button>
+        <button data-page="account" data-keywords="账户 密码 登录 退出 安全 会话"><img src="/icons/settings/account.svg" alt=""><span>账户与安全</span></button>
         <p class="nav-group">系统</p>
-        <button data-page="updates" data-keywords="升级 更新 版本 组件"><img src="/icons/update.svg" alt=""><span>服务升级</span><span class="nav-badge" id="nav-update-badge" hidden></span></button>
-        <button data-page="backup" data-keywords="备份 恢复 导出 导入"><img src="/icons/backup.svg" alt=""><span>备份与恢复</span></button>
+        <button data-page="updates" data-keywords="升级 更新 版本 组件"><img src="/icons/settings/updates.svg" alt=""><span>服务升级</span><span class="nav-badge" id="nav-update-badge" hidden></span></button>
+        <button data-page="backup" data-keywords="备份 恢复 导出 导入"><img src="/icons/settings/backup.svg" alt=""><span>备份与恢复</span></button>
         <p class="nav-empty" id="settings-search-empty" hidden>没有匹配的设置</p>
       </nav>
       <div class="content" id="settings-content">
@@ -112,17 +116,17 @@
           <header class="page-header"><div><h2>概览</h2><p>网关运行状态与全部设置入口。</p></div></header>
           <div class="status-grid">
             <article class="status-card">
-              <div class="status-card-head"><img src="/icons/server.svg" alt=""><span>网关</span><span class="status-pill" id="overview-services" data-tone="idle">读取中</span></div>
+              <div class="status-card-head"><img src="/icons/settings/gateway.svg" alt=""><span>网关</span><span class="status-pill" id="overview-services" data-tone="idle">读取中</span></div>
               <strong id="overview-address">—</strong>
               <a id="overview-domain" class="status-card-detail" href="/">—</a>
             </article>
             <button type="button" class="status-card" data-page="tailscale">
-              <span class="status-card-head"><img src="/icons/tailscale.svg" alt=""><span>Tailscale</span><span class="status-pill" id="overview-ts-state" data-tone="idle">读取中</span></span>
+              <span class="status-card-head"><img src="/icons/settings/tailscale.svg" alt=""><span>Tailscale</span><span class="status-pill" id="overview-ts-state" data-tone="idle">读取中</span></span>
               <strong id="overview-ts-ip">—</strong>
               <span class="status-card-detail" id="overview-ts-detail">—</span>
             </button>
             <button type="button" class="status-card" data-page="updates">
-              <span class="status-card-head"><img src="/icons/update.svg" alt=""><span>版本</span><span class="status-pill" id="overview-update-state" data-tone="idle">读取中</span></span>
+              <span class="status-card-head"><img src="/icons/settings/updates.svg" alt=""><span>版本</span><span class="status-pill" id="overview-update-state" data-tone="idle">读取中</span></span>
               <strong id="overview-web-version">—</strong>
               <span class="status-card-detail" id="overview-update-detail">—</span>
             </button>
@@ -130,23 +134,23 @@
 
           <h3 class="section-title">网络</h3>
           <div class="settings-tiles">
-            <button type="button" class="tile" data-page="proxy"><img src="/icons/clash.svg" alt=""><span class="tile-copy"><strong>代理配置</strong><span>分组、出口、中转订阅与分流规则</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
-            <button type="button" class="tile" data-page="ranges"><img src="/icons/routes.svg" alt=""><span class="tile-copy"><strong>设备出口</strong><span>为单个 IP 或 IP 段指定出口</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
-            <button type="button" class="tile" data-page="dns"><img src="/icons/dns.svg" alt=""><span class="tile-copy"><strong>DNS 与域名</strong><span>主页域名与 DNS 查询入口</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
-            <button type="button" class="tile" data-page="tailscale"><img src="/icons/tailscale.svg" alt=""><span class="tile-copy"><strong>Tailscale</strong><span>远程访问与内网子网路由</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
-            <button type="button" class="tile" data-app="adguard"><img src="/icons/adguard.svg" alt=""><span class="tile-copy"><strong>广告过滤</strong><span>在 AdGuard Home 中管理过滤规则与查询日志</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-page="proxy"><img src="/icons/settings/proxy.svg" alt=""><span class="tile-copy"><strong>代理配置</strong><span>分组、出口、中转订阅与分流规则</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-page="ranges"><img src="/icons/settings/routes.svg" alt=""><span class="tile-copy"><strong>设备出口</strong><span>为单个 IP 或 IP 段指定出口</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-page="dns"><img src="/icons/settings/dns.svg" alt=""><span class="tile-copy"><strong>DNS 与域名</strong><span>主页域名与 DNS 查询入口</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-page="tailscale"><img src="/icons/settings/tailscale.svg" alt=""><span class="tile-copy"><strong>Tailscale</strong><span>远程访问与内网子网路由</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-app="adguard"><img src="/icons/settings/adguard.svg" alt=""><span class="tile-copy"><strong>广告过滤</strong><span>在 AdGuard Home 中管理过滤规则与查询日志</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
           </div>
           <h3 class="section-title">桌面与账户</h3>
           <div class="settings-tiles">
-            <button type="button" class="tile" data-page="desktop"><img src="/icons/folder.svg" alt=""><span class="tile-copy"><strong>桌面管理</strong><span>工作站入口与自定义链接</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
-            <button type="button" class="tile" data-personalization><img src="/icons/appearance.svg" alt=""><span class="tile-copy"><strong>个性化</strong><span>外观模式与桌面壁纸</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
-            <button type="button" class="tile" data-page="account"><img src="/icons/account.svg" alt=""><span class="tile-copy"><strong>账户与安全</strong><span>登录保护、管理员密码与当前会话</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-page="desktop"><img src="/icons/settings/desktop.svg" alt=""><span class="tile-copy"><strong>桌面管理</strong><span>工作站入口与自定义链接</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-personalization><img src="/icons/settings/appearance.svg" alt=""><span class="tile-copy"><strong>个性化</strong><span>外观模式与桌面壁纸</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-page="account"><img src="/icons/settings/account.svg" alt=""><span class="tile-copy"><strong>账户与安全</strong><span>登录保护、管理员密码与当前会话</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
           </div>
           <h3 class="section-title">系统</h3>
           <div class="settings-tiles">
-            <button type="button" class="tile" data-page="updates"><img src="/icons/update.svg" alt=""><span class="tile-copy"><strong>服务升级</strong><span>网关 Web 与核心组件版本</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
-            <button type="button" class="tile" data-page="backup"><img src="/icons/backup.svg" alt=""><span class="tile-copy"><strong>备份与恢复</strong><span>下载配置备份或从备份恢复</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
-            <a class="tile" id="source-link" href="https://github.com/crazyniu/ai-workstation" target="_blank" rel="noopener noreferrer"><img src="/icons/github.svg" alt=""><span class="tile-copy"><strong>源码</strong><span>项目主页、发布说明与问题反馈</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-external"/></svg></a>
+            <button type="button" class="tile" data-page="updates"><img src="/icons/settings/updates.svg" alt=""><span class="tile-copy"><strong>服务升级</strong><span>网关 Web 与核心组件版本</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <button type="button" class="tile" data-page="backup"><img src="/icons/settings/backup.svg" alt=""><span class="tile-copy"><strong>备份与恢复</strong><span>下载配置备份或从备份恢复</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+            <a class="tile" id="source-link" href="https://github.com/crazyniu/ai-workstation" target="_blank" rel="noopener noreferrer"><img src="/icons/settings/source.svg" alt=""><span class="tile-copy"><strong>源码</strong><span>项目主页、发布说明与问题反馈</span></span><svg class="glyph tile-trail" aria-hidden="true"><use href="#i-external"/></svg></a>
           </div>
           <footer class="overview-footer"><button type="button" class="text-button" id="gateway-version" data-page="updates">网关 Web 版本</button></footer>
         </section>
@@ -165,7 +169,7 @@
           </form>
           <div class="card">
             <div class="setting-row">
-              <img class="row-icon" src="/icons/adguard.svg" alt="">
+              <img class="row-icon" src="/icons/settings/adguard.svg" alt="">
               <div class="setting-copy"><strong>AdGuard Home</strong><span>广告过滤、DNS 查询日志与上游 DNS 在 AdGuard Home 中管理。</span></div>
               <button type="button" data-app="adguard">打开</button>
             </div>
@@ -176,7 +180,7 @@
           <header class="page-header"><div><h2>Tailscale</h2><p>通过 Tailscale 远程访问网关和局域网设备，无需开放端口。</p></div></header>
           <div class="card">
             <div class="setting-row hero-row">
-              <img class="row-icon large" src="/icons/tailscale.svg" alt="">
+              <img class="row-icon large" src="/icons/settings/tailscale.svg" alt="">
               <div class="setting-copy"><strong id="tailscale-device">Tailscale</strong><span><span class="status-pill" id="tailscale-state" data-tone="idle">读取中</span></span></div>
               <div class="row-actions">
                 <button id="tailscale-action" data-ts="connect" class="primary" disabled>连接</button>
@@ -207,7 +211,7 @@
           <header class="page-header"><div><h2>服务升级</h2><p>查看网关组件版本，并安装项目发布的更新。</p></div><button id="check-updates"><svg class="glyph" aria-hidden="true"><use href="#i-refresh"/></svg>检查更新</button></header>
           <div class="card">
             <div class="setting-row web-release-row">
-              <img class="row-icon" src="/icons/server.svg" alt="">
+              <img class="row-icon" src="/icons/settings/gateway.svg" alt="">
               <div class="setting-copy"><strong>网关 Web</strong><span id="web-release-detail" role="status">正在读取版本…</span></div>
               <button id="web-release-install" class="primary" hidden>更新</button>
             </div>
@@ -222,7 +226,7 @@
         <section data-section="desktop" hidden>
           <header class="page-header"><div><h2>桌面管理</h2><p>管理工作站入口和桌面上的自定义链接。</p></div></header>
           <form id="workstation-form" class="card">
-            <div class="card-head"><h3>工作站入口</h3><p>桌面上“工作站”图标打开的地址。</p></div>
+            <div class="card-head"><h3>工作站入口</h3><p>“工作站”在窗口中打开的地址。</p></div>
             <div class="card-body">
               <div class="inline-field">
                 <label class="field"><span>入口地址</span><input id="workstation-url" type="url" required maxlength="500" placeholder="https://192.168.1.251:6080/" autocomplete="off" spellcheck="false"></label>
@@ -231,8 +235,17 @@
             </div>
           </form>
           <div class="card">
-            <div class="card-head with-action"><div><h3>自定义链接</h3><p>显示在桌面上；也可以在桌面上拖动图标调整顺序。</p></div><button id="add-from-settings"><svg class="glyph" aria-hidden="true"><use href="#i-plus"/></svg>添加链接</button></div>
+            <div class="card-head with-action"><div><h3>自定义链接</h3><p>显示在桌面上，默认在窗口中打开。这里的顺序也是手机主屏幕的顺序。</p></div><button id="add-from-settings"><svg class="glyph" aria-hidden="true"><use href="#i-plus"/></svg>添加链接</button></div>
             <div id="link-list" class="row-list"></div>
+          </div>
+          <div class="card">
+            <div class="card-body">
+              <div class="setting-row">
+                <img class="row-icon" src="/icons/settings/desktop.svg" alt="">
+                <div class="setting-copy"><strong>桌面与程序坞布局</strong><span>在桌面上可以把图标拖到任意位置，拖进或拖出程序坞；也可以右键图标选择。恢复默认会把网关应用放回程序坞，链接重新排在桌面右侧。</span></div>
+                <div class="row-actions"><button type="button" id="desktop-reset">恢复默认布局</button></div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -274,7 +287,7 @@
           <header class="page-header"><div><h2>备份与恢复</h2><p>导出网关配置，或用备份文件恢复当前网关。</p></div></header>
           <div class="card">
             <div class="setting-row">
-              <img class="row-icon" src="/icons/backup.svg" alt="">
+              <img class="row-icon" src="/icons/settings/backup.svg" alt="">
               <div class="setting-copy"><strong>下载配置备份</strong><span>包含代理配置、节点凭据、Tailscale 身份与桌面设置，不含管理员密码。请妥善保管备份文件。</span></div>
               <button class="primary" id="backup"><svg class="glyph" aria-hidden="true"><use href="#i-download"/></svg>下载备份</button>
             </div>
@@ -317,7 +330,8 @@
           <div id="icon-choices" class="icon-choices" role="listbox" aria-labelledby="icon-picker-label"></div>
           <p id="icon-empty" class="muted" hidden>没有找到图标，试试其他名称。</p>
         </div>
-        <label class="check"><input id="link-newtab" type="checkbox" checked><span>在新标签页打开</span></label>
+        <div class="check-group"><label class="check"><input id="link-newtab" type="checkbox" aria-describedby="link-newtab-hint"><span>在新标签页打开</span></label>
+        <p class="field-hint check-hint" id="link-newtab-hint">不勾选时，链接在桌面的窗口中打开。有些网站不允许在其他页面中显示，遇到这种情况请勾选此项。</p></div>
       </div>
       <div class="window-actions"><button type="button" id="link-cancel">取消</button><button class="primary" type="submit">保存链接</button></div>
     </form>
@@ -388,13 +402,28 @@
       </div>
     </div>
   </dialog>
+  <dialog id="about-dialog" class="about-window" aria-labelledby="about-title">
+    <div class="about-content">
+      <img class="about-icon" src="/icons/apps/gateway.webp" alt="" width="128" height="128">
+      <h2 id="about-title">Gateway</h2>
+      <p class="about-subtitle">AI 工作站网关</p>
+      <dl class="about-facts">
+        <div><dt>网关 Web</dt><dd id="about-version">读取中…</dd></div>
+        <div><dt>访问地址</dt><dd id="about-address"></dd></div>
+        <div><dt>许可证</dt><dd>MIT</dd></div>
+      </dl>
+      <a class="about-source" href="https://github.com/crazyniu/ai-workstation" target="_blank" rel="noopener noreferrer"><img src="/icons/github.svg" alt="" width="20" height="20"><span><strong>GitHub 开源地址</strong><span>github.com/crazyniu/ai-workstation</span></span><svg class="glyph" aria-hidden="true"><use href="#i-external"/></svg></a>
+    </div>
+    <div class="window-actions"><button type="button" id="about-updates">检查更新…</button><button type="button" class="primary" id="about-close">好</button></div>
+  </dialog>
+
   <dialog id="confirm-dialog" class="confirm-window" aria-labelledby="confirm-title"><div class="confirm-content"><span class="confirm-icon" aria-hidden="true"><svg class="glyph"><use href="#i-alert"/></svg></span><div><h2 id="confirm-title">确认操作</h2><p id="confirm-copy"></p></div></div><div class="window-actions"><button id="confirm-cancel">取消</button><button class="primary" id="confirm-accept">确定</button></div></dialog>
   <div id="desktop-context-menu" class="context-menu" role="menu" aria-label="桌面菜单" hidden></div>
   <script src="/toast.js?v=213fd4fb47a6"></script>
   <script src="/assets/config-editor.bundle.js?v=e91ff9456f76"></script>
   <script src="/vendor/winbox/winbox.min.js?v=cd0b4efd9450"></script>
-  <script src="/proxy-editor.js?v=81092d27c862"></script>
+  <script src="/proxy-editor.js?v=e615b659ebe0"></script>
   <script src="/build-info.js?v=98bb99b2069d"></script>
-  <script src="/app.js?v=45a32da55946"></script>
+  <script src="/app.js?v=f6fca0ac032a"></script>
 </body>
 </html>

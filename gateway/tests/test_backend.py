@@ -323,7 +323,8 @@ class AuthTests(DataTest):
         with patch.dict(os.environ, {'NOVNC_TLS': '0'}):
             with self.request('/api/cards', cookie=cookie) as response:
                 self.assertEqual(json.load(response)['desktop'],
-                                 {'workstation_url': 'http://192.168.1.251:6080/', 'order': ids})
+                                 {'workstation_url': 'http://192.168.1.251:6080/', 'order': ids,
+                                  'dock': list(server.SYSTEM_APPS), 'positions': {}})
         # A link the administrator saved stays saved through later reorders.
         url = 'http://192.0.2.20:6080/'
         with self.request('/api/settings/workstation', {'url': url}, cookie=cookie) as response:
@@ -352,7 +353,7 @@ class AuthTests(DataTest):
             with self.request('/api/cards', {'name': name, 'url': 'http://192.0.2.249/', 'icon': 'server'}, cookie=cookie) as response:
                 self.assertEqual(response.status, 201)
         cards = legacy.read_cards()
-        ids = [cards[1]['id'], 'builtin:workstation', cards[0]['id'], 'builtin:settings', 'builtin:clash', 'builtin:adguard', 'builtin:files', 'builtin:tailscale']
+        ids = [cards[1]['id'], 'builtin:workstation', cards[0]['id'], 'builtin:settings', 'builtin:clash', 'builtin:adguard', 'builtin:files', 'builtin:tailscale', 'builtin:proxy']
         with self.request('/api/cards/order', {'ids': ids}, cookie=cookie) as response:
             self.assertEqual(response.status, 200)
         with self.request('/api/cards', cookie=cookie) as response:
@@ -376,6 +377,51 @@ class AuthTests(DataTest):
         self.assertEqual(refreshed[-1], 'new-card')
         self.assertEqual(len(refreshed), len(ids))
 
+    def test_desktop_layout_moves_icons_between_dock_and_desktop(self):
+        with self.request('/api/desktop/layout', {'dock': [], 'positions': {}}) as response:
+            self.assertEqual(response.status, 401)
+        with self.request('/api/auth/setup', {'password': 'strong-password-123'}) as response:
+            cookie = response.headers['Set-Cookie'].split(';')[0]
+        with self.request('/api/cards', {'name': 'NAS', 'url': 'http://192.0.2.249/', 'icon': 'nas'}, cookie=cookie) as response:
+            self.assertEqual(response.status, 201)
+        card = legacy.read_cards()[0]['id']
+        with self.request('/api/cards', cookie=cookie) as response:
+            desktop = json.load(response)['desktop']
+        self.assertEqual((desktop['dock'], desktop['positions']), (list(server.SYSTEM_APPS), {}))
+        # A link joins the Dock; gateway apps leave it for cells on the desktop.
+        dock = ['builtin:proxy', card, 'builtin:settings']
+        positions = {'builtin:clash': [3, 1], 'builtin:files': [0, 0], 'builtin:workstation': [99, 99]}
+        with self.request('/api/desktop/layout', {'dock': dock, 'positions': positions}, cookie=cookie) as response:
+            self.assertEqual(response.status, 200)
+            value = json.load(response)
+        self.assertEqual((value['dock'], value['positions']), (dock, positions))
+        saved = state.read(self.dash / 'desktop.json')
+        self.assertEqual((saved['dock'], saved['positions']), (dock, positions))
+        self.assertNotIn('workstation_url', saved)
+        invalid = [{'positions': {}}, {'dock': dock + ['missing'], 'positions': {}}, {'dock': dock + [dock[0]], 'positions': {}},
+                   {'dock': dock, 'positions': {'builtin:clash': [1, 1], 'builtin:files': [1, 1]}},
+                   {'dock': dock, 'positions': {card: [0, 1]}}, {'dock': dock, 'positions': {'builtin:clash': [100, 0]}},
+                   {'dock': dock, 'positions': {'builtin:clash': [True, 0]}}, {'dock': dock, 'positions': {'builtin:clash': [1]}},
+                   {'dock': dock, 'positions': []}, {'dock': 'builtin:proxy', 'positions': {}}]
+        for layout in invalid:
+            with self.request('/api/desktop/layout', layout, cookie=cookie) as response:
+                self.assertEqual(response.status, 400, layout)
+        self.assertEqual(state.read(self.dash / 'desktop.json')['dock'], dock)
+        # Reordering links keeps the layout; a deleted link leaves the Dock.
+        with self.request('/api/cards/order', {'ids': [card]}, cookie=cookie) as response:
+            self.assertEqual(response.status, 200)
+        self.assertEqual(state.read(self.dash / 'desktop.json')['positions'], positions)
+        legacy.write_cards([])
+        self.assertEqual(server.desktop_settings([])['dock'], ['builtin:proxy', 'builtin:settings'])
+        # The default layout is not stored, so later gateway apps still join the Dock.
+        with self.request('/api/desktop/layout', {'dock': list(server.SYSTEM_APPS), 'positions': {}}, cookie=cookie) as response:
+            self.assertEqual(response.status, 200)
+        saved = state.read(self.dash / 'desktop.json')
+        self.assertNotIn('dock', saved)
+        self.assertNotIn('positions', saved)
+        with self.assertRaises(ValueError):
+            server.validate_desktop({'positions': {'a': [0, 0], 'b': [0, 0]}})
+
     def test_workstation_entry_requires_login_and_persists_in_backup(self):
         with self.request('/api/settings/workstation', {'url': 'http://192.0.2.20:6080/'}) as response:
             self.assertEqual(response.status, 401)
@@ -390,7 +436,8 @@ class AuthTests(DataTest):
         with self.request('/api/settings/workstation', {'url': url}, cookie=cookie) as response:
             self.assertEqual(response.status, 200)
         with self.request('/api/cards', cookie=cookie) as response:
-            self.assertEqual(json.load(response)['desktop'], {'workstation_url': url, 'order': ids})
+            self.assertEqual(json.load(response)['desktop'], {'workstation_url': url, 'order': ids,
+                                                              'dock': list(server.SYSTEM_APPS), 'positions': {}})
         for invalid in ('javascript:alert(1)', 'file:///etc/passwd', 'http://a:99999/', 'http://user:secret@host/', 'http://host/\n', None):
             with self.request('/api/settings/workstation', {'url': invalid}, cookie=cookie) as response:
                 self.assertEqual(response.status, 400)
