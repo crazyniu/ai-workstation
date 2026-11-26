@@ -336,6 +336,11 @@ def edit_exit(config, edit):
         value = edit.get(key, '')
         if key == 'dialer-proxy' and value and value == name:
             raise ValueError('前置代理不能选择出口自身')
+        # HTTP and HTTPS exits saved from the editor always use the relay.
+        if key == 'dialer-proxy' and protocol == 'http':
+            if value not in ('', routing.RELAY):
+                raise ValueError('HTTP 出口必须经过中转，前置代理只能是「' + routing.RELAY + '」')
+            value = routing.RELAY
         if value:
             node[key] = value
         elif key in node:

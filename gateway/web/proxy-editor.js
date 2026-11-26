@@ -523,10 +523,10 @@ async function drawDomains() {
 }
 
 function drawExits() {
-  const page = pane('出口', '出口是固定 IP 的 HTTP 或 SOCKS5 代理（例如住宅 IP）。新出口默认经由中转节点连接。',
+  const page = pane('出口', '出口是固定 IP 的 HTTP 或 SOCKS5 代理（例如住宅 IP）。HTTP 出口必须经由中转节点连接，SOCKS5 出口默认也经由中转节点。',
     [labeledButton('plus', '添加出口', () => editExit(), 'primary')]);
   page.append(routeDiagram());
-  if (!proxyModel.relayReady) page.append(callout('还没有中转订阅，经中转的出口暂时无法连通。', 'warn', ['添加中转订阅', () => navigateProxy('providers')]));
+  if (!proxyModel.relayReady) page.append(callout('还没有中转订阅，HTTP 出口和其他经中转的出口暂时无法连通。', 'warn', ['添加中转订阅', () => navigateProxy('providers')]));
   const nodes = new Map((proxyModel.options.proxies || []).map(node => [node.name, node]));
   const rows = proxyModel.deviceExits.map(name => nodes.get(name)).filter(Boolean).map(node => {
     const editable = ['http', 'socks5'].includes(node.type), dialer = node['dialer-proxy'] || '';
@@ -538,7 +538,7 @@ function drawExits() {
         editable ? iconButton('trash', '删除 ' + node.name, () => deleteExit(node), 'danger') : null].filter(Boolean)});
   });
   page.append(listCard(rows, emptyState('还没有出口', '添加住宅 IP 等固定出口后，就可以把它指定给设备或分组。')));
-  if (rows.some(row => row.querySelector('[data-tone=warn]'))) page.append(element('p', '「未经中转」的出口由网关直接连接。需要经过中转时，编辑出口并在「前置代理」中选择中转节点。', 'pane-note'));
+  if (rows.some(row => row.querySelector('[data-tone=warn]'))) page.append(element('p', '「未经中转」的出口由网关直接连接。编辑并保存 HTTP 出口后会改为经过中转；SOCKS5 出口可在「前置代理」中选择中转节点。', 'pane-note'));
 }
 
 function routeDiagram() {
@@ -681,18 +681,31 @@ function editExit(item = null) {
     build:field => {
       field('name', '名称', item?.name, {required:true, placeholder:'例如：美国住宅 01'});
       field('note', '备注', item?.['x-gateway-note'] || '', {placeholder:'可选'});
-      field('type', '协议', item?.type || 'http', {options:[['http', 'HTTP'], ['socks5', 'SOCKS5']]});
+      const protocol = field('type', '协议', item?.type || 'http', {options:[['http', 'HTTP'], ['socks5', 'SOCKS5']]});
       const port = field('port', '端口', item?.port, {type:'number', required:true, placeholder:'8080'});
       port.min = 1;
       port.max = 65535;
       field('server', '服务器', item?.server, {required:true, wide:true, placeholder:'IP 地址或域名'});
       field('username', '用户名', item?.username, {placeholder:'可选'});
       field('password', '密码', item?.password, {type:'password', placeholder:'可选'});
-      const dialers = new Set([proxyModel.targets.includes(RELAY) && RELAY, item?.['dialer-proxy']].filter(Boolean));
-      field('dialer-proxy', '前置代理', item ? item['dialer-proxy'] || '' : (dialers.has(RELAY) ? RELAY : ''),
-        {options:[['', '无（直接连接）'], ...[...dialers].map(name => [name, policyLabel(name)])], hint:'选择中转节点时：设备 → 中转节点 → 该出口 → 互联网。'});
+      // HTTP exits always connect through the relay; SOCKS5 exits may skip it.
+      const dialers = new Set([RELAY, item?.['dialer-proxy']].filter(Boolean));
+      const chosen = item?.type === 'socks5' ? item['dialer-proxy'] || '' : RELAY;
+      const dialer = field('dialer-proxy', '前置代理', chosen,
+        {options:[['', '无（直接连接）'], ...[...dialers].map(name => [name, policyLabel(name)])], hint:' '});
+      const hint = dialer.parentElement.querySelector('.field-hint');
+      const syncDialer = () => {
+        const http = protocol.value === 'http';
+        if (http) dialer.value = RELAY;
+        setStateDisabled(dialer, http);
+        hint.textContent = http ? 'HTTP 出口必须经过中转：设备 → 中转节点 → 该出口 → 互联网。'
+          : '选择中转节点时：设备 → 中转节点 → 该出口 → 互联网。';
+      };
+      protocol.addEventListener('change', syncDialer);
+      syncDialer();
       field('tls', '使用 TLS 加密连接出口', item?.tls, {type:'checkbox'});
-      return data => ({kind:'exit', ...data, tls:data.tls === 'on', deviceExit:true, ...(item ? {original:item.name} : {})});
+      return data => ({kind:'exit', ...data, ...(data.type === 'http' ? {'dialer-proxy':RELAY} : {}),
+        tls:data.tls === 'on', deviceExit:true, ...(item ? {original:item.name} : {})});
     }});
 }
 
