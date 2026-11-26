@@ -59,6 +59,9 @@ class FixtureHandler(BaseHTTPRequestHandler):
             body = b'<html></html>'
             headers['X-Frame-Options'] = 'DENY'
             headers['Content-Security-Policy'] = "default-src 'self'; frame-ancestors 'self' http://192.168.1.250"
+        elif self.path == '/desktop':
+            # A NAS desktop that runs only as the top window.
+            body = b'<html><script>window.mainProcess = window.parent.mainProcess;</script></html>'
         elif self.path in ('/assets/icon.png', '/favicon.ico'):
             body = PNG
             headers['Content-Type'] = 'image/png'
@@ -168,6 +171,9 @@ class FaviconTests(unittest.TestCase):
             self.assertEqual(favicon.frame_check(self.base + '/login', gateway), (False, 'x-frame-options'))
             self.assertEqual(favicon.frame_check(self.base + '/csp', gateway), (True, ''))
             self.assertEqual(favicon.frame_check(self.base + '/csp', 'http://192.168.1.99'), (False, 'frame-ancestors'))
+            self.assertEqual(favicon.frame_check(self.base + '/desktop', gateway), (False, 'parent-window'))
+            # The same page served by the gateway itself may read its parent.
+            self.assertEqual(favicon.frame_check(self.base + '/desktop', self.base), (True, ''))
         self.assertIn('/xfo-sameorigin', [path for path, _ in FixtureHandler.requests])
         for _, headers in FixtureHandler.requests:
             self.assertNotIn('Cookie', headers)
@@ -200,6 +206,26 @@ class FaviconTests(unittest.TestCase):
             with self.subTest(policy=policy, page=page):
                 self.assertEqual(verdict(page, Content_Security_Policy=policy), expected)
         self.assertEqual(verdict(gateway, Content_Security_Policy=['frame-ancestors *', "frame-ancestors 'self'"]), 'frame-ancestors')
+
+    def test_pages_that_read_their_parent_window(self):
+        cases = {
+            '<script>window.mainProcess = window.parent.mainProcess;</script>': True,
+            '<script>const p = top.mainProcess</script>': True,
+            "<script>var m = window.top['mainProcess'];</script>": True,
+            '<script>document.title = self.parent.document.title</script>': True,
+            '<script type="module">window.parent.app.start()</script>': True,
+            '<SCRIPT type="text/javascript">parent.desktop.open()</SCRIPT>': True,
+            '<script>if (window.top !== window.self) top.location = location.href</script>': False,
+            "<script>window.parent.postMessage({ready: true}, '*')</script>": False,
+            '<script>node.parent.children.length; el.style.top.length</script>': False,
+            '<script type="application/json">{"a": "top.secret"}</script>': False,
+            '<script src="parent.js">window.parent.x</script>': False,
+            '<script>if (window.parent === window) start()</script>': False,
+            '<p>window.parent.mainProcess</p>': False,
+        }
+        for html, expected in cases.items():
+            with self.subTest(html=html):
+                self.assertIs(favicon.reads_parent_window(html), expected)
 
 
 if __name__ == '__main__':

@@ -16,9 +16,9 @@ The web console and most of the documentation are in Simplified Chinese. This pa
 
 ![Niu Gateway and AI Workstation](docs/images/gateway-home.png)
 
-*Promotional image; the running version is authoritative. [About the images](docs/images/README.md)*
+*AI-generated promotional image; the running version is authoritative. [About the images](docs/images/README.md)*
 
-Screenshots of the actual UI: [Niu Gateway desktop](docs/images/gateway-control-panel.jpg), [Clash proxy editor](docs/images/gateway-clash-editor.jpg), [phone home screen](docs/images/gateway-home-mobile.jpg), [notifications](docs/images/gateway-global-toast-desktop.jpg).
+Screenshots of the actual UI: [control panel](docs/images/gateway-control-panel.jpg), [dark mode and Tailscale devices](docs/images/gateway-control-panel-dark.jpg), [proxy editor](docs/images/gateway-clash-editor.jpg), [account and security](docs/images/gateway-password-login.jpg), [phone home screen](docs/images/gateway-home-mobile.jpg), [control panel at phone size](docs/images/gateway-control-panel-mobile.jpg), [notifications](docs/images/gateway-global-toast-desktop.jpg).
 
 ## Features
 
@@ -28,12 +28,12 @@ Screenshots of the actual UI: [Niu Gateway desktop](docs/images/gateway-control-
 | Workstation | `192.168.1.251` | XFCE, Chrome, VS Code, Codex, Claude Code, Claude Desktop, GitHub CLI, MCP tools | `ghcr.io/crazyniu/ai-workstation` |
 
 - Niu Gateway, the gateway's port-80 page, is a desktop with a menu bar and Dock, with app and settings icons in the macOS style. The control panel, proxy editor, LAN file transfer, the workstation desktop, the Clash dashboard (MetaCubeXD), AdGuard Home and your own links open in windows on the same page. On a phone it becomes a home screen.
-- Drag any icon to any place on the desktop, or into and out of the Dock. "About Niu Gateway" in the menu bar shows the version and the GitHub repository. When a new version is out, the update window shows its release notes rendered from Markdown.
-- The gateway has a Terminal app ([ttyd](https://github.com/tsl0922/ttyd), open source) that opens a root shell on the gateway in a desktop window. It ships with the gateway image and follows the same login setting as the rest of the console.
+- Drag any icon to any place on the desktop, or into and out of the Dock. Windows resize freely up to the whole browser window, with the bottom edge allowed behind the Dock as on macOS; the green zoom button still stops above the Dock. "About Niu Gateway" in the menu bar shows the version and the GitHub repository. When a new version is out, the update window shows its release notes rendered from Markdown.
+- The gateway has a Terminal app ([ttyd](https://github.com/tsl0922/ttyd), open source) that opens a root shell on the gateway in a desktop window. It ships with the gateway image and follows the same login setting as the rest of the console (账户与安全 → 登录需要密码, Account & Security → require a password).
 - The Tailscale page lists every device with its online state, addresses, traffic and connection path (direct, or DERP relay with the relay's name), and links to Tailscale's access controls, where you configure your own DERP relay servers.
-- The proxy editor assigns an HTTP, HTTPS or SOCKS5 exit to a single IP, an IP range or a subnet, chained through a relay node from your subscription. HTTP and HTTPS exits always go through the relay; for SOCKS5 it is the default. You can also create groups (for example Google or YouTube) and route their domains to a chosen exit. Every change goes into a draft that you apply or discard.
-- Desktop links can fetch site favicons or use custom icons, and can open in a new tab instead of a window. If a site does not allow being shown inside another page, its window says so and offers a new tab. Wallpaper, theme, layout and account settings are stored on the gateway.
-- The gateway asks for a password by default; on a trusted private network you can turn that off in the account settings. The workstation serves an HTTPS noVNC desktop with two-way text clipboard.
+- The proxy editor assigns an HTTP, HTTPS or SOCKS5 exit to a single IP, an IP range or a subnet (设备出口, device exits), chained through a relay node from your subscription (中转出口 relay exits, 订阅地址 subscription URL). HTTP and HTTPS exits always go through the relay; for SOCKS5 it is the default. You can also create groups (分组规则, for example Google or YouTube) and route their domains to a chosen exit. Every change goes into a draft that you apply or discard.
+- Desktop links can fetch site favicons or use custom icons, and can open in a new tab instead of a window. If a site does not allow being shown inside another page, or runs only as a top-level page (a NAS web desktop, for example), its window explains why and offers a new tab, once or for good. Wallpaper, theme, layout and account settings are stored on the gateway.
+- The gateway asks for a password by default; on a trusted private network you can turn that off under 账户与安全 (Account & Security), which also opens the web terminal without a password. The workstation serves an HTTPS noVNC desktop with two-way text clipboard.
 - The gateway manages proxy configuration, DNS, subnet access, component upgrades, and backup and restore.
 - The workstation joins the LAN directly and can open connections to a paired Mac running Orca. To restrict which LAN devices it can reach, keep the Orca port (or other device ports) with **niu.sh → 7** and then enable the optional [LAN isolation](docs/workstation-egress.md#显式启用隔离).
 - Configuration, HOME and account identities stay inside each container. Public images contain only programs and default templates; you add your own subscriptions, identities and data.
@@ -140,7 +140,7 @@ The Docker deployments declare no bind mounts, named volumes or anonymous volume
 
 **Restarting a container keeps its data; deleting or recreating it loses that data.** Before replacing an image, export the private state you need and verify the restore procedure: see [gateway data handling](gateway/README.md) and [workstation backup and restore](workstation/README.md). Keep personal state, recovery images and credentials in private storage.
 
-Component upgrades inside Niu Gateway keep the configuration in `/data` and roll back on failure. Niu Gateway's own pages and API update online under 服务升级 (Updates); nginx, Python, ttyd and the base system are updated by replacing the image.
+Component upgrades inside Niu Gateway keep the configuration in `/data` and roll back on failure. Niu Gateway's own pages and API are released separately on [GitHub Releases](https://github.com/crazyniu/ai-workstation/releases) (tags `gateway-web-vX.Y.Z`); the menu bar shows when a new one is out, and 服务升级 (Updates) shows its release notes and installs it online; nginx, Python, ttyd and the base system are updated by replacing the image.
 
 ## Development
 

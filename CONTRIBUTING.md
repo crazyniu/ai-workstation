@@ -52,6 +52,8 @@ python3 gateway/runtime/build-info.py
 
 合并到 `main` 后，只重新构建自上次成功发布以来源码有变化的镜像，覆盖全部架构并验证通过后发布；未变化的镜像把上次发布的版本标记为本次提交的 `sha-<提交号>` 和 `latest`。发布失败时 `latest` 保持上一个通过验证的版本。其他架构的问题可能在合并后才发现，需要提前确认时使用 `full-ci`。测试失败、取消或未正常报告都会阻止通过。合并使用 squash 或 rebase。
 
+Niu Gateway 的网页和 API 另外通过 GitHub Releases 发布：维护者在已合并的 `main` 提交上推送 `gateway-web-vX.Y.Z` 标签，[发布工作流](.github/workflows/gateway-web-release.yml) 打包 `gateway-web.tar.gz` 并设为最新版本，网关的“服务升级”据此在线更新。版本号每次加 0.01，例如 v1.4.0 → v1.4.1。
+
 仓库已开启 GitHub 自动合并。完成授权开发并创建非草稿 PR 后，立即执行 `gh pr merge <编号> --auto --squash --match-head-commit <当前提交>`，由 GitHub 在必过检查及其他保护条件满足后合并。依赖 PR 按顺序合并，后续分支移到最新 `main` 再验证；提交者持续处理 CI 失败并确认最终合并状态。
 
 仓库当前只有一名维护者，审批票数为 0，保留 PR 和 CI 门槛；加入其他维护者后可提高审批票数并启用最新推送需他人批准。实际服务器规则见 [Protect default branch](https://github.com/crazyniu/ai-workstation/rules/25768868)，版本化配置为 [main.json](.github/rulesets/main.json)；更新规则时同时核对工作流的检查名和 GitHub Actions 来源。
