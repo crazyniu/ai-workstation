@@ -9,6 +9,8 @@ on:
       - 'AI-INSTALL.md'
       - 'AGENTS.md'
       - 'gateway/README.md'
+      - 'gateway/DESIGN.md'
+      - 'gateway/PRODUCT.md'
       - 'workstation/README.md'
       - 'workstation/VALIDATION.md'
       - 'docs/**'
@@ -19,21 +21,41 @@ on:
       - 'CODE_OF_CONDUCT.md'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/PULL_REQUEST_TEMPLATE.md'
-  # Every PR reports Required checks, including documentation-only changes.
+  # Every PR reports Required checks. Most PRs need only the fast checks;
+  # scripts/ci-changes.py decides which images to build. Add the full-ci label
+  # to a PR, or run this workflow with full, to verify every image.
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
+    inputs:
+      full:
+        description: Build and verify every image on every architecture
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
   group: images-${{ github.ref }}
-  cancel-in-progress: true
+  # Main keeps running builds; the next run diffs from the last published commit.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   changes:
     name: Change scope
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
     outputs:
+      checks: ${{ steps.scope.outputs.checks }}
+      gateway: ${{ steps.scope.outputs.gateway }}
+      workstation: ${{ steps.scope.outputs.workstation }}
       images: ${{ steps.scope.outputs.images }}
+      matrix: ${{ steps.scope.outputs.matrix }}
+      native: ${{ steps.scope.outputs.native }}
+      windows: ${{ steps.scope.outputs.windows }}
+      publish: ${{ steps.scope.outputs.publish }}
+      base: ${{ steps.scope.outputs.base }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,9 +65,32 @@ jobs:
       - name: Determine build scope
         id: scope
         env:
+          GH_TOKEN: ${{ github.token }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          FULL_RUN: ${{ inputs.full }}
         run: python3 scripts/ci-changes.py
+  checks:
+    name: Fast checks
+    needs: changes
+    if: needs.changes.outputs.checks == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit tests
+        run: |
+          set -e
+          python3 -m pip install PyYAML
+          python3 -m unittest discover -s gateway/tests -v
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          for test in workstation/tests/test-*.py; do python3 "$test"; done
+      - name: JavaScript syntax
+        run: for file in gateway/web/*.js gateway/web/transfer/*.js; do node --check "$file"; done
   images:
     needs: changes
     if: needs.changes.outputs.images == 'true'
@@ -56,16 +101,7 @@ jobs:
       packages: write
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - {component: gateway, image: ai-workstation-gateway, arch: amd64, platform: linux/amd64, runner: ubuntu-latest}
-          - {component: gateway, image: ai-workstation-gateway, arch: arm64, platform: linux/arm64, runner: ubuntu-24.04-arm}
-          - {component: gateway, image: ai-workstation-gateway, arch: '386', platform: linux/386, runner: ubuntu-24.04}
-          - {component: gateway, image: ai-workstation-gateway, arch: armv5, platform: linux/arm/v5, runner: ubuntu-latest}
-          - {component: gateway, image: ai-workstation-gateway, arch: armv7, platform: linux/arm/v7, runner: ubuntu-latest}
-          - {component: gateway, image: ai-workstation-gateway, arch: riscv64, platform: linux/riscv64, runner: ubuntu-latest}
-          - {component: workstation, image: ai-workstation, arch: amd64, platform: linux/amd64, runner: ubuntu-latest}
-          - {component: workstation, image: ai-workstation, arch: arm64, platform: linux/arm64, runner: ubuntu-24.04-arm}
+      matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -75,15 +111,11 @@ jobs:
         with:
           platforms: all
       - uses: docker/setup-buildx-action@v3
-      - name: Prepare gateway components and tests
+      - name: Prepare gateway components
         if: matrix.component == 'gateway'
         run: |
           python3 -m pip install PyYAML
           python3 gateway/scripts/fetch-components.py ${{ matrix.arch }}
-          python3 -m unittest discover -s gateway/tests -v
-          python3 -m unittest discover -s tests -p 'test_*.py' -v
-          node --check gateway/web/app.js
-          node --check gateway/web/build-info.js
       - name: Build candidate
         uses: docker/build-push-action@v6
         with:
@@ -114,8 +146,6 @@ jobs:
       - name: Verify workstation clean deployment
         if: matrix.component == 'workstation'
         run: |
-          set -e
-          for test in workstation/tests/test-*.py; do python3 "$test"; done
           bash workstation/tests/smoke.sh candidate:workstation
       - name: Verify workstation internal storage
         if: matrix.component == 'workstation'
@@ -128,20 +158,15 @@ jobs:
         run: bash workstation/tests/updates.sh candidate:workstation
       - name: Audit all image layers
         run: docker image save candidate:${{ matrix.component }} | python3 ${{ matrix.component }}/tests/audit-image.py
-      - name: Verify native Linux installation from clean source
-        if: matrix.component == 'workstation'
-        run: |
-          docker build -f tests/Dockerfile.native -t native-candidate:test .
-          bash tests/native-smoke.sh native-candidate:test
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
+        if: needs.changes.outputs.publish == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish verified candidate
-        if: github.event_name != 'pull_request'
+        if: needs.changes.outputs.publish == 'true'
         env:
           IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
           COMMIT: ${{ github.sha }}
@@ -149,9 +174,25 @@ jobs:
         run: |
           docker tag candidate:${{ matrix.component }} "$IMAGE:sha-$COMMIT-$ARCH"
           docker push "$IMAGE:sha-$COMMIT-$ARCH"
+  native:
+    name: Native Linux installation
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify native Linux installation from clean source
+        run: |
+          docker build -f tests/Dockerfile.native -t native-candidate:test .
+          bash tests/native-smoke.sh native-candidate:test
   windows:
     needs: changes
-    if: needs.changes.outputs.images == 'true'
+    if: needs.changes.outputs.windows == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -159,8 +200,8 @@ jobs:
         shell: pwsh
         run: ./tests/test-deploy.ps1
   publish:
-    needs: [images, windows]
-    if: github.event_name != 'pull_request'
+    needs: [changes, checks, images, native, windows]
+    if: ${{ !cancelled() && !failure() && needs.changes.outputs.publish == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -172,43 +213,55 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish manifests after all architectures and native checks pass
+      - name: Publish manifests after all checks pass
         env:
           OWNER: ${{ github.repository_owner }}
           COMMIT: ${{ github.sha }}
+          BASE: ${{ needs.changes.outputs.base }}
+          BUILT_GATEWAY: ${{ needs.changes.outputs.gateway }}
+          BUILT_WORKSTATION: ${{ needs.changes.outputs.workstation }}
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
         run: |
+          set -euo pipefail
           for component in ai-workstation-gateway ai-workstation; do
             image="ghcr.io/$OWNER/$component"
-            arches='amd64 arm64'
-            if [ "$component" = ai-workstation-gateway ]; then arches='amd64 arm64 386 armv5 armv7 riscv64'; fi
-            sources=()
-            for arch in $arches; do sources+=("$image:sha-$COMMIT-$arch"); done
+            if [ "$component" = ai-workstation-gateway ]; then
+              built=$BUILT_GATEWAY; arches='amd64 arm64 386 armv5 armv7 riscv64'
+            else
+              built=$BUILT_WORKSTATION; arches='amd64 arm64'
+            fi
             tags=(-t "$image:sha-$COMMIT")
             if [ "$REF_TYPE" = tag ]; then tags+=(-t "$image:$REF_NAME"); else tags+=(-t "$image:latest"); fi
+            if [ "$built" = true ]; then
+              sources=()
+              for arch in $arches; do sources+=("$image:sha-$COMMIT-$arch"); done
+            else
+              # Unchanged since the last published commit: tag that verified image.
+              sources=("$image:sha-$BASE")
+            fi
             docker buildx imagetools create "${tags[@]}" "${sources[@]}"
           done
   required-checks:
     name: Required checks
     if: always()
-    needs: [changes, images, windows]
+    needs: [changes, checks, images, native, windows]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require successful applicable checks
         env:
           SCOPE_RESULT: ${{ needs.changes.result }}
-          BUILD_IMAGES: ${{ needs.changes.outputs.images }}
-          IMAGES_RESULT: ${{ needs.images.result }}
-          WINDOWS_RESULT: ${{ needs.windows.result }}
+          RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
-          case "$SCOPE_RESULT/$BUILD_IMAGES/$IMAGES_RESULT/$WINDOWS_RESULT" in
-            success/true/success/success|success/false/skipped/skipped)
-              echo 'All applicable checks passed.'
-              ;;
-            *)
-              echo "Required checks failed: scope=$SCOPE_RESULT images=$IMAGES_RESULT" >&2
-              exit 1
-              ;;
-          esac
+          echo "Job results: $RESULTS"
+          # Skipped jobs were not needed for this change.
+          failed=$([ "$SCOPE_RESULT" = success ] || echo scope)
+          for result in $RESULTS; do
+            case $result in failure|cancelled) failed=$result ;; esac
+          done
+          if [ -n "$failed" ]; then
+            echo "Required checks failed: $failed" >&2
+            exit 1
+          fi
+          echo 'All applicable checks passed.'
