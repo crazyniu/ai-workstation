@@ -121,7 +121,8 @@ function updateConfigState() {
   if (!$('#proxy-window').open || savedConfig === null) return;
   const dirty = configDirty();
   $('#config-filename').textContent = dirty ? 'config.yaml · 等待应用' : 'config.yaml · 当前正在使用';
-  $('#config-code').textContent = dirty ? '配置信息 · 待应用' : '配置信息';
+  $('#config-code-label').textContent = dirty ? '配置信息 · 待应用' : '配置信息';
+  $('#config-code').classList.toggle('is-dirty', dirty);
 }
 
 function proxyDialog(title, build) {

@@ -67,12 +67,15 @@ h2 { font-size: 19px; margin-bottom: 18px; }
   text-decoration: none;
   text-underline-offset: 3px;
 }
+.transfer .text-action:not(:disabled):hover { background: transparent; }
+.transfer .text-action { box-shadow: none; }
 .transfer .destructive { color: var(--danger); }
 .transfer .text-action:hover, .transfer .text-action:focus-visible { text-decoration: underline; }
 #status:not(:empty) { margin: 0 var(--inset) 12px; color: var(--muted); }
 #status:empty { margin: 0; }
 #empty { color: var(--muted); max-width: none; margin: 0; padding: 48px var(--inset); text-align: center; }
 dialog form { padding: 24px; min-width: min(350px, 80vw); }
+#folder-form label { display: grid; gap: 8px; }
 .dialog-actions { justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .document-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .document-heading h2 { margin: 0; }

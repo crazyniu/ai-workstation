@@ -87,6 +87,7 @@ function drawWallpapers(){const gallery=$('#wallpaper-gallery');gallery.replaceC
 
 const stateNames={Running:'已连接',NeedsLogin:'等待登录',NeedsMachineAuth:'等待设备批准',Stopped:'已断开',Starting:'正在连接',NoState:'尚未登录',Unavailable:'服务暂时不可用'};
 const names={mihomo:'Mihomo',adguard:'AdGuard Home',tailscale:'Tailscale',panel:'Clash 面板'};
+const componentIcons={mihomo:'clash',adguard:'adguard',tailscale:'tailscale',panel:'globe'};
 const editor=window.createYamlEditor?.($('#config-editor'),$('#config-content'),updateConfigState)||{getValue:()=>$('#config-content').value,setValue:v=>$('#config-content').value=v,setDisabled:v=>$('#config-content').disabled=v};
 // The bundled editor exposes its token colors through generated stylesheet rules.
 // Bind those five stable colors to theme variables without modifying the bundle.
@@ -133,6 +134,9 @@ const post=(path,data={})=>api(path,{method:'POST',body:JSON.stringify(data)});
 function element(tag,text,className){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(className)el.className=className;return el;}
 function icon(name,url=''){const image=document.createElement('img');image.alt='';image.width=96;image.height=96;image.referrerPolicy='no-referrer';image.onerror=()=>{image.onerror=null;image.src='/icons/link.svg';};image.src='/icons/'+(name!=='auto'&&/^[a-z0-9-]+$/.test(name)?name:'link')+'.svg';if(name==='auto')loadFavicon(faviconURL(url)).then(data=>{if(data)image.src=data;});return image;}
 function button(text,handler,className){const el=element('button',text,className);el.type='button';el.onclick=handler;return el;}
+function glyph(name){const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),use=document.createElementNS(ns,'use');svg.setAttribute('class','glyph');svg.setAttribute('aria-hidden','true');use.setAttribute('href','#i-'+name);svg.append(use);return svg;}
+function iconButton(name,label,handler,className=''){const el=button('',handler,('icon-button '+className).trim());el.setAttribute('aria-label',label);el.title=label;el.append(glyph(name));return el;}
+function setTone(el,label,tone='idle'){el.textContent=label;el.dataset.tone=tone;}
 function configDirty(){return savedConfig!==null&&editor.getValue()!==savedConfig;}
 async function discardChanges(){return !configDirty()||await askConfirm('配置文件尚未应用。离开后将丢弃这些修改，是否继续？');}
 function closeSettings(){destroySettings();}
@@ -169,17 +173,42 @@ function drawDesktop(){
     desktop.append(el);
   }drawLinks();
 }
-function drawLinks(){const list=$('#link-list');list.replaceChildren();if(!cards.length){list.append(element('p','还没有自定义链接。','muted'));return;}cards.forEach((card,index)=>{const row=element('div',undefined,'service-row'),details=element('div',undefined,'details'),tools=element('div',undefined,'tools');details.append(element('strong',card.name),element('span',card.url));tools.append(button('编辑',()=>openLinkEditor(card)),button('上移',()=>guard(async()=>{if(!index)return;const ids=cards.map(c=>c.id);[ids[index],ids[index-1]]=[ids[index-1],ids[index]];await post('/cards/order',{ids});await loadCards();})),button('下移',()=>guard(async()=>{if(index===cards.length-1)return;const ids=cards.map(c=>c.id);[ids[index],ids[index+1]]=[ids[index+1],ids[index]];await post('/cards/order',{ids});await loadCards();})),button('删除',()=>guard(async()=>{if(!await askConfirm('删除链接“'+card.name+'”？'))return;await api('/cards/'+card.id,{method:'DELETE'});await loadCards();}),'danger'));tools.children[1].disabled=index===0;tools.children[2].disabled=index===cards.length-1;row.append(icon(card.icon||'link',card.url),details,tools);list.append(row);});}
+function moveLink(index,delta){
+  return guard(async()=>{
+    const ids=cards.map(c=>c.id),next=index+delta;if(next<0||next>=ids.length)return;
+    [ids[index],ids[next]]=[ids[next],ids[index]];await post('/cards/order',{ids});await loadCards();
+    const row=$('#link-list').children[next],same=row?.querySelector(delta<0?'[data-move=up]':'[data-move=down]');
+    (same&&same.dataset.stateDisabled!=='true'?same:row?.querySelector('[data-move]:not([data-state-disabled=true])'))?.focus();
+  });
+}
+function drawLinks(){
+  const list=$('#link-list');list.replaceChildren();
+  if(!cards.length){const empty=element('div',undefined,'empty-state');empty.append(element('strong','还没有自定义链接'),element('span','添加 NAS、路由器或常用服务后，它们会显示在桌面上。'));list.append(empty);return;}
+  cards.forEach((card,index)=>{
+    const row=element('div',undefined,'setting-row'),details=element('div',undefined,'setting-copy'),tools=element('div',undefined,'row-actions'),image=icon(card.icon||'link',card.url);
+    image.className='row-icon';details.append(element('strong',card.name),element('span',card.url));
+    const up=iconButton('up','上移 '+card.name,()=>moveLink(index,-1)),down=iconButton('down','下移 '+card.name,()=>moveLink(index,1));
+    up.dataset.move='up';down.dataset.move='down';
+    for(const [control,off] of [[up,index===0],[down,index===cards.length-1]]){control.disabled=off;control.dataset.stateDisabled=String(off);}
+    tools.append(iconButton('edit','编辑 '+card.name,()=>openLinkEditor(card)),up,down,iconButton('trash','删除 '+card.name,()=>guard(()=>deleteCard(card)),'danger'));
+    row.append(image,details,tools);list.append(row);
+  });
+}
 async function loadCards(){const data=await api('/cards');cards=data.cards;desktopPrefs=data.desktop;drawDesktop();}
 async function loadStatus(){status=await api('/status');$('#home-domain').textContent='http://'+status.domain;}
+let loginRequiredSaved=true;
 function renderLoginSettings(auth){
-  const required=auth.login_required!==false;
-  $('#login-required').checked=required;
+  loginRequiredSaved=auth.login_required!==false;
+  $('#login-required').checked=loginRequiredSaved;
   updateLoginHint();
-  $('#login-session').hidden=!required;
+  $('#login-session').hidden=!loginRequiredSaved;
 }
+// The password confirmation only appears once the switch differs from the saved state.
 function updateLoginHint(){
-  $('#login-settings-status').textContent=$('#login-required').checked?'':'关闭密码登录后，能访问网关网页的设备均可管理网关。';
+  const required=$('#login-required').checked,changed=required!==loginRequiredSaved,hint=$('#login-settings-status');
+  $('#login-confirm').hidden=!changed;if(!changed)$('#login-settings-password').value='';
+  hint.className='callout '+(required?'':'warn');
+  hint.textContent=required?'开启后，打开网关桌面需要输入管理员密码。':'关闭后，能访问网关网页的设备都可以直接管理网关。';
 }
 $('#login-required').addEventListener('change',updateLoginHint);
 async function readAccess() {
@@ -217,7 +246,7 @@ async function openSettings(page='overview',{force=false}={}){
   finishSettingsLoading();const request=++navigation;currentPage=page;
   showSettingsWindow();$('#settings-dialog').classList.toggle('is-overview',page==='overview');settingsWindow?.window.classList.toggle('is-overview',page==='overview');$('#settings-content').scrollTop=0;const done=beginLoading($('#settings-content'));settingsLoadingDone=done;
   $$('[data-section]').forEach(el=>el.hidden=el.dataset.section!==page);
-  $$('[data-page]').forEach(el=>{el.classList.toggle('active',el.dataset.page===page);el.setAttribute('aria-current',el.dataset.page===page?'page':'false');});
+  $$('#settings-nav [data-page]').forEach(el=>{const on=el.dataset.page===page;el.classList.toggle('active',on);if(on)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
   if(!force){
     const section=$('#settings-content > section:not([hidden])');
     const returnButton=page==='overview'&&previousPage?section.querySelector('[data-page="'+previousPage+'"]'):null;
@@ -226,6 +255,8 @@ async function openSettings(page='overview',{force=false}={}){
   }
   try{
     const prefs=await api('/settings');if(request!==navigation)return;
+    // Status cards fill in on their own; a slow Tailscale query must not hold the page spinner.
+    if(page==='overview')loadOverview(request).catch(e=>{if(request===navigation)toast(e.message,true);});
     if(page==='dns'){$('#domain').value=prefs.domain;$('#domain-address').textContent='当前地址：'+status.address+' · http://'+prefs.domain;}
     if(page==='tailscale')await loadTailscale();
     if(page==='updates'){loadWebRelease().catch(e=>toast(e.message,true));const webJob=await api('/web-release/job');if(webJob.status==='running'){await followWebRelease(webJob);return;}const task=await loadUpdates();if(task?.status==='running'){await job(task,{request});if(request===navigation)await loadUpdates();}}
@@ -240,14 +271,53 @@ function loadTailscale(){
   }
   return tailscaleRequest;
 }
+const stateTones={Starting:'busy',NeedsLogin:'warn',NeedsMachineAuth:'warn',NoState:'idle',Stopped:'idle',Unavailable:'error'};
+const routeStates={active:['已生效','ok'],pending:['等待批准','warn'],configuring:['正在配置','busy'],waiting:['等待连接','idle'],error:['异常','error']};
+function tailscaleSummary(t){
+  if(t.state==='Running')return t.online?{label:'已连接',tone:'ok'}:{label:'正在重新连接',tone:'busy'};
+  return {label:stateNames[t.state]||t.state||'未知',tone:stateTones[t.state]||'idle'};
+}
+function markTailscale(t){const summary=tailscaleSummary(t),dot=$('#nav-tailscale-dot');dot.hidden=false;dot.dataset.tone=summary.tone;dot.title='Tailscale：'+summary.label;return summary;}
+function serviceSummary(text=''){
+  const rows=text.split('\n').map(line=>line.trim().split(/\s+/)).filter(row=>row[0]&&row[1]),stopped=rows.filter(row=>row[1]!=='RUNNING');
+  if(!rows.length)return {label:'状态未知',tone:'idle'};
+  return stopped.length?{label:stopped.length+' 个服务异常',tone:'warn',detail:stopped.map(row=>row[0]).join('、')}:{label:'运行正常',tone:'ok'};
+}
+async function loadOverview(request){
+  const [current,ts,updateState,release]=await Promise.allSettled([loadStatus(),api('/tailscale'),api('/updates'),api('/web-release')]);
+  if(request!==navigation)return;
+  const domain=$('#overview-domain'),services=current.status==='fulfilled'?serviceSummary(status.services):{label:'读取失败',tone:'error'};
+  $('#overview-address').textContent=status.address||'—';
+  domain.textContent=status.domain?'http://'+status.domain:'—';domain.href=status.domain?'http://'+status.domain+'/':'/';
+  setTone($('#overview-services'),services.label,services.tone);$('#overview-services').title=services.detail||'';
+  if(ts.status==='fulfilled'){
+    const t=ts.value,summary=markTailscale(t),ips=t.ips||[];
+    setTone($('#overview-ts-state'),summary.label,summary.tone);
+    $('#overview-ts-ip').textContent=ips.find(ip=>!ip.includes(':'))||ips[0]||'未分配地址';
+    $('#overview-ts-detail').textContent=t.state==='Running'?(t.name||'本机')+' · '+t.peers+' 台设备在线':'打开 Tailscale 设置以连接';
+  }else{setTone($('#overview-ts-state'),'读取失败','error');$('#overview-ts-ip').textContent='—';$('#overview-ts-detail').textContent=ts.reason.message;}
+  const info=release.status==='fulfilled'?release.value:null,u=updateState.status==='fulfilled'?updateState.value:null,count=countUpdates(u,info);
+  setUpdateBadge(count);
+  $('#overview-web-version').textContent=info?'Web '+releaseLabel(info.current):'—';
+  const detail=$('#overview-update-detail'),state=$('#overview-update-state');
+  if(!u&&!info){setTone(state,'读取失败','error');detail.textContent=(updateState.reason||release.reason).message;}
+  else if(count){setTone(state,count+' 项更新','busy');detail.textContent='前往服务升级查看并安装';}
+  else if(info?.latest||Object.keys(u?.checked||{}).length){setTone(state,'已是最新','ok');detail.textContent='网关 Web 与核心组件均为最新版本';}
+  else{setTone(state,'未检查','idle');detail.textContent='尚未检查更新';}
+}
 async function renderTailscale(){
     const request=navigation;
     const t=await api('/tailscale');if(request!==navigation||currentPage!=='tailscale')return;
-    const dl=$('#tailscale-status');dl.replaceChildren();
-    const connection=t.state==='Running'&&!t.online?'正在重新连接':stateNames[t.state]||t.state;
-    for(const [key,value] of [['状态',connection],['设备',t.name||'尚未登录'],['地址',(t.ips||[]).join(' · ')||'—'],['在线节点',String(t.peers)]])dl.append(element('dt',key),element('dd',value));
-    $('#tailscale-subnets').textContent=(t.routes?.routes||'').split(',').filter(Boolean).join(' · ')||'未检测到局域网';
-    $('#tailscale-approval').textContent=t.approval_note||'';
+    const summary=markTailscale(t),dl=$('#tailscale-status');
+    setTone($('#tailscale-state'),summary.label,summary.tone);
+    $('#tailscale-device').textContent=t.name||(t.has_identity?'Tailscale':'尚未登录 Tailscale');
+    dl.replaceChildren();
+    for(const [key,value,mono] of [['Tailscale 地址',(t.ips||[]).join('\n')||'—',true],['在线设备',t.state==='Running'?t.peers+' 台':'—'],['登录身份',t.has_identity?'已保存在网关':'未登录']]){
+      const group=element('div'),dd=element('dd',value);if(mono)dd.className='mono';group.append(element('dt',key),dd);dl.append(group);
+    }
+    $('#tailscale-subnets').textContent=(t.routes?.routes||'').split(',').filter(Boolean).join('\n')||'未检测到局域网';
+    const [routeLabel,routeTone]=routeStates[t.route_state]||['—','idle'];setTone($('#tailscale-route-state'),routeLabel,routeTone);
+    const approval=$('#tailscale-approval');approval.textContent=t.approval_note||'';approval.className='callout'+({error:' error',pending:' warn',active:' ok'}[t.route_state]||'');
     $('#tailscale-admin').hidden=!(t.state==='NeedsMachineAuth'||t.route_state==='pending');
     const link=$('#tailscale-login-link'),url=t.login_url;
     link.hidden=!(t.state==='NeedsLogin'&&url&&/^https:\/\/(login\.tailscale\.com|controlplane\.tailscale\.com)\//.test(url));
@@ -258,13 +328,12 @@ async function renderTailscale(){
     action.textContent=t.state==='Running'?'断开连接':t.state==='Starting'?'正在连接…':t.state==='Unavailable'?'重试连接':t.has_identity?'连接':'登录并连接';
     action.classList.toggle('primary',t.state!=='Running');
     action.dataset.stateDisabled=String(t.state==='Starting');action.disabled=busy||t.state==='Starting';
-    const account=$('#tailscale-account');account.hidden=!t.has_identity||['NeedsLogin','NoState','Unavailable'].includes(t.state);if(account.hidden)account.open=false;
-    const health=(t.health||[]).join('；');
-    const refresh=$('#tailscale-refresh-status');refresh.classList.remove('error');refresh.textContent=health;
+    $('#tailscale-account').hidden=!t.has_identity||['NeedsLogin','NoState','Unavailable'].includes(t.state);
+    const refresh=$('#tailscale-refresh-status');refresh.className='callout warn';refresh.textContent=(t.health||[]).join('；');
 }
 setInterval(()=>{
   if(currentPage!=='tailscale'||!$('#settings-dialog').open||document.hidden||busy)return;
-  loadTailscale().catch(e=>{if(currentPage==='tailscale'){const refresh=$('#tailscale-refresh-status');refresh.textContent=e.message+' 状态更新会自动重试。';refresh.classList.add('error');}});
+  loadTailscale().catch(e=>{if(currentPage==='tailscale'){const refresh=$('#tailscale-refresh-status');refresh.textContent=e.message+' 状态更新会自动重试。';refresh.className='callout error';}});
 },4000);
 async function loadUpdates(){
   const request=navigation,u=await api('/updates');
@@ -273,24 +342,30 @@ async function loadUpdates(){
   for(const [component,manifest] of Object.entries(u.components)){
     const checked=u.checked[component],current=manifest.version;
     if(!current || current==='unknown')continue;
-    const row=element('div',undefined,'service-row'),details=element('div',undefined,'details');
-    const updateText=checked?.error?checked.error:checked?.available?'可用 '+checked.latest:checked?.latest?'已是最新版':'';
-    details.append(element('strong',names[component]),element('span',[current,updateText].filter(Boolean).join(' · ')));
-    const action=checked?.available?'升级':checked?.latest&&!checked.error?'重新安装':'安装最新版';
-    const install=button(action,()=>guard(async()=>{
-      if(!await askConfirm(names[component]+' 将短暂中断，继续'+action+'？'))return;
+    const available=!checked?.error&&checked?.available&&checked.latest!==current;
+    const row=element('div',undefined,'setting-row'),details=element('div',undefined,'setting-copy');
+    const updateText=checked?.error?'检查失败：'+checked.error:available?'可升级到 '+checked.latest:checked?.latest?'已是最新版':'尚未检查更新';
+    details.append(element('strong',names[component]||component),element('span',current+' · '+updateText,'setting-meta'+(checked?.error?' is-error':available?' is-update':'')));
+    row.append(icon(componentIcons[component]||component),details);
+    if(available)row.append(button('升级',()=>guard(async()=>{
+      if(!await askConfirm((names[component]||component)+' 将升级到 '+checked.latest+'，期间服务会短暂中断。是否继续？','升级 '+(names[component]||component)))return;
       await job(await post('/updates/install',{component}));await loadUpdates();
-    }));
-    row.append(icon(component==='mihomo'?'clash':component),details);
-    if(!checked?.error && checked?.available && checked.latest!==current)row.append(install);
+    }),'primary'));
     list.append(row);
   }
   const errors=Object.entries(u.checked).filter(([,value])=>value.error).map(([component,value])=>(names[component]||component)+'：'+value.error);
-  $('#upgrade-status').textContent=errors.length?errors.join('；'):u.job?(u.job.status==='running'?'任务进行中':u.job.status==='success'?'上次操作已完成':u.job.error||''):'';
+  $('#upgrade-status').textContent=errors.length?'检查失败 · '+errors.join('；'):u.job?(u.job.status==='running'?'升级任务进行中…':u.job.status==='success'?'上次操作已完成。':u.job.error||''):'';
   $('#refresh-job').hidden=u.job?.status!=='running';
   $('#refresh-job').onclick=()=>guard(async()=>{await job(u.job);await loadUpdates();});
+  setUpdateBadge(countUpdates(u,latestWebRelease));
   return u.job;
 }
+function countUpdates(u,release){
+  let count=release?.available&&!release.error?1:0;
+  for(const [component,manifest] of Object.entries(u?.components||{})){const checked=u.checked?.[component];if(manifest.version&&manifest.version!=='unknown'&&checked?.available&&!checked.error&&checked.latest!==manifest.version)count++;}
+  return count;
+}
+function setUpdateBadge(count){const badge=$('#nav-update-badge');badge.hidden=!count;badge.textContent=count?String(count):'';badge.title=count?count+' 项更新可用':'';}
 async function job(initial,{request=null}={}){let task=initial;while(task.status==='running'){await new Promise(r=>setTimeout(r,1200));if(request!==null&&request!==navigation)return;task=await api('/jobs/'+task.id);}if(request!==null&&request!==navigation)return;if(task.status==='error')throw Error(task.error||'操作失败，请检查服务状态后重试。');toast('操作完成。');return task.result;}
 $('#auth-dialog').addEventListener('cancel',e=>e.preventDefault());
 $('#auth-form').onsubmit=async e=>{e.preventDefault();const password=$('#password').value;if(!initialized&&password!==$('#confirm-password').value){toast('两次密码不一致',true);return;}const done=beginLoading($('#auth-form'));$('#auth-submit').disabled=true;try{await post(initialized?'/auth/login':'/auth/setup',{password});$('#password').value='';$('#confirm-password').value='';await authState();}catch(e){toast(e.message,true);}finally{done();$('#auth-submit').disabled=false;}};
@@ -338,7 +413,26 @@ $$('[data-ts]').forEach(b=>b.onclick=()=>guard(async()=>{
 }));
 $('#check-updates').onclick=()=>guard(async()=>{await Promise.all([loadWebRelease(true),job(await post('/updates/check'))]);await loadUpdates();});
 $('#backup').onclick=()=>guard(async()=>{const r=await api('/backup');const a=element('a');a.href='data:application/gzip;base64,'+r.data;a.download=r.filename;document.body.append(a);a.click();a.remove();toast('备份已下载，请妥善保存。');});
-$('#restore').onclick=()=>guard(async()=>{const file=$('#restore-file').files[0];if(!file||!$('#restore-confirm').checked)throw Error('请选择备份并确认替换配置');if(file.size>24*1024*1024)throw Error('备份超过 24 MB');if(!await discardChanges())return;const bytes=new Uint8Array(await file.arrayBuffer());let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));await job(await post('/restore',{data:btoa(text)}));if(proxyWindow)await openProxyWindow(true);await Promise.all([loadStatus(),loadCards(),loadAppearance()]);$('#restore-file').value='';$('#restore-confirm').checked=false;toast('备份已恢复。');});
+$('#restore').onclick=()=>guard(async()=>{const file=$('#restore-file').files[0];if(!file||!$('#restore-confirm').checked)throw Error('请选择备份并确认替换配置');if(file.size>24*1024*1024)throw Error('备份超过 24 MB');if(!await discardChanges())return;const bytes=new Uint8Array(await file.arrayBuffer());let text='';for(let i=0;i<bytes.length;i+=32768)text+=String.fromCharCode(...bytes.subarray(i,i+32768));await job(await post('/restore',{data:btoa(text)}));if(proxyWindow)await openProxyWindow(true);await Promise.all([loadStatus(),loadCards(),loadAppearance()]);$('#restore-file').value='';$('#restore-confirm').checked=false;$('#restore-filename').textContent='未选择文件';syncRestore();toast('备份已恢复。');});
+// Restoring stays unavailable until a file is chosen and the replacement is acknowledged.
+function syncRestore(){const ready=Boolean($('#restore-file').files[0])&&$('#restore-confirm').checked,control=$('#restore');control.dataset.stateDisabled=String(!ready);if(!busy)control.disabled=!ready;}
+function filterSettings(){
+  const query=$('#settings-search').value.trim().toLocaleLowerCase();let found=false,group=null,groupVisible=false;
+  const closeGroup=()=>{if(group)group.hidden=!groupVisible;};
+  for(const item of $('#settings-nav').children){
+    if(item.classList.contains('nav-search')||item.id==='settings-search-empty')continue;
+    if(item.classList.contains('nav-group')){closeGroup();group=item;groupVisible=false;continue;}
+    const match=!query||(item.textContent+' '+(item.dataset.keywords||'')).toLocaleLowerCase().includes(query);
+    item.hidden=!match;if(match){found=true;groupVisible=true;}
+  }
+  closeGroup();$('#settings-search-empty').hidden=found;
+}
+$('#settings-search').addEventListener('input',filterSettings);
+$('#settings-search').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();$('#settings-nav').querySelector(':scope > :is(button, a):not([hidden])')?.click();}
+  else if(e.key==='Escape'&&e.target.value){e.preventDefault();e.stopPropagation();e.target.value='';filterSettings();}
+});
+$('#link-cancel').onclick=()=>$('#link-dialog').close();
 $('#login-settings-form').onsubmit=e=>{e.preventDefault();guard(async()=>{await post('/auth/settings',{login_required:$('#login-required').checked,current_password:$('#login-settings-password').value});renderLoginSettings(await api('/auth'));$('#login-settings-password').value='';toast($('#login-required').checked?'密码登录已开启。':'密码登录已关闭，打开网页即可进入网关。');});};
 $('#password-form').onsubmit=e=>{e.preventDefault();const password=$('#new-password').value;if(!$('#current-password').value){toast('请输入当前密码。',true);return;}if(!password){toast('请输入新密码。',true);return;}if(password!==$('#repeat-password').value){toast('两次新密码不一致，请重新输入。',true);return;}guard(async()=>{await post('/password',{current_password:$('#current-password').value,password});$('#password-form').reset();toast('密码已保存。');});};
 $('#logout').onclick=()=>guard(async()=>{if(!await discardChanges())return;await post('/auth/logout');destroyProxyWindow();destroySettings();await authState();});
@@ -438,7 +532,8 @@ function setupDesktop(){
     finally{done();if(wallpaperLoadingDone===done)wallpaperLoadingDone=null;if(isCurrent()){$('#wallpaper-apply').disabled=busy;$('#wallpaper-file').value='';}}
   };
   $('#wallpaper-apply').onclick=()=>guard(async()=>{const saved=await post('/appearance',pendingAppearance);applyAppearance(saved);$('#personalization-dialog').close();toast('个性化设置已保存');},'#personalization-dialog .personalization-content');
-  $('#restore-file').addEventListener('change',()=>$('#restore-filename').textContent=$('#restore-file').files[0]?.name||'尚未选择文件');
+  $('#restore-file').addEventListener('change',()=>{$('#restore-filename').textContent=$('#restore-file').files[0]?.name||'未选择文件';syncRestore();});
+  $('#restore-confirm').addEventListener('change',syncRestore);syncRestore();
   window.addEventListener('resize',hideContext);
 }
 
