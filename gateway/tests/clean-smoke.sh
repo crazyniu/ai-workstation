@@ -6,7 +6,9 @@ cleanup(){ docker rm -f "$name" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 wait_ready(){
   for attempt in $(seq 1 45); do
-    if docker exec "$name" python3 /opt/gateway/app/healthcheck.py >/dev/null 2>&1; then return; fi
+    # The health check covers the services; Nginx must also be serving, or its error is in the log below.
+    if docker exec "$name" python3 /opt/gateway/app/healthcheck.py >/dev/null 2>&1 \
+      && docker exec "$name" python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1/healthz", timeout=5)' >/dev/null 2>&1; then return; fi
     if [ "$attempt" = 45 ]; then docker logs --tail 50 "$name"; return 1; fi
     sleep 1
   done
