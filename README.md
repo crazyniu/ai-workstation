@@ -1,69 +1,26 @@
 # AI Workstation & Gateway
 
+简体中文 | [English](README.en.md)
+
 [![Container images](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml/badge.svg)](https://github.com/crazyniu/ai-workstation/actions/workflows/images.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-面向家庭网络与远程开发的网关与工作站环境：一个带桌面式 Web 后台的网关，一个可通过浏览器、SSH / VNC 使用的 Linux 开发工作站。
+在家庭或办公室局域网里部署两个容器：
 
-手动部署的工作站默认使用新加坡英文。AI 首次安装网关或工作站时，先确认国家，再设置容器的系统语言和时区。两个角色既可同机运行，也可分别部署在宿主机 A/B；独立部署入口、网络前提和初始化参数见 [AI 安装指南](AI-INSTALL.md)。
+- **网关**：Mihomo（Clash）透明代理、AdGuard Home DNS、Tailscale 子网路由，以及一个桌面式 Web 后台。订阅、出口、设备出口和按域名分组都可以在网页里配置。
+- **工作站**：Debian + XFCE 的 Linux 开发桌面，预装 Chrome、VS Code、Codex、Claude Code 和常用 MCP，通过浏览器（noVNC）、VNC 或 SSH 使用。
 
-## 让 AI 安装或升级容器
-
-选一段复制给能操作目标 Docker 宿主机的 AI。
-
-### 安装 250 网关
-
-```text
-按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只安装网关 192.168.1.250。
-先问我安装国家，得到确认后用 AI_INSTALL_COUNTRY 传入国家代码，再在仓库根目录执行 ./deploy.sh ai gateway，只用 ghcr.io/crazyniu/ai-workstation-gateway:latest，不额外安装软件。
-容器 SSH 用 root/root，网关网页密码用 root。地址已占用或已有网关时停止。
-```
-
-### 安装 251 工作站
-
-```text
-按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只安装工作站 192.168.1.251。
-先问我安装国家，得到确认后用 AI_INSTALL_COUNTRY 传入国家代码，再在仓库根目录执行 ./deploy.sh ai workstation，只用 ghcr.io/crazyniu/ai-workstation:latest，不额外安装软件。
-容器管理员用 root/root，桌面用户用 dev/dev，VNC 密码用 root。地址已占用、已有工作站或网关 192.168.1.250 不可用时停止。
-```
-
-### 升级 250 网关
-
-```text
-按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只将现有网关 192.168.1.250 升级到 ghcr.io/crazyniu/ai-workstation-gateway:latest。
-核对原容器、启动配置和镜像摘要。按 gateway/README.md 备份后再替换网关，恢复配置、账号和身份。保留 251 原状，不额外安装软件。
-```
-
-### 升级 251 工作站
-
-```text
-按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只将现有工作站 192.168.1.251 升级到 ghcr.io/crazyniu/ai-workstation:latest。
-核对原容器、启动配置和镜像摘要。按 workstation/README.md 备份后再替换工作站，恢复项目、桌面、账号和 SSH 身份。保留 250 原状，不额外安装软件。
-```
+两个角色可以同机运行，也可以分别部署在两台宿主机上；支持 Linux、Windows、macOS 上的 Docker，以及 Linux 原生安装。局域网部署的默认地址是网关 `192.168.1.250`、工作站 `192.168.1.251`，可以换成你局域网里的其他空闲地址。文档中的“250”“251”分别指网关和工作站。
 
 ![AI Workstation 与网关桌面展示](docs/images/gateway-home.png)
 
 *项目展示图；实际界面以运行版本为准。[图片说明](docs/images/README.md)*
 
-当前网关操作反馈的实际界面：[桌面截图](docs/images/gateway-global-toast-desktop.jpg)、[手机尺寸截图](docs/images/gateway-global-toast-mobile.jpg)。
+实际界面截图：[网关桌面](docs/images/gateway-control-panel.jpg)、[Clash 代理配置](docs/images/gateway-clash-editor.jpg)、[手机主屏](docs/images/gateway-home-mobile.jpg)、[操作提示](docs/images/gateway-global-toast-desktop.jpg)。
 
-## 支持的平台与安装方式
+## 功能
 
-Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop 的 Linux 容器。两个角色按上游软件实际支持的 CPU 范围提供构建：完整工作站覆盖 amd64/x64 和 arm64；网关还覆盖 32 位 x86、ARMv5/ARMv7、RISC-V，并锁定其他上游可用架构的依赖。只有软件自身缺少对应版本时才说明限制。完整矩阵、命令和验证边界见[平台安装说明](docs/platforms.md)。
-
-默认管理员账号、密码为 **`root / root`**；工作站应用以普通用户 `dev` 运行，默认密码为 `dev`，VNC 密码为 `root`。Linux 原生安装保留宿主已有 root 密码。手动选用 portable 模式时，端口默认绑定本机回环地址。
-
-## 系统架构
-
-Linux 局域网部署中，250 和 251 可以运行在同一台或不同的 Docker 宿主机。图中的 IP 属于容器。
-
-![系统架构：251 工作站经 250 网关访问互联网，在可选隔离模式下通过菜单 7 管理到局域网设备的出站连接](docs/images/workstation-gateway-architecture.png)
-
-菜单 7 按**目标 IPv4、协议和端口**放行工作站主动发起的连接，例如到 Mac 的 Orca WebSocket。工作站对外提供的 SSH、VNC 和 noVNC 入口仍由部署配置管理。[LAN 隔离与端口放行说明](docs/workstation-egress.md)
-
-## 两个服务
-
-| 服务 | 默认地址 | 能力 | 公开镜像 |
+| 角色 | 默认地址（可自定义） | 能力 | 公开镜像 |
 | --- | --- | --- | --- |
 | Gateway | `192.168.1.250` | Mihomo / Clash、AdGuard Home、Tailscale、Web 控制面板 | `ghcr.io/crazyniu/ai-workstation-gateway` |
 | Workstation | `192.168.1.251` | XFCE、Chrome、VS Code、Codex、Claude Code、Claude Desktop、GitHub CLI、MCP 工具 | `ghcr.io/crazyniu/ai-workstation` |
@@ -72,9 +29,76 @@ Linux 局域网部署中，250 和 251 可以运行在同一台或不同的 Dock
 - 网关内置工作站网页入口，可修改地址；内置图标与自定义链接统一排序，保存、导入和表单校验通过全局提示反馈。
 - 网关默认使用密码登录，可信私网可在账户设置中关闭；工作站提供 HTTPS noVNC 网页桌面，支持双向文字剪贴板。
 - 网关统一管理代理配置、DNS、子网访问、组件升级与备份恢复。
-- 251 默认直接接入局域网，可主动连接 Mac 的 Orca 配对服务。250 继续负责公网代理。需要限制 251 主动访问其他内网设备时，可用 **niu.sh → 7** 保留 Mac 的 Orca 端口或其他指定设备端口，再显式启用[可选隔离](docs/workstation-egress.md#显式启用隔离)。
-- 在 250 的 Clash 规则里，把软件或来源 IP 绑定到具体 HTTP、HTTPS 或 SOCKS5 出口。该节点连接失败或不支持 UDP 时，命中的流量被拒绝。手动选用的其他节点和独立规则按其自身策略执行。详见[工作站网络策略](docs/workstation-egress.md)。
+- 工作站默认直接接入局域网，可主动连接 Mac 的 Orca 配对服务，网关继续负责公网代理。需要限制工作站主动访问其他内网设备时，可用 **niu.sh → 7** 保留 Mac 的 Orca 端口或其他指定设备端口，再显式启用[可选隔离](docs/workstation-egress.md#显式启用隔离)。
+- 在网关的 Clash 规则里，把软件或来源 IP 绑定到具体 HTTP、HTTPS 或 SOCKS5 出口；也可以新建分组（例如 Google、YouTube），为一组域名指定出口。该节点连接失败或不支持 UDP 时，命中的流量被拒绝。手动选用的其他节点和独立规则按其自身策略执行。详见[工作站网络策略](docs/workstation-egress.md)。
 - 配置、HOME 和账号身份全部保存在各自容器内部。公开镜像包含程序和默认模板，个人订阅、身份和业务数据由用户自行配置。
+
+## 快速开始
+
+1. 准备一台装有 Docker Compose 2.33.1+ 的机器，克隆仓库并复制私有配置：
+
+   ```sh
+   git clone https://github.com/crazyniu/ai-workstation.git
+   cd ai-workstation
+   cp .env.example .env
+   chmod 600 .env
+   ```
+
+2. 选择部署方式：
+   - **本机试用**：直接运行 `./deploy.sh`（Windows 用 `.\deploy.ps1`）。网关在 `http://127.0.0.1:8080/`，工作站在 `https://127.0.0.1:6080/`。
+   - **局域网部署（Linux）**：在 `.env` 中按实际网络填写 `LAN_INTERFACE`、`LAN_SUBNET`、`LAN_PREFIX`、`LAN_ROUTER`、`GATEWAY_ADDRESS` 和 `WORKSTATION_ADDRESS`，修改默认密码，然后运行 `./deploy.sh all`（同机）或分别运行 `./deploy.sh gateway`、`./deploy.sh workstation`。
+   - **交给 AI**：复制[下方的指令](#让-ai-安装或升级容器)。
+3. 打开网关主页，在代理配置中导入自己的 Clash / Mihomo 配置或订阅，详见[开始使用](#开始使用)。
+
+默认管理员账号、密码为 **`root / root`**，工作站桌面用户为 `dev / dev`，VNC 密码为 `root`。用于局域网前请先修改。
+
+## 让 AI 安装或升级容器
+
+选一段复制给能操作目标 Docker 宿主机的 AI。AI 会先问你国家和两个局域网地址（默认网关 `192.168.1.250`、工作站 `192.168.1.251`），确认后再部署；地址可以换成你局域网里的其他空闲地址。
+
+### 安装网关
+
+```text
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只安装网关。
+先问我安装国家，以及网关和工作站的局域网地址（默认 192.168.1.250 和 192.168.1.251）。得到确认后用 AI_INSTALL_COUNTRY、AI_INSTALL_GATEWAY_ADDRESS 和 AI_INSTALL_WORKSTATION_ADDRESS 传入，再在仓库根目录执行 ./deploy.sh ai gateway，只用 ghcr.io/crazyniu/ai-workstation-gateway:latest，不额外安装软件。
+容器 SSH 用 root/root，网关网页密码用 root。地址已占用或已有网关时停止。
+```
+
+### 安装工作站
+
+```text
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只安装工作站。
+先问我安装国家，以及网关和工作站的局域网地址（默认 192.168.1.250 和 192.168.1.251）。得到确认后用 AI_INSTALL_COUNTRY、AI_INSTALL_GATEWAY_ADDRESS 和 AI_INSTALL_WORKSTATION_ADDRESS 传入，再在仓库根目录执行 ./deploy.sh ai workstation，只用 ghcr.io/crazyniu/ai-workstation:latest，不额外安装软件。
+容器管理员用 root/root，桌面用户用 dev/dev，VNC 密码用 root。地址已占用、已有工作站或网关不可用时停止。
+```
+
+### 升级网关
+
+```text
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只将现有网关升级到 ghcr.io/crazyniu/ai-workstation-gateway:latest。
+核对原容器、地址、启动配置和镜像摘要。按 gateway/README.md 备份后再替换网关，恢复配置、账号和身份，沿用原地址。保留工作站原状，不额外安装软件。
+```
+
+### 升级工作站
+
+```text
+按 https://github.com/crazyniu/ai-workstation 的 AI-INSTALL.md，只将现有工作站升级到 ghcr.io/crazyniu/ai-workstation:latest。
+核对原容器、地址、启动配置和镜像摘要。按 workstation/README.md 备份后再替换工作站，恢复项目、桌面、账号和 SSH 身份，沿用原地址。保留网关原状，不额外安装软件。
+```
+
+## 支持的平台与安装方式
+
+Linux 可选择原生服务或 Docker；Windows、macOS 使用 Docker Desktop 的 Linux 容器。两个角色按上游软件实际支持的 CPU 范围提供构建：完整工作站覆盖 amd64/x64 和 arm64；网关还覆盖 32 位 x86、ARMv5/ARMv7、RISC-V，并锁定其他上游可用架构的依赖。只有软件自身缺少对应版本时才说明限制。完整矩阵、命令和验证边界见[平台安装说明](docs/platforms.md)。
+
+Linux 原生安装保留宿主已有的 root 密码。手动选用 portable 模式时，端口默认绑定本机回环地址。
+
+## 系统架构
+
+Linux 局域网部署中，250 和 251 可以运行在同一台或不同的 Docker 宿主机。图中的 IP 属于容器。
+
+![系统架构：251 工作站经 250 网关访问互联网，在可选隔离模式下通过菜单 7 管理到局域网设备的出站连接](docs/images/workstation-gateway-architecture.png)
+
+菜单 7 按**目标 IPv4、协议和端口**放行工作站主动发起的连接，例如到 Mac 的 Orca WebSocket。工作站对外提供的 SSH、VNC 和 noVNC 入口仍由部署配置管理。[LAN 隔离与端口放行说明](docs/workstation-egress.md)
 
 ## 让 AI 帮你检测 IP 泄漏
 
@@ -132,7 +156,7 @@ Linux 局域网部署中，250 和 251 可以运行在同一台或不同的 Dock
 
 以下清单对应仓库的镜像构建定义。固定版本以 [网关组件锁定文件](gateway/components.lock.json)、[工作站版本文件](workstation/versions.env) 和 [MCP 依赖锁定文件](workstation/mcp/package-lock.json) 为准；通过 Debian/Ubuntu APT 安装的软件版本由构建时的软件源决定。
 
-### `192.168.1.250`：Clash 网关
+### 网关（默认 `192.168.1.250`）
 
 | 类别 | 安装的软件 |
 | --- | --- |
@@ -143,7 +167,7 @@ Linux 局域网部署中，250 和 251 可以运行在同一台或不同的 Dock
 | 系统与运行时 | Ubuntu `24.04`、发行版系统 Python 3 / PyYAML、Nginx、Supervisor、Tini |
 | 管理工具 | OpenSSH Server、Git、GitHub CLI、curl、DNS 查询及路由/防火墙工具 |
 
-### `192.168.1.251`：Claude 开发工作站
+### 工作站（默认 `192.168.1.251`）
 
 | 类别 | 安装的软件 |
 | --- | --- |
@@ -154,13 +178,13 @@ Linux 局域网部署中，250 和 251 可以运行在同一台或不同的 Dock
 | 开发与进程管理 | Git、GitHub CLI、curl、Supervisor；系统 Python 3 用于系统服务 |
 | 本地 MCP | Context7 `4.4.4`、Playwright `0.0.83`、Chrome DevTools `1.12.0` |
 | 远程 MCP | GitHub MCP 连接配置，使用个人账号授权 |
-| AI desktop app | Claude Desktop. **niu.sh** updates it alongside system packages, desktop applications, runtimes, AI CLIs, and local MCP servers. |
+| AI 桌面应用 | Claude Desktop；**niu.sh** 会和系统软件包、桌面应用、运行时、AI CLI 及本地 MCP 一起更新它。 |
 
 工作站容器使用 Debian 提供的 Python 3，补丁版本随系统软件包更新。MCP 配置同时提供给 Codex 和 Claude，浏览器工具使用容器内的 Chrome。详细清单与使用方式见 [工作站说明](workstation/README.md)。
 
 ## 首次部署
 
-AI 首次安装只执行所选角色的入口。脚本在拉取镜像前用 Python 3 核对 Compose 实际使用的角色、镜像和 LAN 地址。
+AI 首次安装只执行所选角色的入口。脚本在拉取镜像前用 Python 3 核对 Compose 实际使用的角色、镜像，以及用户确认的 LAN 地址。
 
 手动选用 portable 模式时，Linux、Windows、macOS 都可以使用 Docker Linux 容器和 Compose 2.33.1+。
 
@@ -241,14 +265,14 @@ WORKSTATION_TIMEZONE=Asia/Singapore
 
 ### LAN 访问入口
 
-网关桌面内置“工作站”图标，默认打开 `https://192.168.1.251:6080/`，与工作站镜像默认协议一致。在“设置 → 桌面管理”或右键图标的“设置入口地址”中修改实际 IP、域名、协议和端口；可信内网 HTTP 服务填写对应的 `http://` 地址。全部内置图标和自定义链接均可拖拽排序，选中图标后也可用 `Alt + ↑ / ↓` 调整。地址和顺序保存在网关内，刷新、重启及换浏览器后沿用，并包含在配置备份中。
+网关桌面内置“工作站”图标，默认打开 `https://工作站地址:6080/`（按 `WORKSTATION_ADDRESS` 生成，例如 `https://192.168.1.251:6080/`），与工作站镜像默认协议一致。在“设置 → 桌面管理”或右键图标的“设置入口地址”中修改实际 IP、域名、协议和端口；可信内网 HTTP 服务填写对应的 `http://` 地址。全部内置图标和自定义链接均可拖拽排序，选中图标后也可用 `Alt + ↑ / ↓` 调整。地址和顺序保存在网关内，刷新、重启及换浏览器后沿用，并包含在配置备份中。
 
 | 入口 | 初始账号 / 密码 |
 | --- | --- |
-| 网关 Web：`http://192.168.1.250/` | 密码来自 `WEB_PASSWORD`，示例值为 `root` |
-| 网关 SSH：`192.168.1.250:22` | `GATEWAY_USER` / `GATEWAY_PASSWORD`，示例均为 `root` |
-| 工作站 SSH：`192.168.1.251:22` | 管理员 `root / root`；应用用户 `dev / dev` |
-| 工作站 VNC：`192.168.1.251:5901` | `VNC_PASSWORD`，示例值为 `root` |
+| 网关 Web：`http://网关地址/` | 密码来自 `WEB_PASSWORD`，示例值为 `root` |
+| 网关 SSH：`网关地址:22` | `GATEWAY_USER` / `GATEWAY_PASSWORD`，示例均为 `root` |
+| 工作站 SSH：`工作站地址:22` | 管理员 `root / root`；应用用户 `dev / dev` |
+| 工作站 VNC：`工作站地址:5901` | `VNC_PASSWORD`，示例值为 `root` |
 
 部署前设置自己的密码。VNC 密码接受 1–8 个 ASCII 字符；Compose 默认启用工作站 root / root 管理登录，桌面应用仍由 dev 运行。网关 Web 密码首次初始化后由“设置 → 账户”管理。后续环境变量变更与数据处理见各服务文档。
 
@@ -320,7 +344,14 @@ docker image save workstation-local:test | python3 workstation/tests/audit-image
 | [`tests/`](tests/) | 部署入口保护测试 |
 | [`docs/`](docs/) | 项目展示素材与来源说明 |
 
-欢迎提交问题和 Pull Request。开发约定见 [CONTRIBUTING.md](CONTRIBUTING.md)，漏洞报告见 [SECURITY.md](SECURITY.md)。
+## 参与贡献
+
+欢迎提交 Issue 和 Pull Request。
+
+- 报告问题或提议功能：使用 [Issue 模板](https://github.com/crazyniu/ai-workstation/issues/new/choose)，附上镜像 SHA、部署方式和脱敏后的复现步骤。
+- 提交代码：先读 [CONTRIBUTING.md](CONTRIBUTING.md)，按上面的命令运行检查；UI 变更附截图。
+- 安全漏洞：不要公开提交，按 [SECURITY.md](SECURITY.md) 私密报告。
+- 社区行为准则见 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。
 
 ## 许可
 

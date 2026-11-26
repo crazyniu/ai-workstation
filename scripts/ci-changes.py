@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 
 DOCUMENTATION = (
-    'README.md', 'AI-INSTALL.md', 'AGENTS.md', 'gateway/README.md',
+    'README.md', 'README.en.md', 'AI-INSTALL.md', 'AGENTS.md', 'gateway/README.md',
     'workstation/README.md', 'workstation/VALIDATION.md', 'docs/**',
     'LICENSE', 'NOTICE', 'CONTRIBUTING.md', 'SECURITY.md', 'CODE_OF_CONDUCT.md',
     '.github/ISSUE_TEMPLATE/**', '.github/PULL_REQUEST_TEMPLATE.md',

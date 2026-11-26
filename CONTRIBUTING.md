@@ -2,6 +2,10 @@
 
 欢迎修复问题、改进文档或提交功能建议。较大的功能请先用 Issue 说明使用场景、预期行为和影响范围。
 
+Issue 和 PR 可以用中文或英文（English is welcome too）。参与即表示同意遵守[行为准则](CODE_OF_CONDUCT.md)；安全问题按 [SECURITY.md](SECURITY.md) 私密报告。
+
+网关 Web 界面使用简体中文。新增的界面文字保持简体中文；修改 README 的用户可见内容时，同步更新 [README.en.md](README.en.md) 的对应段落。
+
 ## 本地开发
 
 1. 从 `main` 创建分支，保持一个 Pull Request 聚焦一个完整问题。
