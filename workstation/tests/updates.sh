@@ -28,6 +28,11 @@ wait_ready() {
         sleep 1
     done
     echo 'Upgrade fixture failed its health check.' >&2
+    # Name the failing check and show the desktop processes and recent service
+    # output. The fixture's passwords are random and never printed.
+    docker exec "$name" python3 /etc/workstation/healthcheck.py 2>&1 | tail -n 3 >&2 || true
+    docker exec "$name" ps -u 1100 -o comm=,stat= >&2 || true
+    docker logs --tail 40 "$name" >&2 || true
     return 1
 }
 wait_ready
