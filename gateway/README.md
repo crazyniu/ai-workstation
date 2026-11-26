@@ -1,6 +1,6 @@
 # 网关容器
 
-将网关桌面、Mihomo（Clash）、MetaCubeXD 面板、AdGuard Home 和 Tailscale 打包在一个 Ubuntu 24.04 容器中。首页采用可更换壁纸与应用图标，配置、DNS、远程访问、升级和备份集中在设置窗口，支持亮色、暗色和跟随系统。窗口管理基于 [WinBox 0.2.82](https://github.com/nextapps-de/winbox/tree/0.2.82)，静态资源随镜像提供。镜像首次启动不包含代理节点、订阅地址或 Tailscale 登录身份。
+将网关桌面、Mihomo（Clash）、MetaCubeXD 面板、AdGuard Home 和 Tailscale 打包在一个 Debian 13 容器中。首页采用可更换壁纸与应用图标，配置、DNS、远程访问、升级和备份集中在设置窗口，支持亮色、暗色和跟随系统。窗口管理基于 [WinBox 0.2.82](https://github.com/nextapps-de/winbox/tree/0.2.82)，静态资源随镜像提供。镜像首次启动不包含代理节点、订阅地址或 Tailscale 登录身份。
 
 ## 已安装的软件
 
@@ -12,12 +12,13 @@
 | AdGuard DNS filter | 锁定的官方规则快照 | 首次启动的基础过滤规则 |
 | Tailscale | `1.104.2` | 设备连接与局域网子网路由 |
 | 网关桌面 | 本仓库源码 | 配置、账户、桌面链接、主题、升级和备份管理 |
+| ttyd | `1.7.7`，构建镜像时从上游源码编译，源码包 SHA256 固定在 Dockerfile | 桌面里的“终端” |
 | WinBox / CodeMirror | WinBox `0.2.82`；编辑器版本见随包许可清单 | 桌面窗口与 YAML 编辑 |
-| Ubuntu | `24.04` | 基础系统 |
-| Python 3 / PyYAML | Ubuntu 系统软件包 | 网关后台、配置处理与健康检查 |
-| Nginx / Supervisor / Tini | Ubuntu 系统软件包 | Web 入口、服务管理和容器启动 |
-| OpenSSH Server / Git / GitHub CLI | Ubuntu 系统软件包 | SSH 管理、源码与 GitHub 操作 |
-| curl / dnsutils / iproute2 / iptables | Ubuntu 系统软件包 | 连通性检查、DNS 查询、路由和防火墙 |
+| Debian | `13` | 基础系统 |
+| Python 3 / PyYAML | Debian 系统软件包 | 网关后台、配置处理与健康检查 |
+| Nginx / Supervisor / Tini | Debian 系统软件包 | Web 入口、服务管理和容器启动 |
+| OpenSSH Server / Git / GitHub CLI | Debian 系统软件包 | SSH 管理、源码与 GitHub 操作 |
+| curl / dnsutils / iproute2 / iptables | Debian 系统软件包 | 连通性检查、DNS 查询、路由和防火墙 |
 
 组件的精确下载地址及 SHA256 见 [`components.lock.json`](components.lock.json)，编辑器依赖见 [`web/assets/editor-licenses.txt`](web/assets/editor-licenses.txt)，安装定义见 [`Dockerfile`](Dockerfile)。APT 软件版本由构建时的软件源决定。开发用 Python、AI CLI 和 MCP 工具位于 [工作站容器](../workstation/README.md)。
 
@@ -90,6 +91,7 @@ macvlan 使容器拥有独立 LAN 地址，因此不映射宿主的 80/53 端口
 4. Tailscale 在设置中点击“登录并连接”，打开授权页面登录自己的账号。网关根据现有 LAN 地址和前缀自动识别、发布内网子网，同时接收其他设备发布的子网路由，用户无需填写网段或保存路由。已有登录身份也会在后台自动应用此配置；网关 DNS 保持原设置。页面每 4 秒自动更新连接和路由状态，后台每 30 秒校验配置并重试失败项。
    - 页面按状态只显示“登录并连接”“打开授权页面”“连接”或“断开连接”中的一项；“账号操作”中可退出账号。断开连接保留身份，后台不会自动重连。
    - 内网路由生效仍取决于账号侧批准与访问策略。配置了 [Tailscale autoApprovers](https://tailscale.com/docs/features/subnet-routers) 的账号可自动批准；其他账号会显示待批准状态和管理控制台入口。`PrimaryRoutes` 确认本机成为该子网的主路由后显示“子网路由已生效”；该状态不代替远端设备实际连通性验收。远端 Linux 客户端需启用接收子网路由。
+   - 设备列表显示每台设备的在线状态、Tailscale 地址、所有者或标签、子网和流量，以及当前连接方式：直连（对端地址）、DERP 中继（中继所在地；自建中继显示 derpMap 中的名称）或空闲。自建 DERP 中继服务器在 [Tailscale 访问控制](https://console.tailscale.com/admin/acls/file)的 `derpMap` 中配置，页面提供入口；设置 `OmitDefaultRegions` 后不再使用官方中继。
    - 自动识别优先使用 `GATEWAY_LAN_ADDRESS` 的实际前缀；未设置时仅检查运行时选定的 LAN 接口，避开 Docker/VPN 接口及 Tailscale 地址。自动配置会替换旧手动发布的非默认网段，保留账号身份及其他服务配置。
 5. 添加自己的应用链接：填写名称和 HTTP/HTTPS 地址，默认自动获取网站图标，也可手动选择内置图标；支持其他 LAN IP 和端口；可以编辑、删除和调整顺序。链接默认在桌面的窗口中打开；有些网站禁止被其他页面嵌入，这时勾选“在新标签页打开”。
 
@@ -99,8 +101,9 @@ macvlan 使容器拥有独立 LAN 地址，因此不映射宿主的 80/53 端口
 
 ## 桌面与设置窗口
 
-- 页面采用 macOS 27 风格：顶部菜单栏，底部 Dock，桌面放自定义链接。Dock 默认放控制面板、代理配置、局域网互传、工作站、Clash 面板和 AdGuard Home。它们和自定义链接都在当前页面的窗口中打开，不新开标签页；窗口工具栏可重新载入，或在新标签页中打开。打不开的外部地址（离线，或浏览器尚未信任的自签名证书）会在窗口里提示先在新标签页打开，再重试。
+- 页面采用 macOS 27 风格：顶部菜单栏，底部 Dock，桌面放自定义链接。Dock 默认放控制面板、代理配置、局域网互传、工作站、终端、Clash 面板和 AdGuard Home。它们和自定义链接都在当前页面的窗口中打开，不新开标签页；窗口工具栏可重新载入，或在新标签页中打开。打不开的外部地址（离线，或浏览器尚未信任的自签名证书）会在窗口里提示先在新标签页打开，再重试。
 - 工作站默认在窗口中打开 `https://工作站地址:6080/`（按部署时的 `WORKSTATION_ADDRESS` 生成，默认 `https://192.168.1.251:6080/`），可在“设置 → 桌面管理”或右键 Dock 中工作站图标的“设置入口地址”中修改 IP、域名、协议和端口。
+- “终端”使用开源的 [ttyd](https://github.com/tsl0922/ttyd)，在窗口中打开网关的 root shell（`bash --login`）。ttyd 只监听容器内的 Unix socket，不开放 TCP 端口，局域网和代理端口都无法直接连到它；Nginx 在转发前要求有效的密码登录会话，WebSocket 必须来自网关页面本身。关闭“登录需要密码”时终端不可用。终端随网关镜像提供：在线更新网关 Web 不会安装它，旧镜像会提示更新镜像；原生安装不内置终端。
 - 菜单栏左侧是系统菜单和当前窗口名称；右侧显示可用更新、Tailscale 状态和时间，点击可进入对应设置。系统菜单提供关于、控制面板、代理配置、局域网互传、添加桌面链接、个性化和退出登录；“关于这台网关”显示网关 Web 版本、访问地址、许可证和 GitHub 开源地址。
 - 在桌面空白处右键，可添加链接、刷新桌面、整理图标、按名称排列、打开个性化或控制面板。在图标上右键，可打开、在新标签页中打开、放入程序坞或移到桌面；自定义链接还可编辑或删除。
 - 桌面图标可以拖到任意位置，自动对齐网格；拖到 Dock 上会插入到指针所在的位置，从 Dock 拖到桌面会放在松开的位置。网关应用和自定义链接都可以这样移动。聚焦图标后，`Alt + 方向键` 在桌面上移动一格，或在 Dock 里左右移动。“设置 → 桌面管理”可恢复默认布局，那里的上移、下移按钮决定手机主屏的顺序。工作站地址与桌面布局保存在网关内部，刷新、重启或更换浏览器后都会保留，并包含在网页配置备份中。手机可长按图标打开菜单；键盘可按 `Shift+F10` 打开菜单，方向键选择，`Esc` 关闭。

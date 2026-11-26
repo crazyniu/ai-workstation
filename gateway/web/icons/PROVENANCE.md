@@ -18,5 +18,5 @@ The gateway's own apps (`apps/*.webp`) and its favicon, `favicon.ico`, `favicon-
 
 ## Settings icons
 
-`settings/*.svg` follow the macOS System Settings sidebar: a colored squircle with a white symbol taken from the page's own glyph set.
+`settings/*.svg` follow the current macOS System Settings sidebar: a squircle in a system-style colour with a soft top-to-bottom gradient, a thin light rim and a large white glyph in the manner of SF Symbols. The glyphs were drawn for this project on 2026-11-26 as original SVG paths in `gateway/scripts/build-icons.py`; no Apple symbol, font or artwork was copied.
 

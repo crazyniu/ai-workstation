@@ -100,7 +100,7 @@ sudo python3 install-native.py --role all \
   --config /安全的私有路径/ai-workstation-native.env --apply
 ```
 
-原生网关：`/opt/gateway`、`/var/lib/ai-gateway`、`ai-gateway.service`；网页 8080、SSH 2223、代理 7890、AdGuard DNS 1053。原生工作站：`/opt/workstation`、`/etc/workstation`、`/home/dev`、`ai-workstation.service`；SSH 2222、VNC 5901、网页桌面 6080。私有初始化文件为 `/etc/ai-workstation-native.env`，权限 600。两个角色可装在同机，也可装在不同 Linux 主机上；分别设置访问端点和实际代理。
+原生网关：`/opt/gateway`、`/var/lib/ai-gateway`、`ai-gateway.service`；网页 8080、SSH 2223、代理 7890、AdGuard DNS 1053。原生网关不内置网页“终端”（ttyd 随网关镜像构建），请使用主机自身的 SSH。原生工作站：`/opt/workstation`、`/etc/workstation`、`/home/dev`、`ai-workstation.service`；SSH 2222、VNC 5901、网页桌面 6080。私有初始化文件为 `/etc/ai-workstation-native.env`，权限 600。两个角色可装在同机，也可装在不同 Linux 主机上；分别设置访问端点和实际代理。
 
 **原生安装保留宿主已有 root 密码、主 SSH 配置、Nginx 配置及系统地区。** 网关管理用户名默认为 `root`，原生网关 SSH 使用宿主现有 root 密码（若宿主锁定 root，则保持锁定）；工作站专用 SSH 只开放 `dev`，默认 `dev / root`。宿主 root 管理继续通过原有 SSH 入口。原生安装不会把现有 Linux 服务器的 root 密码重置为 `root`。应用地区只应用于专用工作站用户和进程。
 

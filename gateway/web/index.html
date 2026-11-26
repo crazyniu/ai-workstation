@@ -10,7 +10,7 @@
   <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" sizes="any">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180">
   <link rel="stylesheet" href="/vendor/winbox/winbox.min.css?v=9d6b72dc5f03">
-  <link rel="stylesheet" href="/style.css?v=bb1ef4d1eee8">
+  <link rel="stylesheet" href="/style.css?v=aa50150a8b68">
   <link rel="stylesheet" href="/loading.css?v=e549cd70c0dd">
   <link rel="stylesheet" href="/favicon.css?v=941afb91f398">
 </head>
@@ -189,6 +189,17 @@
             </div>
             <dl id="tailscale-status" class="detail-list"></dl>
             <p id="tailscale-refresh-status" class="callout warn" role="status"></p>
+          </div>
+          <div id="tailscale-devices-card" class="card" hidden>
+            <div class="card-head"><h3>设备</h3><p id="tailscale-devices-summary">—</p></div>
+            <div id="tailscale-devices" class="row-list device-list"></div>
+          </div>
+          <div class="card">
+            <div class="setting-row">
+              <img class="row-icon" src="/icons/settings/tailscale.svg" alt="">
+              <div class="setting-copy"><strong>中继服务器</strong><span>自建的 DERP 中继服务器在 Tailscale 访问控制的 derpMap 中配置。配置后，设备列表会显示正在使用的中继。</span></div>
+              <a class="button-link" href="https://console.tailscale.com/admin/acls/file" target="_blank" rel="noopener noreferrer">打开访问控制<svg class="glyph" aria-hidden="true"><use href="#i-external"/></svg></a>
+            </div>
           </div>
           <div class="card">
             <div class="card-head"><h3>内网访问</h3><p>网关会自动把本地子网发布为 Tailscale 子网路由，无需手动填写网段。</p></div>
@@ -424,6 +435,6 @@
   <script src="/vendor/winbox/winbox.min.js?v=cd0b4efd9450"></script>
   <script src="/proxy-editor.js?v=e615b659ebe0"></script>
   <script src="/build-info.js?v=98bb99b2069d"></script>
-  <script src="/app.js?v=f6fca0ac032a"></script>
+  <script src="/app.js?v=2a2fbfd1be54"></script>
 </body>
 </html>

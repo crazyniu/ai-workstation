@@ -84,7 +84,7 @@ components:
 
 **North Star: "macOS 27 的桌面秩序，iOS 的手机主屏"**
 
-网关的 80 端口页面是一张桌面：顶部是半透明菜单栏，底部是玻璃 Dock，壁纸上是用户添加的链接。控制面板、代理配置、局域网互传、工作站、Clash 面板、AdGuard Home 和用户的链接都在同一页面的窗口里打开；链接可以单独设为在新标签页打开。
+网关的 80 端口页面是一张桌面：顶部是半透明菜单栏，底部是玻璃 Dock，壁纸上是用户添加的链接。控制面板、代理配置、局域网互传、工作站、终端、Clash 面板、AdGuard Home 和用户的链接都在同一页面的窗口里打开；链接可以单独设为在新标签页打开。
 
 视觉参照 macOS 27：窗口使用统一圆角，标题与工具栏合并为一条玻璃工具栏，侧栏贴边并配彩色符号，设置内容使用内嵌分组列表。参考资料：
 [9to5Mac](https://9to5mac.com/2026/06/09/macos-27-golden-gate-includes-these-changes-that-tahoe-critics-will-appreciate/)、
@@ -172,7 +172,7 @@ components:
 
 ### Embedded apps
 
-局域网互传、Clash 面板、AdGuard Home、工作站和用户链接在窗口内通过 iframe 打开。外部地址先探测一次能否连接，失败时在窗口里说明原因，并给出“在新标签页中打开”和“重试”。局域网互传使用 `?embed=1` 隐藏自身标题，文件夹链接保持该参数，并跟随桌面的外观设置。nginx 为面板和 AdGuard 去掉上游的 `X-Frame-Options`，统一使用同源策略。
+局域网互传、Clash 面板、AdGuard Home、工作站、终端和用户链接在窗口内通过 iframe 打开。外部地址先探测一次能否连接，失败时在窗口里说明原因，并给出“在新标签页中打开”和“重试”。局域网互传使用 `?embed=1` 隐藏自身标题，文件夹链接保持该参数，并跟随桌面的外观设置。nginx 为面板和 AdGuard 去掉上游的 `X-Frame-Options`，统一使用同源策略。
 
 ### Personalization
 

@@ -12,5 +12,20 @@ case "$1" in
      if [ "${GATEWAY_MODE:-true}" = true ]; then tun=tailscale0; else tun=userspace-networking; fi
    fi
    exec "$base/components/current/tailscale/tailscaled" --state="$base/tailscale/tailscaled.state" --socket=/run/tailscale/tailscaled.sock --tun="$tun" --port=41641;;
+ terminal)
+   # ttyd listens only on a Unix socket that Nginx reaches after the gateway login.
+   # No TCP port exists, so neither the LAN nor the proxy ports can reach it.
+   build=$(nginx -V 2>&1)
+   owner=$(printf '%s' "$build" | sed -n 's/.*--user=\([^ ]*\).*/\1/p')
+   group=$(printf '%s' "$build" | sed -n 's/.*--group=\([^ ]*\).*/\1/p')
+   if [ -z "$group" ]; then if getent group nogroup >/dev/null; then group=nogroup; else group=nobody; fi; fi
+   rm -f /run/gateway/terminal.sock
+   cd "${HOME:-/}" 2>/dev/null || cd /
+   exec /usr/local/bin/ttyd --interface /run/gateway/terminal.sock --socket-owner "${owner:-nobody}:$group" \
+     --base-path /terminal --writable --check-origin --max-clients 8 --terminal-type xterm-256color \
+     --client-option titleFixed=终端 --client-option disableLeaveAlert=true --client-option fontSize=14 \
+     --client-option 'fontFamily=SF Mono, Menlo, Monaco, Consolas, DejaVu Sans Mono, monospace' \
+     --client-option 'theme={"background":"#1c1c1e","foreground":"#e5e5ea","cursor":"#e5e5ea","selectionBackground":"#3a6ea566"}' \
+     /bin/bash --login;;
 esac
 exit 2

@@ -28,6 +28,8 @@
 - 桌面图标可以拖到任意位置，也可以拖进或拖出 Dock；网关应用和自定义链接都一样。链接默认在桌面的窗口中打开，可改为新标签页。
 - 桌面链接支持自动获取站点 favicon，也可手动选图标；图标采用 macOS 27 风格。提供壁纸、主题与账户设置，菜单栏的“关于这台网关”显示版本和 GitHub 开源地址。
 - 网关内置工作站入口，在窗口中打开工作站桌面，可修改地址；保存、导入和表单校验通过全局提示反馈。
+- 网关自带“终端”（开源的 [ttyd](https://github.com/tsl0922/ttyd)），在桌面窗口中打开网关的 root shell。它只在开启“登录需要密码”时可用，随网关镜像提供。
+- Tailscale 页面列出所有设备的在线状态、地址、流量和连接方式（直连、DERP 中继及中继名称），并提供 Tailscale 访问控制的入口，用于配置自建 DERP 中继服务器。
 - 网关默认使用密码登录，可信私网可在账户设置中关闭；工作站提供 HTTPS noVNC 网页桌面，支持双向文字剪贴板。
 - 网关统一管理代理配置、DNS、子网访问、组件升级与备份恢复。
 - 工作站默认直接接入局域网，可主动连接 Mac 的 Orca 配对服务，网关继续负责公网代理。需要限制工作站主动访问其他内网设备时，可用 **niu.sh → 7** 保留 Mac 的 Orca 端口或其他指定设备端口，再显式启用[可选隔离](docs/workstation-egress.md#显式启用隔离)。
@@ -165,8 +167,9 @@ Linux 局域网部署中，250 和 251 可以运行在同一台或不同的 Dock
 | DNS 与过滤 | AdGuard Home `0.107.79`、内置 AdGuard DNS filter 规则快照 |
 | 远程网络 | Tailscale `1.104.2` |
 | Web 后台 | 项目网关桌面、WinBox `0.2.82`、CodeMirror YAML 编辑器 |
-| 系统与运行时 | Ubuntu `24.04`、发行版系统 Python 3 / PyYAML、Nginx、Supervisor、Tini |
+| 系统与运行时 | Debian `13`、发行版系统 Python 3 / PyYAML、Nginx、Supervisor、Tini |
 | 管理工具 | OpenSSH Server、Git、GitHub CLI、curl、DNS 查询及路由/防火墙工具 |
+| 网页终端 | ttyd `1.7.7`（构建镜像时从固定版本的上游源码编译） |
 
 ### 工作站（默认 `192.168.1.251`）
 

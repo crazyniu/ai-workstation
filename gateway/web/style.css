@@ -656,6 +656,13 @@ body > .frame-shell { display: none; }
 .detail-list dd { margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .detail-list dd.mono { font-family: var(--mono); font-size: 12.5px; white-space: pre-line; }
 #tailscale-subnets { white-space: pre-line; }
+/* Tailscale devices */
+.device-list { padding-bottom: 4px; }
+.device-row .row-symbol { width: 30px; height: 30px; border-radius: 8px; }
+.device-badge { margin-inline-start: 6px; padding: 1px 6px; border-radius: 5px; background: var(--accent-soft); color: var(--accent-text); font-size: 10.5px; font-weight: 600; vertical-align: 1px; }
+.device-meta { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: 3px; max-width: 46%; }
+.device-meta .status-pill { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.device-meta .row-meta { font-variant-numeric: tabular-nums; white-space: pre; }
 
 .job-status { display: flex; align-items: center; gap: 12px; }
 #upgrade-status { color: var(--secondary); font-size: 12px; overflow-wrap: anywhere; }
@@ -716,6 +723,8 @@ a.status-card-detail:hover { text-decoration: underline; }
   .hero-row .row-actions > * { flex: 1; }
   .card-head.with-action { flex-direction: column; }
   .form-stack > .field { max-width: none; }
+  .device-row { flex-wrap: wrap; }
+  .device-meta { flex: 1 0 calc(100% - 42px); flex-direction: row; flex-wrap: wrap; align-items: center; max-width: none; margin-inline-start: 42px; }
 }
 
 /* ---------- Link editor and icon picker ---------- */
